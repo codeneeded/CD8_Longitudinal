@@ -23,7 +23,8 @@ library(circlize)
 library(ComplexHeatmap)
 library(readxl)
 library(scRepertoire)
-
+library(igraph)
+library(Cairo)
 ##set path to load data
 
 setwd('~/Documents/CD8_Longitudinal/VDJ')
@@ -532,11 +533,235 @@ x <- clonalCompare(combined.TCR.EARTH,
 write.csv(x,'EARTH_Clonal_Comparison_SA_CH_009.csv',row.names = F)
 
 ################# Clonal Clustering ############################3
+#raph representation of TCR sequences that are grouped based on their similarity (edit distance threshold of 0.85). 
+#The network structure helps identify clonal expansions and relationships between TCR sequences.
+#Clustering 
+#Nodes (Vertices): Represent unique TCR sequences (or clonotypes).
+#Edges (Links): Indicate that two clonotypes are similar (i.e., have an edit distance below the set threshold of 0.85).
+#Clusters (Communities): Groups of connected nodes represent TCR sequences that are considered part of the same clonal family.
+#Highly connected clusters → Groups of similar TCRs (shared clonal families).
+#Larger nodes → Higher clonal expansion.
+#Different colors → Different samples, allowing comparison of TCR sharing across conditions.
+#Sparse or isolated nodes → Unique or sample-specific clonotypes.
+library(igraph)
+
+
+# Clustering samples for TRA (threshold 0.90)
+igraph.TRA <- clonalCluster(
+  combined.TCR.EARTH[c("SA_TY_026_V2", "SA_TY_026_V5", "SA_TY_026_V6", "SA_TY_026_V7")],
+  chain = "TRA",
+  sequence = "aa",
+  group.by = "sample",
+  threshold = 0.90, 
+  exportGraph = TRUE
+)
+
+# Clustering samples for TRB (threshold 0.85)
+igraph.TRB <- clonalCluster(
+  combined.TCR.EARTH[c("SA_TY_026_V2", "SA_TY_026_V5", "SA_TY_026_V6", "SA_TY_026_V7")],
+  chain = "TRB",
+  sequence = "aa",
+  group.by = "sample",
+  threshold = 0.85, 
+  exportGraph = TRUE
+)
+
+# Setting color scheme
+custom_colors <- c(
+  "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
+  "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
+  "#FC8D62", "#8DA0CB", "#A6D854", "#FFD92F", "#E5C494"
+)
+
+# Function to set colors and order legend dynamically
+set_colors_and_legend <- function(igraph.object) {
+  col_legend <- factor(igraph::V(igraph.object)$group)
+  color.legend <- unique(igraph::V(igraph.object)$group)
+  
+  # Order legend from longest to shortest sample names
+  ordered_indices <- order(nchar(color.legend), decreasing = TRUE)
+  color.legend <- color.legend[ordered_indices]
+  
+  # Assign distinct colors dynamically based on this order
+  num_colors <- length(color.legend)  # Using ordered legend length
+  col_samples <- custom_colors[seq_len(num_colors)][ordered_indices]  # Ensure color order matches legend
+  
+  return(list(col_legend = col_legend, color.legend = color.legend, col_samples = col_samples))
+}
+
+# Apply function for TRA and TRB
+TRA_colors <- set_colors_and_legend(igraph.TRA)
+TRB_colors <- set_colors_and_legend(igraph.TRB)
+
+# Function to plot graph without edge arrows
+plot_igraph <- function(igraph.object, col_samples, color.legend, title_text) {
+  plot(
+    igraph.object,
+    vertex.size     = sqrt(igraph::V(igraph.object)$size),
+    vertex.label    = NA,
+    edge.arrow.size = 0,   # Removes edge arrows (bidirectional)
+    edge.curved     = 0.3,
+    vertex.color    = col_samples
+  )
+  
+  # Add ordered legend
+  legend(
+    "topleft", 
+    legend = color.legend, 
+    pch = 16, 
+    col = unique(col_samples), 
+    bty = "n"
+  )
+  
+  # Add title
+  title(title_text, cex.main = 1.5, font.main = 2)
+}
+
+# Set working directory
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Network_Analysis/EARTH')
+paste( c("CP020_V1", "CP020_V12", "CP020_V44"), collapse = "_")
+# Save TRA plot as a high-quality PNG using Cairo
+CairoPNG("SA_TY_026_TRA.png", width = 7200, height = 5500, res = 500)  # Higher resolution
+plot_igraph(igraph.TRA, TRA_colors$col_samples, TRA_colors$color.legend, "SA_TY_026 TRA Sequences (Threshold 0.90)")
+dev.off()  # Close Cairo device
+
+# Save TRB plot as a high-quality PNG using Cairo
+CairoPNG("SA_TY_026_TRB.png", width = 7200, height = 5500, res = 500)
+plot_igraph(igraph.TRB, TRB_colors$col_samples, TRB_colors$color.legend, "SA_TY_026 TRB Sequences (Threshold 0.85)")
+dev.off()  # Close Cairo device
+
+############################################################ Clonal Clustering #################################################################
+
+
+# Function to set colors and order legend dynamically
+set_colors_and_legend <- function(igraph.object) {
+  col_legend <- factor(igraph::V(igraph.object)$group)
+  color.legend <- unique(igraph::V(igraph.object)$group)
+  
+  # Order legend from longest to shortest sample names
+  ordered_indices <- order(nchar(color.legend), decreasing = TRUE)
+  color.legend <- color.legend[ordered_indices]
+  
+  # Assign distinct colors dynamically based on this order
+  num_colors <- length(color.legend)  # Using ordered legend length
+  col_samples <- custom_colors[seq_len(num_colors)][ordered_indices]  # Ensure color order matches legend
+  
+  return(list(col_legend = col_legend, color.legend = color.legend, col_samples = col_samples))
+}
+
+# Function to plot graph without edge arrows
+plot_igraph <- function(igraph.object, col_samples, color.legend, title_text) {
+  plot(
+    igraph.object,
+    vertex.size     = sqrt(igraph::V(igraph.object)$size),
+    vertex.label    = NA,
+    edge.arrow.size = 0,   # Removes edge arrows (bidirectional)
+    edge.curved     = 0.3,
+    vertex.color    = col_samples
+  )
+  
+  # Add ordered legend
+  legend(
+    "topleft", 
+    legend = color.legend, 
+    pch = 16, 
+    col = unique(col_samples), 
+    bty = "n"
+  )
+  
+  # Add title
+  title(title_text, cex.main = 1.5, font.main = 2)
+}
+
+# Define color scheme (same for all runs)
+custom_colors <- c(
+  "#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00",
+  "#FFFF33", "#A65628", "#F781BF", "#999999", "#66C2A5",
+  "#FC8D62", "#8DA0CB", "#A6D854", "#FFD92F", "#E5C494"
+)
+
+# Define sample groupings
+earth_cohort <- list(
+  c("SA_CH_009_V1", "SA_CH_009_V5", "SA_CH_009_V7", "SA_CH_009_V9"),
+  c("SA_TY_026_V2", "SA_TY_026_V5", "SA_TY_026_V6", "SA_TY_026_V7"),
+  c("SA_AH_004_V0", "SA_AH_004_V1")
+)
+
+tara_cohort <- list(
+  c("CP020_V1", "CP020_V12", "CP020_V44"),
+  c("CP018_entry", "CP018_V24", "CP018_42m"),
+  c("CP013_1m", "CP013_12m", "CP013_24m"),
+  c("CP006_entry", "CP006_12m", "CP006_V24"),
+  c("CP003_entry", "CP003_V12", "CP003_V24")
+)
+
+# Function to process and save TRA and TRB graphs for each cohort
+process_cohort <- function(cohort_samples, dataset, save_dir) {
+  
+  # Set working directory for cohort
+  setwd(save_dir)
+  
+  for (samples in cohort_samples) {
+    
+    # Generate file name prefix from sample names
+    sample_label <- unique(sub("(_[A-Za-z0-9]+)?$", "", samples)) # Removes last _ and whatever follows and picks common remnant
+    
+    # Clustering for TRA (threshold 0.90)
+    igraph.TRA <- clonalCluster(
+      dataset[samples],
+      chain = "TRA",
+      sequence = "aa",
+      group.by = "sample",
+      threshold = 0.90, 
+      exportGraph = TRUE
+    )
+    
+    # Clustering for TRB (threshold 0.85)
+    igraph.TRB <- clonalCluster(
+      dataset[samples],
+      chain = "TRB",
+      sequence = "aa",
+      group.by = "sample",
+      threshold = 0.85, 
+      exportGraph = TRUE
+    )
+    
+    # Assign colors
+    TRA_colors <- set_colors_and_legend(igraph.TRA)
+    TRB_colors <- set_colors_and_legend(igraph.TRB)
+    
+    # Save TRA plot
+    CairoPNG(paste0(sample_label, "_TRA.png"), width = 7200, height = 5500, res = 500)
+    plot_igraph(igraph.TRA, TRA_colors$col_samples, TRA_colors$color.legend, paste0(sample_label, " TRA Sequences (Threshold 0.90)"))
+    dev.off()
+    
+    # Save TRB plot
+    CairoPNG(paste0(sample_label, "_TRB.png"), width = 7200, height = 5500, res = 500)
+    plot_igraph(igraph.TRB, TRB_colors$col_samples, TRB_colors$color.legend, paste0(sample_label, " TRB Sequences (Threshold 0.85)"))
+    dev.off()
+    
+    print(paste0("Saved: ", sample_label, " in ", save_dir))
+  }
+}
+
+# Process EARTH cohort
+process_cohort(earth_cohort, combined.TCR.EARTH, "~/Documents/CD8_Longitudinal/VDJ/TCR/Network_Analysis/EARTH")
+
+# Process TARA cohort
+process_cohort(tara_cohort, combined.TCR.TARA, "~/Documents/CD8_Longitudinal/VDJ/TCR/Network_Analysis/TARA")
 
 
 
 
-  ############ Merge Seurat #####################
+
+
+
+
+
+
+
+
+############ Merge Seurat #####################
 # Access the cell barcodes (Assuming they are in the column names of the data slot)
 barcodes <- rownames(seurat_isotype[[]])
 
