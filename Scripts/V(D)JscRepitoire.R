@@ -750,9 +750,11 @@ process_cohort(earth_cohort, combined.TCR.EARTH, "~/Documents/CD8_Longitudinal/V
 # Process TARA cohort
 process_cohort(tara_cohort, combined.TCR.TARA, "~/Documents/CD8_Longitudinal/VDJ/TCR/Network_Analysis/TARA")
 
+############## Merge with seurat object ###################################
 
-
-
+load(paste0(load.path,'TARA_ALL_WNN.Rdata'))
+load(paste0(load.path,'TARA_HEI_WNN.Rdata'))
+load(paste0(load.path,'EARTH_WNN.Rdata'))
 
 
 
@@ -762,38 +764,79 @@ process_cohort(tara_cohort, combined.TCR.TARA, "~/Documents/CD8_Longitudinal/VDJ
 
 
 ############ Merge Seurat #####################
-# Access the cell barcodes (Assuming they are in the column names of the data slot)
-barcodes <- rownames(seurat_isotype[[]])
 
-# Use gsub to modify the barcodes, removing everything before and including the fourth '_'
-modified_barcodes <- gsub(".*_.*_.*_.*_(.*)", "\\1", barcodes)
-modified_barcodes <- paste0(seurat_isotype$orig.ident, "_", modified_barcodes)
+# TARA All
+# Access the cell barcodes (Assuming they are in the column names of the data slot)
+barcodes <- rownames(TARA_ALL[[]])
+
+# Use gsub to modify the barcodes, removing everything before and including the third '_'
+modified_barcodes <- gsub(".*_.*_.*_(.*)", "\\1", barcodes)
+modified_barcodes <- paste0(TARA_ALL$orig.ident, "_", modified_barcodes)
 
 # Assign the modified barcodes back to the Seurat object
-seurat_isotype <- RenameCells(seurat_isotype, new.names = modified_barcodes)
+TARA_ALL <- RenameCells(TARA_ALL, new.names = modified_barcodes)
 
 
-seurat.tcr <- combineExpression(combined.TCR, 
-                                seurat_isotype, 
+# TARA HEI
+# Access the cell barcodes (Assuming they are in the column names of the data slot)
+barcodes <- rownames(TARA_HEI[[]])
+
+# Use gsub to modify the barcodes, removing everything before and including the third '_'
+modified_barcodes <- gsub(".*_.*_.*_(.*)", "\\1", barcodes)
+modified_barcodes <- paste0(TARA_HEI$orig.ident, "_", modified_barcodes)
+
+# Assign the modified barcodes back to the Seurat object
+TARA_HEI <- RenameCells(TARA_HEI, new.names = modified_barcodes)
+
+
+# EARTH
+# Access the cell barcodes (Assuming they are in the column names of the data slot)
+barcodes <- rownames(EARTH[[]])
+
+# Use gsub to modify the barcodes, removing everything before and including the third '_'
+modified_barcodes <- gsub(".*_.*_(.*)", "\\1", barcodes)
+modified_barcodes <- paste0(EARTH$orig.ident, "_", modified_barcodes)
+
+# Assign the modified barcodes back to the Seurat object
+EARTH <- RenameCells(EARTH, new.names = modified_barcodes)
+
+
+########## Combine TCR Expression with Seurat Object
+
+TARA_ALL <- combineExpression(combined.TCR.TARA, 
+                              TARA_ALL, 
                                 cloneCall="strict",
+                                chain='both',
                                 group.by = 'sample',
                                 cloneSize = c(Single = 1, Small = 5, Medium = 20, Large = 100, Hyperexpanded =
                                                 500),
                                 proportion = FALSE)
 
-seurat.bcr <- combineExpression(combined.BCR, 
-                                seurat_isotype, 
-                                cloneCall="strict",
-                                group.by = 'sample',
-                                cloneSize = c(Single = 1, Small = 5, Medium = 20, Large = 100, Hyperexpanded =
-                                                500),
-                                proportion = FALSE)
+TARA_HEI <- combineExpression(combined.TCR.TARA, 
+                              TARA_HEI, 
+                              cloneCall="strict",
+                              chain='both',
+                              group.by = 'sample',
+                              cloneSize = c(Single = 1, Small = 5, Medium = 20, Large = 100, Hyperexpanded =
+                                              500),
+                              proportion = FALSE)
+
+EARTH <- combineExpression(combined.TCR.EARTH, 
+                              EARTH, 
+                              cloneCall="strict",
+                              chain='both',
+                              group.by = 'sample',
+                              cloneSize = c(Single = 1, Small = 5, Medium = 20, Large = 100, Hyperexpanded =
+                                              500),
+                              proportion = FALSE)
 
 ###################################################### Hyper Expansion Plots ##################################
+#Define color palette 
+colorblind_vector <- hcl.colors(n=7, palette = "plasma", fixup = TRUE)
 
-cols <- c("Hyperexpanded (100 < X <= 500)"="#F0F921","Large (20 < X <= 100)" = "#F69441",
-          "Medium (5 < X <= 20)" = "#CA4778" ,"Small (1 < X <= 5)" = "#7D06A5",
-          "Single (0 < X <= 1)" = "#0D0887")
+DimPlot_scCustom(EARTH, group.by = "cloneSize", reduction = 'wnn.umap') +
+  scale_color_manual(values=rev(colorblind_vector[c(1,3,4,5,7)]))
+levels()
 
 ## first ordering the Clone Size as a factor, this prevents the coloring from being in alphabetical order. 
 slot(seurat.tcr, "meta.data")$cloneSize <- factor(slot(seurat.tcr, "meta.data")$cloneSize, 
