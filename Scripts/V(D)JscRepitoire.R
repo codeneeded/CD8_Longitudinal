@@ -756,13 +756,6 @@ load(paste0(load.path,'TARA_ALL_WNN.Rdata'))
 load(paste0(load.path,'TARA_HEI_WNN.Rdata'))
 load(paste0(load.path,'EARTH_WNN.Rdata'))
 
-
-
-
-
-
-
-
 ############ Merge Seurat #####################
 
 # TARA All
@@ -830,13 +823,150 @@ EARTH <- combineExpression(combined.TCR.EARTH,
                                               500),
                               proportion = FALSE)
 
-###################################################### Hyper Expansion Plots ##################################
+
+######################################################################### Seurat Hyperexpansion Visualisations #################################################
+
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Seurat_Plots/Hyperexpansion')
+
+
 #Define color palette 
 colorblind_vector <- hcl.colors(n=7, palette = "plasma", fixup = TRUE)
 
+DimPlot_scCustom(TARA_ALL, group.by = "cloneSize", reduction = 'wnn.umap') +
+  scale_color_manual(values=rev(colorblind_vector[c(1,3,4,5,7)]))
+ggsave('TARA_ALL_Hyperexpansion.png',width=8,height=7)
+
+
+DimPlot_scCustom(TARA_ALL, group.by = "cloneSize", reduction = 'wnn.umap',split.by = 'Condition',split_seurat = T) +
+  scale_color_manual(values=rev(colorblind_vector[c(1,3,4,5,7)]))
+ggsave('EARTH_Clonal_Comparison_SA_AH_004.png',width=15,height=11)
+
+
+DimPlot_scCustom(TARA_HEI, group.by = "cloneSize", reduction = 'wnn.umap') +
+  scale_color_manual(values=rev(colorblind_vector[c(1,3,4,5,7)]))
+ggsave('TARA_HEI_Hyperexpansion.png',width=8,height=7)
+
+
 DimPlot_scCustom(EARTH, group.by = "cloneSize", reduction = 'wnn.umap') +
   scale_color_manual(values=rev(colorblind_vector[c(1,3,4,5,7)]))
-levels()
+ggsave('EARTH_Hyperexpansion.png',width=8,height=7)
+
+### Clones per cluster
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Seurat_Plots/Cloness_per_Cluster')
+
+### TARA ALL
+clonalOccupy(TARA_ALL, 
+             x.axis = "snn.louvianmlr_1",
+             label = F)
+ggsave('TARA_All_Clonal_Occupancy.png',width=17,height=11)
+clonalOccupy(TARA_ALL, 
+             x.axis = "snn.louvianmlr_1",
+             proportion = T,
+             label = F)
+ggsave('TARA_All_Clonal_Occupancy_proportion.png',width=17,height=11)
+
+table <- clonalOccupy(TARA_ALL, x.axis = "snn.louvianmlr_1", exportTable = TRUE)
+write.csv(table,'TARA_All_Clones_per_Cluster.csv',row.names = F)
+
+clonalOccupy(TARA_ALL, 
+             x.axis = "predicted.celltype.l2",
+             label = F)
+ggsave('TARA_All_Clonal_Occupancy_Azimuth.png',width=27,height=11)
+clonalOccupy(TARA_ALL, 
+             x.axis = "predicted.celltype.l2",
+             proportion = T,
+             label = F)
+ggsave('TARA_All_Clonal_Occupancy_proportion_Azimuth.png',width=27,height=11)
+
+table <- clonalOccupy(TARA_ALL, x.axis = "predicted.celltype.l2", exportTable = TRUE)
+write.csv(table,'TARA_All_Clones_per_Cluster_Azimuth.csv',row.names = F)
+
+
+### TARA HEI
+clonalOccupy(TARA_HEI, 
+             x.axis = "snn.louvianmlr_1",
+             label = F)
+ggsave('TARA_HEI_Clonal_Occupancy.png',width=17,height=11)
+clonalOccupy(TARA_HEI, 
+             x.axis = "snn.louvianmlr_1",
+             proportion = T,
+             label = F)
+ggsave('TARA_HEI_Clonal_Occupancy_proportion.png',width=17,height=11)
+
+table <- clonalOccupy(TARA_HEI, x.axis = "snn.louvianmlr_1", exportTable = TRUE)
+write.csv(table,'TARA_HEI_Clones_per_Cluster.csv',row.names = F)
+
+clonalOccupy(TARA_HEI, 
+             x.axis = "predicted.celltype.l2",
+             label = F)
+ggsave('TARA_HEI_Clonal_Occupancy_Azimuth.png',width=27,height=11)
+clonalOccupy(TARA_HEI, 
+             x.axis = "predicted.celltype.l2",
+             proportion = T,
+             label = F)
+ggsave('TARA_HEI_Clonal_Occupancy_proportion_Azimuth.png',width=27,height=11)
+
+table <- clonalOccupy(TARA_HEI, x.axis = "predicted.celltype.l2", exportTable = TRUE)
+write.csv(table,'TARA_HEIClones_per_Cluster_Azimuth.csv',row.names = F)
+
+### EARTH
+clonalOccupy(EARTH, 
+             x.axis = "snn.louvianmlr_1",
+             label = F)
+ggsave('EARTH_Clonal_Occupancy.png',width=17,height=11)
+clonalOccupy(EARTH, 
+             x.axis = "snn.louvianmlr_1",
+             proportion = T,
+             label = F)
+ggsave('EARTH_Clonal_Occupancy_proportion.png',width=17,height=11)
+
+table <- clonalOccupy(EARTH, x.axis = "snn.louvianmlr_1", exportTable = TRUE)
+write.csv(table,'TARA_All_Clones_per_Cluster.csv',row.names = F)
+
+clonalOccupy(EARTH, 
+             x.axis = "predicted.celltype.l2",
+             label = F)
+ggsave('EARTH_Clonal_Occupancy_Azimuth.png',width=27,height=11)
+clonalOccupy(EARTH, 
+             x.axis = "predicted.celltype.l2",
+             proportion = T,
+             label = F)
+ggsave('EARTH_Clonal_Occupancy_proportion_Azimuth.png',width=27,height=11)
+
+table <- clonalOccupy(EARTH, x.axis = "predicted.celltype.l2", exportTable = TRUE)
+write.csv(table,'EARTH_Clones_per_Cluster_Azimuth.csv',row.names = F)
+
+#### Clonal Overlay
+clonalOverlay(TARA_ALL, 
+              reduction = "wnn.umap", 
+              cutpoint = 10, 
+              bins = 25, 
+              facet.by = "orig.ident") + 
+  guides(color = "none")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################################### Hyper Expansion Plots ##################################
 
 ## first ordering the Clone Size as a factor, this prevents the coloring from being in alphabetical order. 
 slot(seurat.tcr, "meta.data")$cloneSize <- factor(slot(seurat.tcr, "meta.data")$cloneSize, 
