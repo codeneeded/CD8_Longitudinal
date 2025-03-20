@@ -936,7 +936,7 @@ ggsave('EARTH_Clonal_Occupancy_proportion_Azimuth.png',width=27,height=11)
 table <- clonalOccupy(EARTH, x.axis = "predicted.celltype.l2", exportTable = TRUE)
 write.csv(table,'EARTH_Clones_per_Cluster_Azimuth.csv',row.names = F)
 
-#### Clonal Overlay
+#### Clonal Overlay ####
 clonalOverlay(TARA_ALL, 
               reduction = "wnn.umap", 
               cutpoint = 10, 
@@ -945,7 +945,23 @@ clonalOverlay(TARA_ALL,
   guides(color = "none")
 
 
+clonalOverlay(TARA_ALL, 
+              reduction = "wnn.umap", 
+              cutpoint = 10, 
+              bins = 25, 
+              facet.by = "Condition") + 
+  guides(color = "none")
 
+
+clonalOverlay(EARTH, 
+              reduction = "wnn.umap", 
+              cutpoint = 10, 
+              bins = 25, 
+              facet.by = "orig.ident") + 
+  guides(color = "none")
+
+
+#### TCRX ####
 
 
 
