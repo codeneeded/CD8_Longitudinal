@@ -824,6 +824,7 @@ EARTH <- combineExpression(combined.TCR.EARTH,
                               proportion = FALSE)
 
 
+
 ######################################################################### Seurat Hyperexpansion Visualisations #################################################
 
 setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Seurat_Plots/Hyperexpansion')
@@ -937,12 +938,16 @@ table <- clonalOccupy(EARTH, x.axis = "predicted.celltype.l2", exportTable = TRU
 write.csv(table,'EARTH_Clones_per_Cluster_Azimuth.csv',row.names = F)
 
 #### Clonal Overlay ####
+
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Seurat_Plots/Clonal_Overlay')
+#Dr. Francesco Mazziotta and inspired by Drs. Carmona and Andreatta and their work with ProjectTIL,
 clonalOverlay(TARA_ALL, 
               reduction = "wnn.umap", 
-              cutpoint = 10, 
-              bins = 25, 
+              cutpoint = 1, 
+              bins = 10, 
               facet.by = "orig.ident") + 
   guides(color = "none")
+ggsave('TARA_Clonal_Overlay_By_Sample.png',width=22,height=17)
 
 
 clonalOverlay(TARA_ALL, 
@@ -951,6 +956,7 @@ clonalOverlay(TARA_ALL,
               bins = 25, 
               facet.by = "Condition") + 
   guides(color = "none")
+ggsave('TARA_Clonal_Overlay_By_Condition.png',width=17,height=9)
 
 
 clonalOverlay(EARTH, 
@@ -959,12 +965,17 @@ clonalOverlay(EARTH,
               bins = 25, 
               facet.by = "orig.ident") + 
   guides(color = "none")
+ggsave('EARTH_Clonal_Overlay_By_Sample.png',width=18,height=13)
 
 
 #### TCRX ####
+library (Trex)
 
+TARA_ALL <- annotateDB(TARA_ALL, 
+                           chains = "TRB",edit.distance = )
 
-
+EARTH <- annotateDB(EARTH, 
+                       chains = "TRB")
 
 
 
