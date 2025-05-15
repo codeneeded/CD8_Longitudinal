@@ -970,28 +970,184 @@ ggsave('EARTH_Clonal_Overlay_By_Sample.png',width=18,height=13)
 
 #### TCRX ####
 library (Trex)
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Trex')
 
-TARA_ALL <- annotateDB(TARA_ALL, 
-                           chains = "TRB",edit.distance = )
+TARA_ALL_TRB_0 <- annotateDB(TARA_ALL, 
+                           chains = "TRB")
 
-EARTH <- annotateDB(EARTH, 
-                       chains = "TRB")
+TARA_ALL_TRB_1 <- annotateDB(TARA_ALL, 
+                           chains = "TRB", edit.distance = 1)
 
-
-
-
-
-
+TARA_ALL_TRB_2 <- annotateDB(TARA_ALL, 
+                           chains = "TRB", edit.distance = 2)
 
 
+# Extract metadata to dataframe with reordered columns
+TARA_TRB_df_0 <- TARA_ALL_TRB_0@meta.data %>%
+  dplyr::select(
+    cells,
+    PID = orig.ident,
+    Age,
+    Viral_Load,
+    cluster = snn.louvianmlr_1,
+    CTstrict,
+    clonalFrequency,
+    TRB_Epitope.target,
+    TRB_Epitope.sequence,
+    TRB_Epitope.species,
+    TRB_Tissue,
+    TRB_Cell.type,
+    TRB_Database
+  ) %>%
+  dplyr::filter(!is.na(clonalFrequency) & clonalFrequency > 1)
+
+# For edit distance 1
+TARA_TRB_df_1 <- TARA_ALL_TRB_1@meta.data %>%
+  dplyr::select(
+    cells,
+    PID = orig.ident,
+    Age,
+    Viral_Load,
+    cluster = snn.louvianmlr_1,
+    CTstrict,
+    clonalFrequency,
+    TRB_Epitope.target,
+    TRB_Epitope.sequence,
+    TRB_Epitope.species,
+    TRB_Tissue,
+    TRB_Cell.type,
+    TRB_Database
+  ) %>%
+  dplyr::filter(!is.na(clonalFrequency) & clonalFrequency > 1)
+
+# For edit distance 2
+TARA_TRB_df_2 <- TARA_ALL_TRB_2@meta.data %>%
+  dplyr::select(
+    cells,
+    PID = orig.ident,
+    Age,
+    Viral_Load,
+    cluster = snn.louvianmlr_1,
+    CTstrict,
+    clonalFrequency,
+    TRB_Epitope.target,
+    TRB_Epitope.sequence,
+    TRB_Epitope.species,
+    TRB_Tissue,
+    TRB_Cell.type,
+    TRB_Database
+  ) %>%
+  dplyr::filter(!is.na(clonalFrequency) & clonalFrequency > 1)
+
+# Rename TRB columns by edit distance (keeping other columns untouched)
+TARA_TRB_df_0_labeled <- TARA_TRB_df_0 %>%
+  rename_with(~ paste0(., "_ED0"), starts_with("TRB_"))
+
+TARA_TRB_df_1_labeled <- TARA_TRB_df_1 %>%
+  rename_with(~ paste0(., "_ED1"), starts_with("TRB_"))
+
+TARA_TRB_df_2_labeled <- TARA_TRB_df_2 %>%
+  rename_with(~ paste0(., "_ED2"), starts_with("TRB_"))
+
+# Define the **key columns** for joining
+key_cols <- c("cells", "PID", "Age", "Viral_Load", "cluster", "CTstrict", "clonalFrequency")
+
+# Now **full join them by the key columns**
+TARA_TRB_combined <- TARA_TRB_df_0_labeled %>%
+  full_join(TARA_TRB_df_1_labeled, by = key_cols) %>%
+  full_join(TARA_TRB_df_2_labeled, by = key_cols)
+
+
+TARA_TRB_combined <- TARA_TRB_combined %>%
+  mutate(PID = sub("_.*$", "", PID))
 
 
 
+# Pivot TRB_Epitope.target columns to long format
+TARA_TRB_long_fixed <- TARA_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.target"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.target_(.*)",
+    values_to = "Epitope_Target"
+  ) %>%
+  # Ensure Epitope_Target is labeled
+  mutate(Epitope_Target = ifelse(is.na(Epitope_Target), "Unknown", Epitope_Target)) %>%
+  # Remove duplicate entries by ensuring 1 row per CTstrict per Edit Distance
+  distinct(CTstrict, Edit_Distance, Epitope_Target, clonalFrequency)
 
 
+# Plot with CTstrict fill, no legend
+ggplot(TARA_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Edit_Distance) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"  # Remove legend
+  ) +
+  ylab("Clonal Frequency") +
+  xlab("Epitope Target") +
+  ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance")
 
 
+# Plot
+ggplot(TARA_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Edit_Distance, ncol = 1) +  # Stack facets vertically
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylab("Clonal Frequency") +
+  xlab("Epitope Target") +
+  ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance")
+ggsave('Tara_TRB_ClonalFreq_vs_Target.png',width=18,height=13)
 
+TARA_TRB_long_no_unknown <- TARA_TRB_long_fixed %>%
+  filter(Epitope_Target != "Unknown")
+
+ggplot(TARA_TRB_long_no_unknown, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Edit_Distance, ncol = 1) +  # Stack facets vertically
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylab("Clonal Frequency") +
+  xlab("Epitope Target") +
+  ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance (Excluding Unknown)")
+ggsave('Tara_TRB_ClonalFreq_vs_Target_Unkownexclude.png',width=18,height=13)
+
+write_csv(TARA_TRB_combined,'Trex_TRB_Epitope_Database.csv')
+
+# Redo the long format while retaining PID, Age and other metadata
+TARA_TRB_long_fixed <- TARA_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.target"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.target_(.*)",
+    values_to = "Epitope_Target"
+  ) %>%
+  mutate(Epitope_Target = ifelse(is.na(Epitope_Target), "Unknown", Epitope_Target)) %>%
+  distinct(PID, Age, CTstrict, Edit_Distance, Epitope_Target, clonalFrequency)
+
+# Now summarize by Edit Distance, PID, Age, and Epitope Target
+TARA_TRB_summary_by_PID_Age <- TARA_TRB_long_fixed %>%
+  group_by(Edit_Distance, PID, Age, Epitope_Target) %>%
+  summarise(Total_Clonal_Frequency = sum(clonalFrequency, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Edit_Distance, PID, Age, desc(Total_Clonal_Frequency))
+
+# View the table
+write_csv(TARA_TRB_combined,'Trex_TAARA_Epitope_Specificity_By_Sample.csv')
+
+levels(as.factor(TARA_TRB_summary_by_PID_Age$Epitope_Target))
+#####
+#sUMMERIZE BAR PLOT, by individual, epitope specificity 
+# Make aluvial colouring hiv specific,c heck maintained ones.. Flag maintained clones over multiple timepoints, make column stating maintained vs not (unkown also)
+# Is HIV expanding cluster present in all infants if so which arent/are expressing
+# Rank individuals based on likelihoodf of having hiv-specific tcell for expiriment?
+#
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Seurat_Plots/Hyperexpansion')
 
 ###################################################### Hyper Expansion Plots ##################################
 
