@@ -1076,6 +1076,38 @@ TARA_TRB_long_fixed <- TARA_TRB_combined %>%
   # Remove duplicate entries by ensuring 1 row per CTstrict per Edit Distance
   distinct(CTstrict, Edit_Distance, Epitope_Target, clonalFrequency)
 
+############### Pivot both species and target
+# Pivot target
+epitope_target_long <- TARA_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.target"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.target_(.*)",
+    values_to = "Epitope_Target"
+  )
+
+# Pivot species
+epitope_species_long <- TARA_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.species"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.species_(.*)",
+    values_to = "Epitope_Species"
+  )
+
+# Join them by cell ID, clone, and edit distance
+TARA_TRB_long_species <- epitope_target_long %>%
+  select(cells, PID, Age, CTstrict, clonalFrequency, Edit_Distance, Epitope_Target) %>%
+  left_join(
+    epitope_species_long %>%
+      select(cells, CTstrict, Edit_Distance, Epitope_Species),
+    by = c("cells", "CTstrict", "Edit_Distance")
+  ) %>%
+  mutate(Epitope_Target = ifelse(is.na(Epitope_Target), "Unknown", Epitope_Target),
+         Epitope_Species = ifelse(is.na(Epitope_Species), "Unknown", Epitope_Species)) %>%
+  distinct()
+
+######
 
 # Plot with CTstrict fill, no legend
 ggplot(TARA_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
@@ -1138,96 +1170,333 @@ TARA_TRB_summary_by_PID_Age <- TARA_TRB_long_fixed %>%
   arrange(Edit_Distance, PID, Age, desc(Total_Clonal_Frequency))
 
 # View the table
-write_csv(TARA_TRB_combined,'Trex_TAARA_Epitope_Specificity_By_Sample.csv')
+write_csv(TARA_TRB_summary_by_PID_Age,'Trex_TARA_Epitope_Specificity_By_Sample.csv')
 
-levels(as.factor(TARA_TRB_summary_by_PID_Age$Epitope_Target))
-#####
-#sUMMERIZE BAR PLOT, by individual, epitope specificity 
-# Make aluvial colouring hiv specific,c heck maintained ones.. Flag maintained clones over multiple timepoints, make column stating maintained vs not (unkown also)
-# Is HIV expanding cluster present in all infants if so which arent/are expressing
-# Rank individuals based on likelihoodf of having hiv-specific tcell for expiriment?
-#
-setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Seurat_Plots/Hyperexpansion')
+### Pie charts #######
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Trex/PID_Pie_Chart')
 
-###################################################### Hyper Expansion Plots ##################################
+species_pie_data_full <- TARA_TRB_long_species %>%
+  group_by(PID, Age, Edit_Distance, Epitope_Species) %>%
+  summarise(Total_Clonal_Frequency = sum(clonalFrequency, na.rm = TRUE), .groups = "drop")
 
-## first ordering the Clone Size as a factor, this prevents the coloring from being in alphabetical order. 
-slot(seurat.tcr, "meta.data")$cloneSize <- factor(slot(seurat.tcr, "meta.data")$cloneSize, 
-                                                  levels = c("Hyperexpanded (100 < X <= 500)", 
-                                                             "Large (20 < X <= 100)", 
-                                                             "Medium (5 < X <= 20)", 
-                                                             "Small (1 < X <= 5)", 
-                                                             "Single (0 < X <= 1)", NA))
-slot(seurat.bcr, "meta.data")$cloneSize <- factor(slot(seurat.bcr, "meta.data")$cloneSize, 
-                                                  levels = c("Hyperexpanded (100 < X <= 500)", 
-                                                             "Large (20 < X <= 100)", 
-                                                             "Medium (5 < X <= 20)", 
-                                                             "Small (1 < X <= 5)", 
-                                                             "Single (0 < X <= 1)", NA))
+# Normalize clonal frequency within each PID x Age x Edit_Distance group
+species_pie_data_normalized <- species_pie_data_full %>%
+  group_by(PID, Age, Edit_Distance) %>%
+  mutate(Percent = Total_Clonal_Frequency / sum(Total_Clonal_Frequency)) %>%
+  ungroup()
+
+species_pie_data_normalized <- species_pie_data_normalized %>%
+  mutate(Age = paste0(Age, ifelse(Age == 1, " Month", " Months")))
+
+# Set output directory
+output_dir <- "~/Documents/CD8_Longitudinal/VDJ/TCR/Trex/PID_Pie_Chart"
+setwd(output_dir)
 
 
-### TCR
-setwd("C:/Users/axi313/Documents/TARA_Entry/WNN/VDJ/Seurat_Plots")
+# Get unique PIDs
+pid_list <- levels(as.factor(species_pie_data_normalized$PID))
 
-tcr.condition <- DimPlot(seurat.tcr, group.by = "cloneSize", split.by = 'Condition', reduction = 'wnn.umap') +
-  scale_color_manual(values=cols) + ggtitle('Expanded TCR Clone Size')
+# Loop through each PID and save as PNG
+for (pid_to_plot in pid_list) {
+  
+  plot_data <- species_pie_data_normalized %>%
+    filter(PID == pid_to_plot) %>%
+    droplevels()
+  
+  # Skip if no data
+  if (nrow(plot_data) == 0) next
+  
+  # Generate plot
+  p <- ggplot(plot_data, aes(x = "", y = Percent, fill = Epitope_Species)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar(theta = "y") +
+    facet_grid(rows = vars(Age), cols = vars(Edit_Distance), switch = "y") +
+    theme_void() +
+    theme(
+      legend.position = "right",
+      legend.title = element_blank(),
+      strip.placement = "outside",
+      strip.text.y.left = element_text(angle = 0),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    ggtitle(paste("Epitope Species Specificity for", pid_to_plot))
+  
+  # Save as PNG
+  ggsave(
+    filename = paste0(pid_to_plot, "_pie.png"),
+    plot = p,
+    bg = "white",
+    width = 21,
+    height = 14
+  )
+}
 
-tcr.VL <- DimPlot(seurat.tcr, group.by = "cloneSize", split.by = 'CTLGrouping', reduction = 'wnn.umap') +
-  scale_color_manual(values=cols) + ggtitle('Expanded TCR Clone Size')
+##############################
+### Earth
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Trex')
 
-tcr.CTL <- DimPlot(seurat.tcr, group.by = "cloneSize", split.by = 'Viral_Load_Category', reduction = 'wnn.umap') +
-  scale_color_manual(values=cols) + ggtitle('Expanded TCR Clone Size')
+EARTH_TRB_0 <- annotateDB(EARTH, 
+                             chains = "TRB")
 
-ggsave('TCR_Seurat_Condition.png', width = 15, dpi = 500, tcr.condition)
-ggsave('TCR_Seurat_VL.png', width = 12, dpi = 500, tcr.VL)
-ggsave('TCR_Seurat_CTL.png', width = 12, dpi = 500, tcr.CTL)
+EARTH_TRB_1 <- annotateDB(EARTH, 
+                             chains = "TRB", edit.distance = 1)
 
-
-DimPlot(subset(seurat.tcr, ident='20'), group.by = "cloneSize", reduction = 'wnn.umap') +
-  scale_color_manual(values=cols) + ggtitle('Expanded TCR Clone Size')
-
-
-
-DimPlot(seurat_isotype, label=T, reduction='wnn.umap')
-DimPlot(subset(seurat_isotype, ident='singleton'), label=T, reduction='wnn.umap')
-
-### BCR
-bcr.condition <- DimPlot(seurat.bcr, group.by = "cloneSize", split.by = 'condition', reduction = 'wnn.umap') +
-  scale_color_manual(values=cols) + ggtitle('Expanded BCR Clone Size')
-bcr.stim <- DimPlot(seurat.bcr, group.by = "cloneSize", split.by = 'stim', reduction = 'wnn.umap') +
-  scale_color_manual(values=cols) + ggtitle('Expanded BCR Clone Size')
-#bcr.sample <- DimPlot(seurat.bcr, group.by = "cloneSize", split.by = 'sample', reduction = 'wnn.umap') +
-#  scale_color_manual(values=cols) + ggtitle('Expanded BCR Clone Size')
-
-ggsave('BCR_Seurat_Condition.png', width = 12, dpi = 500, bcr.condition)
-ggsave('BCR_Seurat_Stim.png', width = 12, dpi = 500, bcr.stim)
-#ggsave('BCR_Seurat_Sample.png', width = 18, dpi = 500, bcr.sample)
-
-### Recluster
-
-seurat_isotype <- FindClusters(seurat_isotype, graph.name = "wsnn", 
-                               group.singletons=F,
-                               algorithm = 3, 
-                               resolution = 0.8,
-                               random.seed = 1990)
-
-save(seurat_isotype, file=paste0(load.path,"Seuratv5_WNN_Complete_2.RData"))
-
-
-
-##############
-load(paste0(load.path,'Seuratv5_WNN_labled.RData'))
-load(paste0(load.path,'Seuratv5_WNN_labled.RData'))
-load(paste0(load.path,'Seuratv5_WNN_labled.RData'))
+EARTH_TRB_2 <- annotateDB(EARTH, 
+                             chains = "TRB", edit.distance = 2)
 
 
-save(TARA_ALL, file = paste0(load.path, "TARA_ALL_WNN.Rdata"))
-save(TARA_HEI, file = paste0(load.path, "TARA_HEI_WNN.Rdata"))
-save(EARTH, file = paste0(load.path, "EARTH_WNN.Rdata"))
+# Extract metadata to dataframe with reordered columns
+EARTH_TRB_df_0 <- EARTH_TRB_0@meta.data %>%
+  dplyr::select(
+    cells,
+    PID = orig.ident,
+    Age,
+    Viral_Load,
+    cluster = snn.louvianmlr_1,
+    CTstrict,
+    clonalFrequency,
+    TRB_Epitope.target,
+    TRB_Epitope.sequence,
+    TRB_Epitope.species,
+    TRB_Tissue,
+    TRB_Cell.type,
+    TRB_Database
+  ) %>%
+  dplyr::filter(!is.na(clonalFrequency) & clonalFrequency > 1)
+
+# For edit distance 1
+EARTH_TRB_df_1 <- EARTH_TRB_1@meta.data %>%
+  dplyr::select(
+    cells,
+    PID = orig.ident,
+    Age,
+    Viral_Load,
+    cluster = snn.louvianmlr_1,
+    CTstrict,
+    clonalFrequency,
+    TRB_Epitope.target,
+    TRB_Epitope.sequence,
+    TRB_Epitope.species,
+    TRB_Tissue,
+    TRB_Cell.type,
+    TRB_Database
+  ) %>%
+  dplyr::filter(!is.na(clonalFrequency) & clonalFrequency > 1)
+
+# For edit distance 2
+EARTH_TRB_df_2 <- EARTH_TRB_2@meta.data %>%
+  dplyr::select(
+    cells,
+    PID = orig.ident,
+    Age,
+    Viral_Load,
+    cluster = snn.louvianmlr_1,
+    CTstrict,
+    clonalFrequency,
+    TRB_Epitope.target,
+    TRB_Epitope.sequence,
+    TRB_Epitope.species,
+    TRB_Tissue,
+    TRB_Cell.type,
+    TRB_Database
+  ) %>%
+  dplyr::filter(!is.na(clonalFrequency) & clonalFrequency > 1)
+
+# Rename TRB columns by edit distance (keeping other columns untouched)
+EARTH_TRB_df_0_labeled <- EARTH_TRB_df_0 %>%
+  rename_with(~ paste0(., "_ED0"), starts_with("TRB_"))
+
+EARTH_TRB_df_1_labeled <- EARTH_TRB_df_1 %>%
+  rename_with(~ paste0(., "_ED1"), starts_with("TRB_"))
+
+EARTH_TRB_df_2_labeled <- EARTH_TRB_df_2 %>%
+  rename_with(~ paste0(., "_ED2"), starts_with("TRB_"))
+
+# Define the **key columns** for joining
+key_cols <- c("cells", "PID", "Age", "Viral_Load", "cluster", "CTstrict", "clonalFrequency")
+
+# Now **full join them by the key columns**
+EARTH_TRB_combined <- EARTH_TRB_df_0_labeled %>%
+  full_join(EARTH_TRB_df_1_labeled, by = key_cols) %>%
+  full_join(EARTH_TRB_df_2_labeled, by = key_cols)
+
+levels(as.factor(EARTH_TRB_combined$PID))
+
+EARTH_TRB_combined <- EARTH_TRB_combined %>%
+  mutate(PID = sub("_(V\\d+|entry)$", "", PID))
+
+# Pivot TRB_Epitope.target columns to long format
+EARTH_TRB_long_fixed <- EARTH_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.target"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.target_(.*)",
+    values_to = "Epitope_Target"
+  ) %>%
+  # Ensure Epitope_Target is labeled
+  mutate(Epitope_Target = ifelse(is.na(Epitope_Target), "Unknown", Epitope_Target)) %>%
+  # Remove duplicate entries by ensuring 1 row per CTstrict per Edit Distance
+  distinct(CTstrict, Edit_Distance, Epitope_Target, clonalFrequency)
 
 
-#### VDJ ####
-colorblind_vector <- colorRampPalette(rev(c("#0D0887FF", "#47039FFF", 
-                                            "#7301A8FF", "#9C179EFF", "#BD3786FF", "#D8576BFF",
-                                            "#ED7953FF","#FA9E3BFF", "#FDC926FF", "#F0F921FF")))
+# Plot with CTstrict fill, no legend
+ggplot(EARTH_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Edit_Distance) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"  # Remove legend
+  ) +
+  ylab("Clonal Frequency") +
+  xlab("Epitope Target") +
+  ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance")
+
+
+# Plot
+ggplot(EARTH_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Edit_Distance, ncol = 1) +  # Stack facets vertically
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylab("Clonal Frequency") +
+  xlab("Epitope Target") +
+  ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance")
+ggsave('EARTH_TRB_ClonalFreq_vs_Target.png',width=18,height=13)
+
+EARTH_TRB_long_no_unknown <- EARTH_TRB_long_fixed %>%
+  filter(Epitope_Target != "Unknown")
+
+ggplot(EARTH_TRB_long_no_unknown, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
+  geom_bar(stat = "identity", position = "stack") +
+  facet_wrap(~Edit_Distance, ncol = 1) +  # Stack facets vertically
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  ylab("Clonal Frequency") +
+  xlab("Epitope Target") +
+  ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance (Excluding Unknown)")
+ggsave('EARTH_TRB_ClonalFreq_vs_Target_Unkownexclude.png',width=18,height=13)
+
+write_csv(EARTH_TRB_combined,'Earth_Trex_TRB_Epitope_Database.csv')
+
+# Redo the long format while retaining PID, Age and other metadata
+EARTH_TRB_long_fixed <- EARTH_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.target"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.target_(.*)",
+    values_to = "Epitope_Target"
+  ) %>%
+  mutate(Epitope_Target = ifelse(is.na(Epitope_Target), "Unknown", Epitope_Target)) %>%
+  distinct(PID, Age, CTstrict, Edit_Distance, Epitope_Target, clonalFrequency)
+
+# Now summarize by Edit Distance, PID, Age, and Epitope Target
+EARTH_TRB_summary_by_PID_Age <- EARTH_TRB_long_fixed %>%
+  group_by(Edit_Distance, PID, Age, Epitope_Target) %>%
+  summarise(Total_Clonal_Frequency = sum(clonalFrequency, na.rm = TRUE), .groups = "drop") %>%
+  arrange(Edit_Distance, PID, Age, desc(Total_Clonal_Frequency))
+
+# View the table
+write_csv(EARTH_TRB_summary_by_PID_Age,'Trex_EARTH_Epitope_Specificity_By_Sample.csv')
+
+#### Per i ndividual pie chart with and without unkown, specificity to different disease pathogens
+### Maintained clones per timepoint known specificity
+### Unkown specificity
+### Future experiment summary
+### Pie charts #######
+
+
+############### Pivot both species and target
+# Pivot target
+epitope_target_long <- EARTH_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.target"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.target_(.*)",
+    values_to = "Epitope_Target"
+  )
+
+# Pivot species
+epitope_species_long <- EARTH_TRB_combined %>%
+  pivot_longer(
+    cols = starts_with("TRB_Epitope.species"),
+    names_to = "Edit_Distance",
+    names_pattern = "TRB_Epitope.species_(.*)",
+    values_to = "Epitope_Species"
+  )
+
+# Join them by cell ID, clone, and edit distance
+EARTH_TRB_long_species <- epitope_target_long %>%
+  select(cells, PID, Age, CTstrict, clonalFrequency, Edit_Distance, Epitope_Target) %>%
+  left_join(
+    epitope_species_long %>%
+      select(cells, CTstrict, Edit_Distance, Epitope_Species),
+    by = c("cells", "CTstrict", "Edit_Distance")
+  ) %>%
+  mutate(Epitope_Target = ifelse(is.na(Epitope_Target), "Unknown", Epitope_Target),
+         Epitope_Species = ifelse(is.na(Epitope_Species), "Unknown", Epitope_Species)) %>%
+  distinct()
+
+
+
+setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Trex/PID_Pie_Chart')
+
+species_pie_data_full <- EARTH_TRB_long_species %>%
+  group_by(PID, Age, Edit_Distance, Epitope_Species) %>%
+  summarise(Total_Clonal_Frequency = sum(clonalFrequency, na.rm = TRUE), .groups = "drop")
+
+# Normalize clonal frequency within each PID x Age x Edit_Distance group
+species_pie_data_normalized <- species_pie_data_full %>%
+  group_by(PID, Age, Edit_Distance) %>%
+  mutate(Percent = Total_Clonal_Frequency / sum(Total_Clonal_Frequency)) %>%
+  ungroup()
+
+species_pie_data_normalized <- species_pie_data_normalized %>%
+  mutate(Age = paste0(Age, ifelse(Age == 1, " Month", " Months")))
+
+# Set output directory
+output_dir <- "~/Documents/CD8_Longitudinal/VDJ/TCR/Trex/PID_Pie_Chart"
+setwd(output_dir)
+
+
+# Get unique PIDs
+pid_list <- levels(as.factor(species_pie_data_normalized$PID))
+
+# Loop through each PID and save as PNG
+for (pid_to_plot in pid_list) {
+  
+  plot_data <- species_pie_data_normalized %>%
+    filter(PID == pid_to_plot) %>%
+    droplevels()
+  
+  # Skip if no data
+  if (nrow(plot_data) == 0) next
+  
+  # Generate plot
+  p <- ggplot(plot_data, aes(x = "", y = Percent, fill = Epitope_Species)) +
+    geom_bar(stat = "identity", width = 1) +
+    coord_polar(theta = "y") +
+    facet_grid(rows = vars(Age), cols = vars(Edit_Distance), switch = "y") +
+    theme_void() +
+    theme(
+      legend.position = "right",
+      legend.title = element_blank(),
+      strip.placement = "outside",
+      strip.text.y.left = element_text(angle = 0),
+      plot.title = element_text(hjust = 0.5)
+    ) +
+    ggtitle(paste("Epitope Species Specificity for", pid_to_plot))
+  
+  # Save as PNG
+  ggsave(
+    filename = paste0(pid_to_plot, "_pie.png"),
+    plot = p,
+    bg = "white",
+    width = 21,
+    height = 14
+  )
+}
 
