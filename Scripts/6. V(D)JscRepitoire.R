@@ -25,6 +25,10 @@ library(readxl)
 library(scRepertoire)
 library(igraph)
 library(Cairo)
+library(RColorBrewer)
+library(Polychrome)
+
+
 ##set path to load data
 
 setwd('~/Documents/CD8_Longitudinal/VDJ')
@@ -1122,32 +1126,51 @@ ggplot(TARA_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = 
 
 
 # Plot
+# Full Plot 1 – Including All Epitope Targets
 ggplot(TARA_TRB_long_fixed, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
   geom_bar(stat = "identity", position = "stack") +
-  facet_wrap(~Edit_Distance, ncol = 1) +  # Stack facets vertically
+  facet_wrap(~Edit_Distance, ncol = 1) +
+  theme_minimal(base_size = 16) +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    axis.title.x = element_text(size = 16, face = "bold"),
+    axis.title.y = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    strip.text = element_text(size = 16, face = "bold"),
+    legend.position = "none",
+    plot.margin = margin(t = 10, r = 10, b = 20, l = 30)
   ) +
   ylab("Clonal Frequency") +
   xlab("Epitope Target") +
   ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance")
-ggsave('Tara_TRB_ClonalFreq_vs_Target.png',width=18,height=13)
 
+ggsave('Tara_TRB_ClonalFreq_vs_Target.png', width = 18, height = 13, dpi = 300, bg = 'white')
+
+# Remove Unknown Targets
 TARA_TRB_long_no_unknown <- TARA_TRB_long_fixed %>%
   filter(Epitope_Target != "Unknown")
 
+# Full Plot 2 – Excluding Unknown Epitope Targets
 ggplot(TARA_TRB_long_no_unknown, aes(x = Epitope_Target, y = clonalFrequency, fill = CTstrict)) +
   geom_bar(stat = "identity", position = "stack") +
-  facet_wrap(~Edit_Distance, ncol = 1) +  # Stack facets vertically
+  facet_wrap(~Edit_Distance, ncol = 1) +
+  theme_minimal(base_size = 16) +
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    axis.title.x = element_text(size = 16, face = "bold"),
+    axis.title.y = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    strip.text = element_text(size = 16, face = "bold"),
+    legend.position = "none",
+    plot.margin = margin(t = 10, r = 10, b = 20, l = 30)
   ) +
   ylab("Clonal Frequency") +
   xlab("Epitope Target") +
   ggtitle("Clonal Frequency per Epitope Target split by Clone and Edit Distance (Excluding Unknown)")
-ggsave('Tara_TRB_ClonalFreq_vs_Target_Unkownexclude.png',width=18,height=13)
+
+ggsave('Tara_TRB_ClonalFreq_vs_Target_Unkownexclude.png', width = 20, height = 13, dpi = 300, bg = 'white')
 
 write_csv(TARA_TRB_combined,'Trex_TRB_Epitope_Database.csv')
 
@@ -1195,41 +1218,71 @@ setwd(output_dir)
 # Get unique PIDs
 pid_list <- levels(as.factor(species_pie_data_normalized$PID))
 
-# Loop through each PID and save as PNG
+
+
+# Generate short, single-line labels
+species_pie_data_normalized <- species_pie_data_normalized %>%
+  mutate(Epitope_Species_short = sapply(strsplit(Epitope_Species, ";"), function(x) {
+    if (length(x) > 2) paste0(x[1], ";", x[2], "...")
+    else paste(x, collapse = ";")
+  }))
+
+# Use short label for fill
+all_labels <- unique(species_pie_data_normalized$Epitope_Species_short)
+n_colors <- length(all_labels)
+palette <- Polychrome::createPalette(
+  N = n_colors,
+  seedcolors = c("#E41A1C", "#377EB8", "#4DAF4A", "#FF7F00")
+)
+
+names(palette) <- all_labels
+
+# PIDs
+pid_list <- levels(as.factor(species_pie_data_normalized$PID))
+
 for (pid_to_plot in pid_list) {
   
   plot_data <- species_pie_data_normalized %>%
     filter(PID == pid_to_plot) %>%
     droplevels()
   
-  # Skip if no data
   if (nrow(plot_data) == 0) next
   
-  # Generate plot
-  p <- ggplot(plot_data, aes(x = "", y = Percent, fill = Epitope_Species)) +
+  n_rows <- length(unique(plot_data$Age))
+  n_cols <- length(unique(plot_data$Edit_Distance))
+  plot_width <- n_cols * 5
+  plot_height <- n_rows * 5
+  
+  p <- ggplot(plot_data, aes(x = "", y = Percent, fill = Epitope_Species_short)) +
     geom_bar(stat = "identity", width = 1) +
     coord_polar(theta = "y") +
     facet_grid(rows = vars(Age), cols = vars(Edit_Distance), switch = "y") +
-    theme_void() +
+    scale_fill_manual(values = palette) +
+    theme_void(base_size = 14) +
     theme(
-      legend.position = "right",
+      legend.position = "bottom",
       legend.title = element_blank(),
-      strip.placement = "outside",
-      strip.text.y.left = element_text(angle = 0),
-      plot.title = element_text(hjust = 0.5)
+      legend.text = element_text(size = 12),                 # Increased from 10 → 12
+      legend.key.height = unit(0.6, "lines"),                # Slightly taller blocks
+      strip.text.y.left = element_text(angle = 0, size = 14, face = "bold"),
+      strip.text.x = element_text(size = 14, face = "bold", margin = margin(t = 6)),
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5, margin = margin(b = 12)),
+      plot.margin = margin(t = 12, r = 10, b = 24, l = 10)    # More space below for legend
     ) +
+    guides(fill = guide_legend(nrow = 4, byrow = TRUE)) +
     ggtitle(paste("Epitope Species Specificity for", pid_to_plot))
   
-  # Save as PNG
   ggsave(
     filename = paste0(pid_to_plot, "_pie.png"),
     plot = p,
     bg = "white",
-    width = 21,
-    height = 14
+    width = plot_width,
+    height = plot_height,
+    dpi = 300
   )
 }
 
+### EDIT PLOTS FOR EARTH COHORT TOO! (Dont Forget)
 ##############################
 ### Earth
 setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Trex')
