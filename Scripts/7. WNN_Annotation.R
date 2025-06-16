@@ -31,6 +31,7 @@ load.path <- "~/Documents/CD8_Longitudinal/saved_R_data/"
 
 ### TARA
 load(paste0(load.path,'TARA_TCR_Combined.RData'))
+load(paste0(load.path,'EARTH_TCR_Combined.RData'))
 
 
 ######## Rejoin layers ####
@@ -38,10 +39,16 @@ TARA_ALL[["RNA"]] <- JoinLayers(TARA_ALL[["RNA"]])
 TARA_ALL[["ADT"]] <- JoinLayers(TARA_ALL[["ADT"]])
 
 rm(TARA_ALL_TRB_0, TARA_ALL_TRB_1, TARA_ALL_TRB_2)
+gc()
 
+
+EARTH[["RNA"]] <- JoinLayers(EARTH[["RNA"]])
+EARTH[["ADT"]] <- JoinLayers(EARTH[["ADT"]])
+
+rm(EARTH_TRB_0, EARTH_TRB_1, EARTH_TRB_2)
+gc()
 #################################### RNA and Protein Features of interest ##############################################
 
-# create multimodal heatmap 
 rna.features <-  c('CD14','FCGR2B','SERPING1','CCR7','CD27','TCF7','CCL5','FCGR3A','PRF1','CD40LG','IRF8','TNFRSF4',
                    'CD8A','TNFRSF9','XCL2','CD7','CD8B','NELL2','C1QBP','CD3E','ICOS','IGFBP2','IGFBP4','LDHA',
                    'CCND3','MIR155HG','NR4A1','CTLA4','FOXP3','IL2RA','CD19','CD79A','IGHM','EBI3','HLA-DPA1',
@@ -56,7 +63,70 @@ prots <- rownames(TARA_ALL@assays$ADT)
 Idents(TARA_ALL) <- 'snn.louvianmlr_1'
 Idents(EARTH) <- 'snn.louvianmlr_1'
 
+#Remove clusters with <50 cells
+# Identify clusters with fewer than 20 cells
+cluster_sizes <- table(Idents(TARA_ALL))
+small_clusters <- names(cluster_sizes[cluster_sizes < 100])
+large_clusters <- names(cluster_sizes[cluster_sizes > 20])
+TARA_ALL <- subset(TARA_ALL, idents = large_clusters)
+
+cluster_sizes <- table(Idents(EARTH))
+small_clusters <- names(cluster_sizes[cluster_sizes < 100])
+large_clusters <- names(cluster_sizes[cluster_sizes > 20])
+EARTH <- subset(EARTH, idents = large_clusters)
+
+############# Plots ###############################
+setwd('~/Documents/CD8_Longitudinal/Annotation/TARA_ALL/Cluster_Plot')
+
+p1 <- DimPlot_scCustom(
+  TARA_ALL,
+  reduction = "wnn.umap",
+  group.by = "snn.louvianmlr_1",
+  label = TRUE,
+  repel = TRUE,
+  label.size = 5
+) + ggtitle("snn.louvianmlr_1")
+
+ggsave(
+  filename = "TARA_WNN_lmlr1.png",
+  plot=p1,
+  width = 10,  # Adjust width as needed
+  height = 8,  # Adjust height as needed
+  dpi = 300
+)
+
+p2 <- DimPlot_scCustom(
+  EARTH,
+  reduction = "wnn.umap",
+  group.by = "snn.louvianmlr_1",
+  label = TRUE,
+  repel = TRUE,
+  label.size = 5
+) + ggtitle("snn.louvianmlr_1")
+
+ggsave(
+  filename = "EARTH_WNN_lmlr1.png",
+  plot=p2,
+  width = 10,  # Adjust width as needed
+  height = 8,  # Adjust height as needed
+  dpi = 300 
+)
+
+#### Average Expression ##############
+
+
+avg_TARA <- AverageExpression(TARA_ALL, return.seurat = FALSE)
+write.csv(avg_TARA$RNA, "/home/akshay-iyer/Documents/CD8_Longitudinal/Annotation/TARA_ALL/avg_rna_TARA.csv")
+write.csv(avg_TARA$ADT, "/home/akshay-iyer/Documents/CD8_Longitudinal/Annotation/TARA_ALL/avg_adt_TARA.csv")
+
+avg_EARTH <- AverageExpression(EARTH, return.seurat = FALSE)
+write.csv(avg_EARTH$RNA, "/home/akshay-iyer/Documents/CD8_Longitudinal/Annotation/EARTH/avg_rna_EARTH.csv")
+write.csv(avg_EARTH$ADT, "/home/akshay-iyer/Documents/CD8_Longitudinal/Annotation/EARTH/avg_adt_EARTH.csv")
+
+
+
 ########################################## Feature Plots and VLN Plots ###############################################
+### TARA
 ### ADT
 
 DefaultAssay(TARA_ALL) <-'ADT'
@@ -99,6 +169,53 @@ setwd('~/Documents/CD8_Longitudinal/Annotation/TARA_ALL/Feature_Plot/RNA')
 for (i in rna.features) {
   pal <- viridis(n = 10, option = "A")
   fea.pl <- FeaturePlot_scCustom(TARA_ALL, reduction = 'wnn.umap', features = i, 
+                                 colors_use = pal,order=TRUE)
+  ggsave(paste0(i,'_Featureplot_Magma.png'),dpi=500, width = 8, fea.pl)
+}
+
+### Earth
+### ADT
+
+DefaultAssay(EARTH) <-'ADT'
+
+# VLN Plots
+setwd('~/Documents/CD8_Longitudinal/Annotation/EARTH/Violin_Plot/ADT')
+
+for (i in prots) {
+  
+  vln.pl <-VlnPlot_scCustom(EARTH,features = i)
+  ggsave(paste0(i,'_VLNplot.png'),dpi=500, width = 14, vln.pl)
+}
+
+# Feature Plots
+setwd('~/Documents/CD8_Longitudinal/Annotation/EARTH/Feature_Plot/ADT')
+
+for (i in prots) {
+  pal <- viridis(n = 10, option = "A")
+  fea.pl <- FeaturePlot_scCustom(EARTH, reduction = 'wnn.umap', features = i, 
+                                 colors_use = pal,order=TRUE)
+  ggsave(paste0(i,'_Featureplot_Magma.png'),dpi=500, width = 8, fea.pl)
+}
+
+### RNA
+
+DefaultAssay(EARTH) <-'RNA'
+
+# VLN Plots
+setwd('~/Documents/CD8_Longitudinal/Annotation/EARTH/Violin_Plot/RNA')
+
+for (i in rna.features) {
+  
+  vln.pl <-VlnPlot_scCustom(EARTH,features = i)
+  ggsave(paste0(i,'_VLNplot.png'),dpi=500, width = 14, vln.pl)
+}
+
+# Feature Plots
+setwd('~/Documents/CD8_Longitudinal/Annotation/EARTH/Feature_Plot/RNA')
+
+for (i in rna.features) {
+  pal <- viridis(n = 10, option = "A")
+  fea.pl <- FeaturePlot_scCustom(EARTH, reduction = 'wnn.umap', features = i, 
                                  colors_use = pal,order=TRUE)
   ggsave(paste0(i,'_Featureplot_Magma.png'),dpi=500, width = 8, fea.pl)
 }
