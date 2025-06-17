@@ -224,19 +224,34 @@ for (i in rna.features) {
 ############################################################ Annotated Plots ####################################################
 setwd('~/Documents/CD8_Longitudinal/Annotation/TARA_ALL')
 
-### TARA
+TARA_ALL$Manual_Annotation <- NULL
+# Set cluster identity to Louvain clustering
+Idents(TARA_ALL) <- 'snn.louvianmlr_1'
+
+# Load and process annotation file
 TARA_annotation_df <- read_excel("TARA_ALL_Annotation.xlsx") %>%
   rename(cluster = `Cluster Number`, annotation = `Cell Type`) %>%
-  mutate(cluster = as.character(cluster))
+  mutate(cluster = as.character(cluster)) %>%
+  filter(cluster %in% as.character(0:35)) %>%
+  mutate(label = paste0(cluster, ": ", annotation))
 
-TARA_cluster_df <- data.frame(cell = names(Idents(TARA_ALL)), cluster = as.character(Idents(TARA_ALL)))
+# Get cluster order from Seurat object
+cluster_levels <- levels(Idents(TARA_ALL))
 
-TARA_cluster_annotated <- left_join(TARA_cluster_df, TARA_annotation_df, by = "cluster")
+# Create named vector for mapping cluster -> label
+TARA_cluster_map <- setNames(TARA_annotation_df$label, TARA_annotation_df$cluster)
 
-TARA_ALL$Manual_Annotation <- TARA_cluster_annotated$annotation
+# Map annotations to cells based on cluster identity
+cluster_ids <- as.character(Idents(TARA_ALL))
+TARA_ALL$Manual_Annotation <- unname(TARA_cluster_map[cluster_ids])
 
+# Ensure factor levels follow cluster order
+TARA_ALL$Manual_Annotation <- factor(TARA_ALL$Manual_Annotation, levels = TARA_cluster_map[cluster_levels])
+
+# Set identity class to Manual_Annotation
 Idents(TARA_ALL) <- 'Manual_Annotation'
 
+Idents(TARA_ALL)
 
 p1 <- DimPlot_scCustom(
   TARA_ALL,
@@ -249,13 +264,57 @@ p1 <- DimPlot_scCustom(
 )
 
 ggsave(
-  filename = "TARA_Annotated.png",
+  filename = "TARA_Annotated_1.png",
   plot=p1,
   width = 13,  # Adjust width as needed
   height = 8,  # Adjust height as needed
   dpi = 300
 )
 
+p2 <- DimPlot_scCustom(
+  TARA_ALL,
+  reduction = "wnn.umap",
+  label = TRUE,
+  repel = TRUE,
+  label.box = TRUE,
+  label.size = 3.5,
+  pt.size = 0.1
+)
+
+ggsave(
+  filename = "TARA_Annotated_0.1.png",
+  plot=p2,
+  width = 13,  # Adjust width as needed
+  height = 8,  # Adjust height as needed
+  dpi = 300
+)
+
+# Create frequency table
+bar_data <- as.data.frame(table(TARA_ALL$Manual_Annotation))
+colnames(bar_data) <- c("Cluster", "Cell_Count")
+
+# Get colors matching cluster identities
+cluster_colors <- DiscretePalette_scCustomize(
+  num_colors = length(levels(TARA_ALL$Manual_Annotation)),
+  palette = "polychrome"
+)
+
+names(cluster_colors) <- levels(TARA_ALL$Manual_Annotation)
+
+# Bar plot
+p <- ggplot(bar_data, aes(x = Cluster, y = Cell_Count, fill = Cluster)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = cluster_colors) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  ) +
+  xlab("Manual Cluster Annotation") +
+  ylab("Number of Cells") +
+  ggtitle("TARA: Cell Count per Annotated Cluster")
+
+ggsave("TARA_Cluster_Barplot.png", plot = p, width = 10, height = 6, bg='white')
 ### EARTH
 
 
