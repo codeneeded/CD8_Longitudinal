@@ -20,6 +20,7 @@ library(readxl)
 library(scCustomize)
 library(Polychrome)
 library(viridis)
+library(readxl)
 
 ### Read Files in
 
@@ -219,4 +220,42 @@ for (i in rna.features) {
                                  colors_use = pal,order=TRUE)
   ggsave(paste0(i,'_Featureplot_Magma.png'),dpi=500, width = 8, fea.pl)
 }
+
+############################################################ Annotated Plots ####################################################
+setwd('~/Documents/CD8_Longitudinal/Annotation/TARA_ALL')
+
+### TARA
+TARA_annotation_df <- read_excel("TARA_ALL_Annotation.xlsx") %>%
+  rename(cluster = `Cluster Number`, annotation = `Cell Type`) %>%
+  mutate(cluster = as.character(cluster))
+
+TARA_cluster_df <- data.frame(cell = names(Idents(TARA_ALL)), cluster = as.character(Idents(TARA_ALL)))
+
+TARA_cluster_annotated <- left_join(TARA_cluster_df, TARA_annotation_df, by = "cluster")
+
+TARA_ALL$Manual_Annotation <- TARA_cluster_annotated$annotation
+
+Idents(TARA_ALL) <- 'Manual_Annotation'
+
+
+p1 <- DimPlot_scCustom(
+  TARA_ALL,
+  reduction = "wnn.umap",
+  label = TRUE,
+  repel = TRUE,
+  label.box = TRUE,
+  label.size = 3.5,
+  pt.size = 1
+)
+
+ggsave(
+  filename = "TARA_Annotated.png",
+  plot=p1,
+  width = 13,  # Adjust width as needed
+  height = 8,  # Adjust height as needed
+  dpi = 300
+)
+
+### EARTH
+
 
