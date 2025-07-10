@@ -48,7 +48,147 @@ EARTH[["ADT"]] <- JoinLayers(EARTH[["ADT"]])
 
 rm(EARTH_TRB_0, EARTH_TRB_1, EARTH_TRB_2)
 gc()
-#################################### RNA and Protein Features of interest ##############################################
+#################################### RNA and Protein Features of interest ##############################################library(dplyr)
+library(stringr)
+library(ggplot2)
+library(EnhancedVolcano)
+
+# Define IFN gene list
+IFN_genes_all <- c(
+  "CCR5", "MX1", "IFIT1", "IFIT2", "IFIT3", "ISG15", "OAS1", 
+  "STAT1", "STAT2", "IRF7", "IFI6", "IFI44", "IFI44L", 
+  "ISG20", "MX2", "OAS2", "OAS3", "IRF9", "RSAD2", 
+  "BST2", "USP18", "TRIM22", "SIGLEC1"
+)
+
+# Define comparisons and paths
+comparisons <- list(
+  HEIvsHEU = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/HEIvsHEU",
+  HEUvsHUU = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/HEUvsHUU",
+  PostARTvsPreART = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/PostARTvsPreART",
+  HighvsLowVL = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_Entry/HighvsLowVL"
+)
+
+base_output <- "/home/akshay-iyer/Documents/CD8_Longitudinal/IFNa_Analysis"
+
+# Loop through each comparison
+for (comp_name in names(comparisons)) {
+  
+  de_dir <- comparisons[[comp_name]]
+  output_dir <- file.path(base_output, comp_name)
+  volcano_dir <- file.path(output_dir, "Volcano_Plots")
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  dir.create(volcano_dir, recursive = TRUE, showWarnings = FALSE)
+  
+  de_files <- list.files(de_dir, pattern = "\\.csv$", full.names = TRUE)
+  summary_list <- list()
+  
+  # Loop through each cluster DE file
+  for (file in de_files) {
+    df <- read.csv(file, row.names = 1)
+    df <- df %>%
+      mutate(
+        gene = rownames(.),
+        pval = p_val,
+        padj = p_val_adj,
+        logfc = avg_log2FC
+      ) %>%
+      filter(gene %in% IFN_genes_all & !is.na(padj) & padj < 0.05)
+    
+    up <- sum(df$logfc > 0, na.rm = TRUE)
+    down <- sum(df$logfc < 0, na.rm = TRUE)
+    total <- nrow(df)
+    
+    cluster <- str_remove(basename(file), "\\.csv$")
+    cell_type <- str_split(cluster, "__", simplify = TRUE)[, 2]
+    
+    summary_list[[cluster]] <- data.frame(
+      comparison = comp_name,
+      cluster_id = cluster,
+      cell_type = cell_type,
+      total_ifn_genes = total,
+      upregulated = up,
+      downregulated = down
+    )
+    
+    ##### Volcano Plot for this cluster #####
+    full_df <- read.csv(file, row.names = 1)
+    full_df <- full_df %>%
+      mutate(
+        gene = rownames(.),
+        logfc = avg_log2FC,
+        pval = p_val,
+        padj = p_val_adj
+      )
+    
+    keyvals <- ifelse(
+      abs(full_df$logfc) > 1.5 & full_df$padj < 0.01, "#CD0BBC",
+      ifelse(full_df$padj < 0.01, "#28E2E5", "gray30")
+    )
+    keyvals[full_df$gene %in% IFN_genes_all] <- "#FF9900"
+    
+    names(keyvals)[keyvals == "gray30"] <- "NS"
+    names(keyvals)[keyvals == "#28E2E5"] <- "adj(p-value) < 0.01"
+    names(keyvals)[keyvals == "#CD0BBC"] <- "FC > 1.5 & p < 0.01"
+    names(keyvals)[keyvals == "#FF9900"] <- "IFN Gene"
+    
+    vp <- EnhancedVolcano(full_df,
+                          lab = full_df$gene,
+                          x = "logfc",
+                          y = "pval",
+                          pCutoffCol = "padj",
+                          pCutoff = 0.01,
+                          FCcutoff = 1.5,
+                          xlab = bquote(~Log[2]~ 'fold change'),
+                          ylab = bquote(-Log[10]~italic(P)),
+                          pointSize = 2.0,
+                          labSize = 2.5,
+                          colCustom = keyvals,
+                          colAlpha = 0.8,
+                          labCol = "black",
+                          labFace = "bold",
+                          drawConnectors = TRUE,
+                          widthConnectors = 0.5,
+                          colConnectors = "gray40",
+                          legendPosition = "right",
+                          legendLabSize = 10,
+                          legendIconSize = 3.5,
+                          title = paste0(cluster),
+                          subtitle = paste0("Volcano Plot - ", comp_name, " (IFNα genes highlighted)")
+    )
+    
+    ggsave(
+      filename = file.path(volcano_dir, paste0(cluster, "_volcano.png")),
+      plot = vp + guides(color = guide_legend(reverse = TRUE)),
+      width = 10, height = 7, dpi = 400
+    )
+  }
+  
+  # Save cluster-wise IFN summary
+  ifn_summary <- bind_rows(summary_list)
+  write.csv(ifn_summary, file.path(output_dir, "IFN_gene_summary_by_cluster.csv"), row.names = FALSE)
+  
+  # Plot total IFN genes per cluster
+  ifn_plot <- ggplot(ifn_summary, aes(x = reorder(cluster_id, -total_ifn_genes), y = total_ifn_genes)) +
+    geom_col(fill = "steelblue") +
+    theme_minimal(base_size = 14) +
+    xlab("Cluster") + ylab("Significant IFN Genes (adj.p < 0.05)") +
+    ggtitle(paste("IFN Gene Expression by Cluster -", comp_name)) +
+    theme(
+      axis.text.x = element_text(angle = 90, hjust = 1),
+      plot.margin = margin(10, 10, 10, 10)
+    )
+  
+  ggsave(
+    filename = file.path(output_dir, "IFN_gene_barplot_by_cluster.png"),
+    plot = ifn_plot,
+    width = 13,
+    height = 6,
+    dpi = 300,
+    bg = "white"
+  )
+}
+
 
 rna.features <-  c('CD14','FCGR2B','SERPING1','CCR7','CD27','TCF7','CCL5','FCGR3A','PRF1','CD40LG','IRF8','TNFRSF4',
                    'CD8A','TNFRSF9','XCL2','CD7','CD8B','NELL2','C1QBP','CD3E','ICOS','IGFBP2','IGFBP4','LDHA',
