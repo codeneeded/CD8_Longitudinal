@@ -78,6 +78,7 @@ EARTH <- subset(EARTH, idents = large_clusters)
 
 ############# Plots ###############################
 setwd('~/Documents/CD8_Longitudinal/Annotation/TARA_ALL/Cluster_Plot')
+saveRDS(TARA_ALL, file = file.path(load.path, "TARA_ALL_post_annotation.rds"))
 
 p1 <- DimPlot_scCustom(
   TARA_ALL,
@@ -315,6 +316,17 @@ p <- ggplot(bar_data, aes(x = Cluster, y = Cell_Count, fill = Cluster)) +
   ggtitle("TARA: Cell Count per Annotated Cluster")
 
 ggsave("TARA_Cluster_Barplot.png", plot = p, width = 10, height = 6, bg='white')
+
+
+saveRDS(TARA_ALL, file = file.path(load.path, "TARA_ALL_post_annotation.rds"))
+
+
+### Differential Expression ###
+
+
+
+
+
 ### EARTH
 
 
