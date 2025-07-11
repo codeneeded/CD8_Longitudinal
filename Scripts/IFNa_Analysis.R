@@ -194,11 +194,12 @@ TARA_ALL <- AddModuleScore(
   name = "IFN_score"
 )
 
-# For RNA (log-normalized CCR5 mRNA expression)
-TARA_ALL$RNA_CCR5 <- FetchData(TARA_ALL, vars = "CCR5", slot = "data", assay = "RNA")[, 1]
-
 # For ADT (dsb-normalized CCR5 protein expression)
-TARA_ALL$Protein_CCR5 <- FetchData(TARA_ALL, vars = "CCR5", slot = "data", assay = "ADT")[, 1]
+DefaultAssay(TARA_ALL) <-'RNA'
+TARA_ALL$RNA_CCR5 <- FetchData(TARA_ALL, vars = "CCR5", layer = "data", assay = "ADT")[, 1]
+DefaultAssay(TARA_ALL) <-'ADT'
+TARA_ALL$Protein_CCR5 <- FetchData(TARA_ALL, vars = "CCR5", layer = "data", assay = "ADT")[, 1]
+
 ### Functions for plotting 
 
 
@@ -238,7 +239,7 @@ plot_module_score_unpaired(
   seurat_obj = subset1,
   group_var = "Condition",
   output_path = file.path(module_score_dir, "HEI_vs_HEU_IFNscore.png"),
-  plot_title = "IFN Pathway Activity: HEI (Entry, <2y) vs HEU"
+  plot_title = "IFN Pathway Activity: HEI (Entry, <2 Months) vs HEU"
 )
 
 ## ------------------------
@@ -296,6 +297,10 @@ subset5$ART_3Group <- ifelse(
 # Drop NAs
 subset5 <- subset(subset5, !is.na(ART_3Group))
 
+subset5$ART_3Group <- factor(
+  subset5$ART_3Group,
+  levels = c("PreART_Entry",  "PostART_Unsuppressed","PostART_Suppressed")
+)
 
 # Get metadata
 meta <- subset5@meta.data
@@ -307,10 +312,6 @@ comparisons <- list(
   c("PostART_Suppressed", "PostART_Unsuppressed")
 )
 
-subset5$ART_3Group <- factor(
-  subset5$ART_3Group,
-  levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed")
-)
 
 # Plot
 gg <- ggplot(meta, aes(x = ART_3Group, y = IFN_score1, fill = ART_3Group)) +
@@ -335,6 +336,8 @@ gg <- ggplot(meta, aes(x = ART_3Group, y = IFN_score1, fill = ART_3Group)) +
     
   )
 
+gg
+
 ggsave(
   filename = "/home/akshay-iyer/Documents/CD8_Longitudinal/IFNa_Analysis/Module_scores/PreART_vs_PostART_3groups_IFNscore.png",
   plot = gg,
@@ -348,26 +351,28 @@ correlation_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/IFNa_Analysis/C
 dir.create(correlation_dir, recursive = TRUE, showWarnings = FALSE)
 
 #### Function
-plot_ifn_vs_ccr5_by_cluster <- function(seurat_obj, score_var, ccr5_var, output_path, plot_title) {
+
+
+plot_ifn_vs_ccr5_by_cluster_grouped <- function(seurat_obj, score_var, gene_var, group_var, output_path, plot_title) {
   meta <- seurat_obj@meta.data
+  expr <- FetchData(seurat_obj, vars = c(score_var, gene_var, group_var, "Manual_Annotation"))
+  expr <- na.omit(expr)
   
-  gg <- ggplot(meta, aes_string(x = score_var, y = ccr5_var, color = "Manual_Annotation")) +
-    geom_point(alpha = 0.5, size = 0.6) +
-    geom_smooth(method = "lm", se = FALSE, size = 0.8) +
-    facet_wrap(~Manual_Annotation, scales = "free") +
-    stat_cor(method = "pearson", label.x.npc = "left", label.y.npc = "top", size = 3.5) +
+  p <- ggplot(expr, aes_string(x = score_var, y = gene_var, color = group_var)) +
+    geom_point(alpha = 0.6, size = 1) +
+    geom_smooth(method = "lm", se = FALSE, size = 0.6) +
+    stat_cor(aes_string(color = group_var), method = "spearman", label.x.npc = "left", label.y.npc = "top") +
+    facet_wrap(~Manual_Annotation, scales = "free_y") +
+    labs(title = plot_title, x = "IFN Module Score", y = paste0(gene_var, " Expression")) +
     theme_minimal(base_size = 14) +
-    xlab("IFN Module Score") + ylab(ccr5_var) +
-    ggtitle(plot_title) +
     theme(
-      strip.text = element_text(size = 12, face = "bold"),
-      plot.margin = margin(15, 10, 15, 10),
-      plot.title = element_text(hjust = 0.5, face = "bold")
+      strip.text = element_text(face = "bold"),
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      plot.margin = margin(10, 10, 10, 10)
     )
   
-  ggsave(output_path, plot = gg, width = 20, height = 18, dpi = 300, bg = "white")
+  ggsave(output_path, plot = p, width = 20, height = 18, dpi = 300, bg = "white")
 }
-
 ### Plotting ###################
 # mRNA
 plot_ifn_vs_ccr5_by_cluster_grouped(
@@ -376,7 +381,7 @@ plot_ifn_vs_ccr5_by_cluster_grouped(
   gene_var = "RNA_CCR5",
   group_var = "Condition",
   output_path = file.path(correlation_dir, "IFN_vs_CCR5_mRNA_HEIvsHEU.png"),
-  plot_title = "IFN Score vs CCR5 (mRNA): HEI (<2y) vs HEU"
+  plot_title = "IFN Score vs CCR5 (mRNA): HEI vs HEU"
 )
 
 plot_ifn_vs_ccr5_by_cluster_grouped(
@@ -413,7 +418,7 @@ plot_ifn_vs_ccr5_by_cluster_grouped(
   gene_var = "Protein_CCR5",
   group_var = "Condition",
   output_path = file.path(correlation_dir, "IFN_vs_CCR5_protein_HEIvsHEU.png"),
-  plot_title = "IFN Score vs CCR5 (Protein): HEI (<2y) vs HEU"
+  plot_title = "IFN Score vs CCR5 (Protein): HEI vs HEU"
 )
 
 plot_ifn_vs_ccr5_by_cluster_grouped(
