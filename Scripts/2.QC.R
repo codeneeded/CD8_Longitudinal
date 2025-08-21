@@ -232,11 +232,11 @@ DefaultAssay(merged_seurat) <- 'RNA'
 #log10GenesPerUMI > 0.8
 #mitoRatio < 20%
 #riboratio > 5%
-#Heme <20%
+#Heme <20%s
 #Platlet <2%
 
 
-filtered_seurat <- subset(x = filtered_seurat, 
+filtered_seurat <- subset(x = merged_seurat, 
                           subset= (nCount_RNA >= 500) & 
                             (nFeature_RNA >= 600) & 
                             (log10GenesPerUMI > 0.80) & 
