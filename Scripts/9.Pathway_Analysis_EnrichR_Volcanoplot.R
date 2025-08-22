@@ -3,6 +3,7 @@ library(enrichR)
 library(openxlsx)
 library(ggplot2)
 
+
 # -----------------------------
 # Enrichr databases
 # -----------------------------
@@ -19,10 +20,12 @@ pathway_databases <- setdiff(databases, tf_databases)
 # Input directories for DGE CSVs
 # -----------------------------
 input_dirs <- list(
-  HEIvsHEU = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/HEIvsHEU",
-  HEUvsHUU = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/HEUvsHUU",
-  PostARTvsPreART = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/PostARTvsPreART",
-  HighvsLowVL = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_Entry/HighvsLowVL"
+  HEIvsHEU_PreART = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression/HEIvsHEU_PreART",
+  HEUvsHUU = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression/HEUvsHUU",
+  HighvsLowVL_PreART = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression/HighvsLowVL_PreART",
+  HighvsLowVL_ALL = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression/HighvsLowVL_ALL",
+  PostART_Suppressed_vs_PreART = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression/PostART_Suppressed_vs_PreART",
+  PostART_Unsuppressed_vs_PreART = "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression/PostART_Unsuppressed_vs_PreART"
 )
 
 # -----------------------------
@@ -144,23 +147,36 @@ run_enrichment <- function(gene_df, label, base_output) {
 # -----------------------------
 # Loop over all comparisons and clusters
 # -----------------------------
+# Loop over all comparisons and clusters
 for (comparison in names(input_dirs)) {
   input_dir <- input_dirs[[comparison]]
   comparison_output <- file.path(base_output, comparison)
   
   csv_files <- list.files(input_dir, pattern = "\\.csv$", full.names = TRUE)
+  if (length(csv_files) == 0) {
+    message("No CSV files found in: ", input_dir)
+    next
+  }
   
   for (csv in csv_files) {
-    dge <- read.csv(csv, row.names = 1)
-    sig_genes <- dge %>% filter(p_val_adj < 0.05)
+    dge <- tryCatch(read.csv(csv, row.names = 1, check.names = FALSE),
+                    error = function(e) { message("Read failed: ", csv, " — ", e$message); return(NULL) })
+    if (is.null(dge)) next
     
+    if (!"p_val_adj" %in% colnames(dge)) {
+      message("Skipping (no p_val_adj): ", basename(csv), " | cols: ", paste(colnames(dge), collapse = ", "))
+      next
+    }
+    
+    sig_genes <- dge %>% dplyr::filter(!is.na(p_val_adj) & p_val_adj < 0.05)
     if (nrow(sig_genes) == 0) {
       message("No significant genes in ", basename(csv))
       next
     }
     
-    label <- tools::file_path_sans_ext(basename(csv))  # e.g., 0__CD4_T_cell_HEIvsHEU
+    label <- tools::file_path_sans_ext(basename(csv))
     message("Running Enrichr for: ", label)
     run_enrichment(sig_genes, label, comparison_output)
   }
 }
+

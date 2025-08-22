@@ -1,306 +1,197 @@
-#Load Required Libraries
-library(Seurat)
-library(scater)
-library(tidyverse)
-library(Matrix)
-library(scales)
-library(cowplot)
-library(RCurl)
-library(hdf5r)
-library(data.table)
-library(cowplot)
-library(ggplot2)
-library(gridExtra)
-library(ggrepel)
-library(patchwork)
-library(reticulate)
-library(circlize)
-library(ComplexHeatmap)
-library(readxl)
-library(scCustomize)
-library(Polychrome)
-library(viridis)
-library(readxl)
+# ---- Setup ----
 library(Seurat)
 library(dplyr)
 library(ggplot2)
 
+
 # Load annotated Seurat object
 TARA_ALL <- readRDS("~/Documents/CD8_Longitudinal/saved_R_data/TARA_ALL_post_annotation.rds")
 
-# Define output directories
-dir_hei_heu <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/HEIvsHEU"
-dir_heu_huu <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/HEUvsHUU"
-dir.create(dir_hei_heu, recursive = TRUE, showWarnings = FALSE)
-dir.create(dir_heu_huu, recursive = TRUE, showWarnings = FALSE)
+# Root output directory (everything goes here)
+base_out <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Gene_Expression"
+dir.create(base_out, recursive = TRUE, showWarnings = FALSE)
 
-# Set identity to manual annotation
-Idents(TARA_ALL) <- "Manual_Annotation"
-
-# Make sure group label is correct
-TARA_ALL$Comparison_Group <- TARA_ALL$Condition  # values: HEI, HEU, HUU
-TARA_ALL$PID <- sub("_.*", "", TARA_ALL$orig.ident)
+# Ensure required metadata
 DefaultAssay(TARA_ALL) <- "RNA"
+Idents(TARA_ALL) <- "Manual_Annotation"
+TARA_ALL$Comparison_Group <- TARA_ALL$Condition # HEI, HEU, HUU
+TARA_ALL$PID <- sub("_.*", "", TARA_ALL$orig.ident, perl = TRUE)
+TARA_ALL$Viral_Load <- suppressWarnings(as.numeric(as.character(TARA_ALL$Viral_Load)))
 
-# Initialize containers
-de_stats_hei_heu <- list()
-de_stats_heu_huu <- list()
-cluster_counts <- data.frame()
+# Helpers
+safe_name <- function(x) gsub("[^A-Za-z0-9._-]+", "_", x)
+count_sig <- function(df, pcol = "p_val_adj", thr = 0.05) sum(df[[pcol]] < thr, na.rm = TRUE)
 
-# Loop over clusters
-for (cluster in levels(TARA_ALL)) {
-  message("Processing cluster: ", cluster)
+run_clusterwise_de <- function(obj, group_col, ident1, ident2, out_dir,
+                               latent = c("nCount_RNA"),
+                               min_cells_per_grp = 10,
+                               title_prefix = "", file_stub = NULL) {
+  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
   
-  # Subset cluster
-  cells_in_cluster <- WhichCells(TARA_ALL, idents = cluster)
-  subset_cluster <- subset(TARA_ALL, cells = cells_in_cluster)
+  Idents(obj) <- "Manual_Annotation"
+  DefaultAssay(obj) <- "RNA"
   
-  # Check that required groups exist
-  comp_table <- table(subset_cluster$Comparison_Group)
+  de_list <- list()
+  count_tbl <- data.frame()
   
-  # ---- HEI vs HEU ----
-  if (all(c("HEI", "HEU") %in% names(comp_table)) && all(comp_table[c("HEI", "HEU")] >= 10)) {
-    de <- FindMarkers(
-      subset_cluster,
-      ident.1 = "HEI", ident.2 = "HEU",
-      group.by = "Comparison_Group",
-      test.use = "MAST",
-      latent.vars = c("nCount_RNA", "PID")
-    )
-    write.csv(de, file = file.path(dir_hei_heu, paste0(gsub("[:/ ]", "_", cluster), "_HEIvsHEU.csv")))
-    de_stats_hei_heu[[cluster]] <- de
+  cl_levels <- levels(obj)
+  for (cl in cl_levels) {
+    message("Processing cluster: ", cl)
+    cl_cells <- WhichCells(obj, idents = cl)
+    sc <- subset(obj, cells = cl_cells)
+    sc$.__grp <- sc[[group_col]]
     
-    # Count DE genes (adj. p < 0.05)
-    num_sig <- sum(de$p_val_adj < 0.05, na.rm = TRUE)
-    cluster_counts <- rbind(cluster_counts, data.frame(Cluster = cluster, DE_Genes = num_sig))
+    tab <- table(sc$.__grp)
+    if (all(c(ident1, ident2) %in% names(tab)) && all(tab[c(ident1, ident2)] >= min_cells_per_grp)) {
+      de <- FindMarkers(
+        sc,
+        ident.1 = ident1, ident.2 = ident2,
+        group.by = ".__grp",
+        test.use = "MAST",
+        latent.vars = latent
+      )
+      comp_name <- if (is.null(file_stub)) paste0(ident1, "_vs_", ident2) else file_stub
+      out_csv <- file.path(out_dir, paste0(safe_name(cl), "_", comp_name, ".csv"))
+      write.csv(de, out_csv)
+      de_list[[cl]] <- de
+      count_tbl <- rbind(count_tbl, data.frame(Cluster = cl, DE_Genes = count_sig(de)))
+    }
   }
   
-  # ---- HEU vs HUU ----
-  if (all(c("HEU", "HUU") %in% names(comp_table)) && all(comp_table[c("HEU", "HUU")] >= 10)) {
-    de <- FindMarkers(
-      subset_cluster,
-      ident.1 = "HEU", ident.2 = "HUU",
-      group.by = "Comparison_Group",
-      test.use = "MAST",
-      latent.vars = c("nCount_RNA", "PID")
-    )
-    write.csv(de, file = file.path(dir_heu_huu, paste0(gsub("[:/ ]", "_", cluster), "_HEUvsHUU.csv")))
-    de_stats_heu_huu[[cluster]] <- de
+  # Plot
+  if (nrow(count_tbl) > 0) {
+    p <- ggplot(count_tbl, aes(x = reorder(Cluster, -DE_Genes), y = DE_Genes, fill = Cluster)) +
+      geom_bar(stat = "identity") +
+      theme_minimal(base_size = 14) +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
+      xlab("Cluster") + ylab("# of DE Genes (adj. p < 0.05)") +
+      ggtitle(paste0(title_prefix, ": Clusters Ranked by DE Genes (", ident1, " vs ", ident2, ")"))
+    ggsave(filename = file.path(out_dir, paste0("Cluster_DE_Gene_Counts_", if (is.null(file_stub)) paste0(ident1, "vs", ident2) else file_stub, ".png")),
+           plot = p, width = 10, height = 6)
   }
+  
+  invisible(list(de = de_list, counts = count_tbl))
 }
 
-# ---- Plot: HEI vs HEU ----
-ggplot(cluster_counts, aes(x = reorder(Cluster, -DE_Genes), y = DE_Genes, fill = Cluster)) +
-  geom_bar(stat = "identity") +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
-  xlab("Cluster") + ylab("# of DE Genes (adj. p < 0.05)") +
-  ggtitle("TARA: Clusters Ranked by DE Genes (HEI vs HEU)") +
-  ggsave(filename = file.path(dir_hei_heu, "Cluster_DE_Gene_Counts_HEIvsHEU.png"), width = 10, height = 6)
+# =====================================================================
+# 1) HEI vs HEU (ONLY Entry: Age <= 2) -> folder: HEIvsHEU_PreART
+# No repeat measures at this restricted timepoint; do NOT control for PID.
+# =====================================================================
+hei_heu_pre_dir <- file.path(base_out, "HEIvsHEU_PreART")
+TARA_pre <- subset(TARA_ALL, subset = Age <= 2 & Comparison_Group %in% c("HEI", "HEU"))
 
-# ---- Plot: HEU vs HUU ----
-# Build cluster count table for HEU vs HUU
-cluster_counts_heuhuu <- data.frame(
-  Cluster = names(de_stats_heu_huu),
-  DE_Genes = sapply(de_stats_heu_huu, function(x) sum(x$p_val_adj < 0.05, na.rm = TRUE))
+run_clusterwise_de(
+  obj       = TARA_pre,
+  group_col = "Comparison_Group",
+  ident1    = "HEI",
+  ident2    = "HEU",
+  out_dir   = hei_heu_pre_dir,
+  latent    = c("nCount_RNA"),
+  title_prefix = "TARA (Pre-ART Entry ≤ 2m)"
 )
 
-ggplot(cluster_counts_heuhuu, aes(x = reorder(Cluster, -DE_Genes), y = DE_Genes, fill = Cluster)) +
-  geom_bar(stat = "identity") +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none") +
-  xlab("Cluster") + ylab("# of DE Genes (adj. p < 0.05)") +
-  ggtitle("TARA: Clusters Ranked by DE Genes (HEU vs HUU)") +
-  ggsave(filename = file.path(dir_heu_huu, "Cluster_DE_Gene_Counts_HEUvsHUU.png"), width = 10, height = 6)
+# =====================================================================
+# 2) HEU vs HUU (all are already at entry age) -> folder: HEUvsHUU
+# No repeat measures; do NOT control for PID.
+# =====================================================================
+heu_huu_dir <- file.path(base_out, "HEUvsHUU")
+TARA_heu_huu <- subset(TARA_ALL, subset = Comparison_Group %in% c("HEU", "HUU"))
 
-###################################### High vs Low Viral Load ############################################################################################
-TARA_Entry <- subset(TARA_ALL, subset = Age %in% c(1, 2))
-TARA_Entry <- subset(TARA_Entry, subset = !(Condition %in% c("HEU", "HUU")))
-
-TARA_Entry$Viral_Load_Category <- ifelse(
-  as.numeric(as.character(TARA_Entry$Viral_Load)) >= 100000,
-  "High",
-  "Low"
+run_clusterwise_de(
+  obj       = TARA_heu_huu,
+  group_col = "Comparison_Group",
+  ident1    = "HEU",
+  ident2    = "HUU",
+  out_dir   = heu_huu_dir,
+  latent    = c("nCount_RNA"),
+  title_prefix = "TARA"
 )
 
-# Setup: Output directory
-# -----------------------------
-dir_vl_highlow <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_Entry/HighvsLowVL"
-dir.create(dir_vl_highlow, recursive = TRUE, showWarnings = FALSE)
+# =====================================================================
+# 3) High vs Low VL at Entry ONLY (Age <= 2) -> folder: HighvsLowVL_PreART
+# No repeat measures (entry only); do NOT control for PID.
+# =====================================================================
+highlow_pre_dir <- file.path(base_out, "HighvsLowVL_PreART")
+TARA_entry <- subset(TARA_ALL, subset = Age %in% c(1, 2) & Condition == "HEI")  # VL is defined only for HEI
+TARA_entry$Viral_Load_Category <- ifelse(TARA_entry$Viral_Load >= 100000, "High", "Low")
+TARA_entry$Comparison_Group <- TARA_entry$Viral_Load_Category
 
-# -----------------------------
-# Assign identities and group labels
-# -----------------------------
+run_clusterwise_de(
+  obj       = TARA_entry,
+  group_col = "Comparison_Group",
+  ident1    = "High",
+  ident2    = "Low",
+  out_dir   = highlow_pre_dir,
+  latent    = c("nCount_RNA"),
+  title_prefix = "TARA HEI (Pre-ART Entry ≤ 2m)",
+  file_stub = "HighvsLowVL_PreART"
+)
 
-# Set cluster identity to manual annotations
-Idents(TARA_Entry) <- "Manual_Annotation"
+# =====================================================================
+# 4) High vs Low VL across ALL timepoints -> folder: HighvsLowVL_ALL
+# Repeat measures exist; CONTROL for PID.
+# =====================================================================
+highlow_all_dir <- file.path(base_out, "HighvsLowVL_ALL")
+TARA_hei_all <- subset(TARA_ALL, subset = Condition == "HEI")
+TARA_hei_all$Viral_Load_Category <- ifelse(TARA_hei_all$Viral_Load >= 100000, "High", "Low")
+TARA_hei_all$Comparison_Group <- TARA_hei_all$Viral_Load_Category
 
-# Define comparison group based on Viral Load Category ("High", "Low")
-TARA_Entry$Comparison_Group <- TARA_Entry$Viral_Load_Category
+run_clusterwise_de(
+  obj       = TARA_hei_all,
+  group_col = "Comparison_Group",
+  ident1    = "High",
+  ident2    = "Low",
+  out_dir   = highlow_all_dir,
+  latent    = c("nCount_RNA", "PID"),
+  title_prefix = "TARA HEI (All Timepoints)",
+  file_stub = "HighvsLowVL_ALL"
+)
 
-# Set default assay to RNA
-DefaultAssay(TARA_Entry) <- "RNA"
-
-# -----------------------------
-# Initialize containers to store results
-# -----------------------------
-de_stats_vl <- list()           # Stores DE results for each cluster
-cluster_counts_vl <- data.frame()  # Tracks number of DE genes per cluster
-
-# -----------------------------
-# Loop through clusters and run DE
-# -----------------------------
-for (cluster in levels(TARA_Entry)) {
-  message("Processing cluster: ", cluster)
-  
-  # Subset cells in the current cluster
-  cells_in_cluster <- WhichCells(TARA_Entry, idents = cluster)
-  subset_cluster <- subset(TARA_Entry, cells = cells_in_cluster)
-  
-  # Check if both High and Low groups exist with at least 10 cells each
-  comp_table <- table(subset_cluster$Comparison_Group)
-  
-  if (all(c("High", "Low") %in% names(comp_table)) && all(comp_table[c("High", "Low")] >= 10)) {
-    
-    # Perform differential expression using MAST, adjusting for RNA content and individual (PID)
-    de <- FindMarkers(
-      subset_cluster,
-      ident.1 = "High", ident.2 = "Low",
-      group.by = "Comparison_Group",
-      test.use = "MAST",
-      latent.vars = c("nCount_RNA")
-    )
-    
-    # Save DE results to CSV
-    out_file <- file.path(dir_vl_highlow, paste0(gsub("[:/ ]", "_", cluster), "_HighvsLowVL.csv"))
-    write.csv(de, file = out_file)
-    
-    # Store DE result in list
-    de_stats_vl[[cluster]] <- de
-    
-    # Count number of significant genes (adj p < 0.05)
-    num_sig <- sum(de$p_val_adj < 0.05, na.rm = TRUE)
-    cluster_counts_vl <- rbind(cluster_counts_vl, data.frame(Cluster = cluster, DE_Genes = num_sig))
-  }
-}
-
-# -----------------------------
-# Plot: Number of DE genes per cluster
-# -----------------------------
-plot_file <- file.path(dir_vl_highlow, "Cluster_DE_Gene_Counts_HighvsLowVL.png")
-
-ggplot(cluster_counts_vl, aes(x = reorder(Cluster, -DE_Genes), y = DE_Genes, fill = Cluster)) +
-  geom_bar(stat = "identity") +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  ) +
-  xlab("Cluster") + 
-  ylab("# of DE Genes (adj. p < 0.05)") +
-  ggtitle("TARA Entry: Clusters Ranked by DE Genes (High vs Low Viral Load)")
-
-ggsave(filename = plot_file, width = 10, height = 6)
-
-
-################# Pre-ART vs Post-ART ###########################
-# -----------------------------
-# Step 1: Subset to only HIV-infected infants (HEI)
-# -----------------------------
+# =====================================================================
+# 5) Post-ART Suppressed vs Pre-ART Entry (HEI only)
+#    -> folder: PostART_Suppressed_vs_PreART
+# CONTROL for PID (longitudinal).
+# =====================================================================
+post_supp_dir <- file.path(base_out, "PostART_Suppressed_vs_PreART")
 TARA_HEI <- subset(TARA_ALL, subset = Condition == "HEI")
 
-# -----------------------------
-# Step 2: Ensure Viral_Load is numeric
-# -----------------------------
-TARA_HEI$Viral_Load <- as.numeric(as.character(TARA_HEI$Viral_Load))
-
-# -----------------------------
-# Step 3: Create Timepoint_Group label
-# PreART_Entry: Age <= 2 months
-# PostART_Suppressed: Age > 2 AND VL < 200
-# -----------------------------
 TARA_HEI$Timepoint_Group <- ifelse(
-  TARA_HEI$Age <= 2, 
-  "PreART_Entry",
-  ifelse(TARA_HEI$Viral_Load < 200, "PostART_Suppressed", NA)
+  TARA_HEI$Age <= 2, "PreART_Entry",
+  ifelse(TARA_HEI$Viral_Load < 200, "PostART_Suppressed",
+         ifelse(!is.na(TARA_HEI$Viral_Load) & TARA_HEI$Viral_Load >= 200, "PostART_Unsuppressed", NA))
 )
-# -----------------------------
-# Step 4: Filter to just Pre vs Post comparison cells
-# -----------------------------
-TARA_HEI_compare <- subset(TARA_HEI, subset = !is.na(Timepoint_Group))
 
-# -----------------------------
-# Set output directory
-# -----------------------------
-dir_post_pre <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Differential_Expression/TARA_ALL/PostARTvsPreART"
-dir.create(dir_post_pre, recursive = TRUE, showWarnings = FALSE)
+TARA_HEI_PP <- subset(TARA_HEI, subset = Timepoint_Group %in% c("PreART_Entry", "PostART_Suppressed"))
+TARA_HEI_PP$Comparison_Group <- TARA_HEI_PP$Timepoint_Group
 
-# -----------------------------
-# Set identities and metadata
-# -----------------------------
-Idents(TARA_HEI_compare) <- "Manual_Annotation"
-TARA_HEI_compare$Comparison_Group <- TARA_HEI_compare$Timepoint_Group  # PreART_Entry / PostART_Suppressed
-TARA_HEI_compare$PID <- sub("_.*", "", TARA_HEI_compare$orig.ident)  # Extract PID
-DefaultAssay(TARA_HEI_compare) <- "RNA"
+run_clusterwise_de(
+  obj       = TARA_HEI_PP,
+  group_col = "Comparison_Group",
+  ident1    = "PostART_Suppressed",
+  ident2    = "PreART_Entry",
+  out_dir   = post_supp_dir,
+  latent    = c("nCount_RNA", "PID"),
+  title_prefix = "TARA HEI",
+  file_stub = "PostART_Suppressed_vs_PreART"
+)
 
-# -----------------------------
-# Initialize storage containers
-# -----------------------------
-de_stats_post_pre <- list()
-cluster_counts_post_pre <- data.frame()
+# =====================================================================
+# 6) Post-ART Unsuppressed vs Pre-ART Entry (HEI only)
+#    -> folder: PostART_Unsuppressed_vs_PreART
+# CONTROL for PID (longitudinal).
+# =====================================================================
+post_unsupp_dir <- file.path(base_out, "PostART_Unsuppressed_vs_PreART")
+TARA_HEI_PU <- subset(TARA_HEI, subset = Timepoint_Group %in% c("PreART_Entry", "PostART_Unsuppressed"))
+TARA_HEI_PU$Comparison_Group <- TARA_HEI_PU$Timepoint_Group
 
-# -----------------------------
-# Loop through each cluster and run DE with MAST
-# -----------------------------
-for (cluster in levels(TARA_HEI_compare)) {
-  message("Processing cluster: ", cluster)
-  
-  # Subset cells from the current cluster
-  cells_in_cluster <- WhichCells(TARA_HEI_compare, idents = cluster)
-  subset_cluster <- subset(TARA_HEI_compare, cells = cells_in_cluster)
-  
-  # Ensure both groups exist with enough cells
-  comp_table <- table(subset_cluster$Comparison_Group)
-  
-  if (all(c("PreART_Entry", "PostART_Suppressed") %in% names(comp_table)) &&
-      all(comp_table[c("PreART_Entry", "PostART_Suppressed")] >= 10)) {
-    
-    # Run differential expression using MAST with PID correction
-    de <- FindMarkers(
-      subset_cluster,
-      ident.1 = "PostART_Suppressed", ident.2 = "PreART_Entry",
-      group.by = "Comparison_Group",
-      test.use = "MAST",
-      latent.vars = c("nCount_RNA", "PID")
-    )
-    
-    # Save results
-    out_file <- file.path(dir_post_pre, paste0(gsub("[:/ ]", "_", cluster), "_PostARTvsPreART.csv"))
-    write.csv(de, file = out_file)
-    
-    # Store results in list
-    de_stats_post_pre[[cluster]] <- de
-    
-    # Track number of significant DE genes
-    num_sig <- sum(de$p_val_adj < 0.05, na.rm = TRUE)
-    cluster_counts_post_pre <- rbind(cluster_counts_post_pre, data.frame(Cluster = cluster, DE_Genes = num_sig))
-  }
-}
+run_clusterwise_de(
+  obj       = TARA_HEI_PU,
+  group_col = "Comparison_Group",
+  ident1    = "PostART_Unsuppressed",
+  ident2    = "PreART_Entry",
+  out_dir   = post_unsupp_dir,
+  latent    = c("nCount_RNA", "PID"),
+  title_prefix = "TARA HEI",
+  file_stub = "PostART_Unsuppressed_vs_PreART"
+)
 
-# -----------------------------
-# Plot: Number of DE genes per cluster
-# -----------------------------
-plot_file <- file.path(dir_post_pre, "Cluster_DE_Gene_Counts_PostARTvsPreART.png")
-
-ggplot(cluster_counts_post_pre, aes(x = reorder(Cluster, -DE_Genes), y = DE_Genes, fill = Cluster)) +
-  geom_bar(stat = "identity") +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  ) +
-  xlab("Cluster") +
-  ylab("# of DE Genes (adj. p < 0.05)") +
-  ggtitle("TARA HEI: Clusters Ranked by DE Genes (Post-ART vs Pre-ART)")
-
-ggsave(filename = plot_file, width = 10, height = 6)
