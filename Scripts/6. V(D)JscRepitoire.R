@@ -58,7 +58,6 @@ TARA_names <- f_names[grepl("^C", f_names)]
 EARTH_names <- f_names[grepl("^S", f_names)]
 
 
-
 for (name in f_names) {
   
   # Construct the file paths
@@ -81,6 +80,7 @@ EARTH.TCR <- paste(EARTH_names, ".TCR", sep="")
 TARA.BCR <- paste(TARA_names, ".BCR", sep="")
 EARTH.BCR <- paste(EARTH_names, ".BCR", sep="")
 
+
 TARA.contig_list.TCR <- as.list(mget(TARA.TCR))
 EARTH.contig_list.TCR <- as.list(mget(EARTH.TCR))
 TARA.contig_list.BCR <- as.list(mget(TARA.BCR))
@@ -93,6 +93,56 @@ combined.TCR.EARTH <- combineTCR(EARTH.contig_list.TCR,samples = EARTH_names)
 combined.BCR.TARA <- combineBCR(TARA.contig_list.BCR,samples = TARA_names)
 combined.BCR.EARTH <- combineBCR(EARTH.contig_list.BCR,samples = EARTH_names)
 
+
+### For TARA Entry
+# --- Step 1: Define VL groups ---
+high_VL <- c("CP006","CP022","CP002","CP017","CP016","CP003","CP018")
+low_VL  <- c("CP011","SAAH29","CP042","CP013","SATY021")
+
+# --- Step 2: Filter to only _entry samples ---
+# TARA: only CP* entry
+TARA_entry_CP_names <- TARA_names[grepl("^CP.*_entry$", TARA_names)]
+TARA_entry_CP_names
+
+# EARTH: only entry
+
+EARTH_entry_names   <- EARTH_names[grepl("_entry$", EARTH_names)]
+EARTH_entry_names
+
+# --- Step 3: Build vector of names ---
+Entry_names <- c(TARA_entry_CP_names, EARTH_entry_names)
+
+# --- Step 4: Create contig list (standard method) ---
+EntryTCR <- paste(Entry_names, ".TCR", sep = "")
+Entry.contig_list.TCR <- as.list(mget(EntryTCR))
+
+# --- Step 5: Combine ---
+combined.TCR.entry <- combineTCR(
+  Entry.contig_list.TCR,
+  samples = Entry_names
+)
+
+# --- Step 6: Add Viral Load group as a new variable ---
+pids <- sub("_.*", "", Entry_names)
+VL_group <- ifelse(pids %in% high_VL, "High_VL",
+                   ifelse(pids %in% low_VL,  "Low_VL", "Unknown"))
+
+
+combined.TCR.entry <- addVariable(
+  combined.TCR.entry,
+  variable.name = "VL_Group",
+  variables = VL_group
+)
+
+# (Optional) also add PID as its own variable
+combined.TCR.entry <- addVariable(
+  combined.TCR.entry,
+  variable.name = "PID",
+  variables = pids
+)
+
+
+
 ### Definitions ###
 #we will use clone and define this as the cells with shared/trackable complementarity-determining region 3 (CDR3) sequences. 
 #Within this definition, one might use amino acid (aa) sequences of one or both chains to define a clone. 
@@ -103,6 +153,18 @@ combined.BCR.EARTH <- combineBCR(EARTH.contig_list.BCR,samples = EARTH_names)
 ################################################### Basic Clonal Visualizations ################################################
 setwd('~/Documents/CD8_Longitudinal/VDJ/TCR/Clonal_Visualizations'
       )
+
+
+clonalQuant(combined.TCR.entry, 
+            cloneCall="strict", 
+            chain = "both", 
+            group.by = 'VL_Group',
+            scale = FALSE)
+ggsave('TARA_Entry_Unique_Clone_TRAB_HighvsLow.png',width=24,height=12)
+
+
+
+
 
 clonalQuant(combined.TCR.TARA, 
             cloneCall="strict", 
