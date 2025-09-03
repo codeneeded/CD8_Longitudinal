@@ -1,0 +1,258 @@
+EditDistance,orig.ident,TRB_Epitope.species,Count,PatientID
+0,CP003_12m,CMV;HIV,38,CP003
+0,CP003_12m,HIV,2,CP003
+0,CP003_24m,CMV;HIV,64,CP003
+0,CP003_24m,HIV,1,CP003
+0,CP003_24m,HIV;Immunization,1,CP003
+0,CP003_entry,CMV;HIV;Influenza,1,CP003
+0,CP003_entry,HIV;M.tuberculosis,1,CP003
+0,CP006_12m,HIV,1,CP006
+0,CP006_12m,HIV;Immunization,1,CP006
+0,CP006_24m,HIV,3,CP006
+0,CP006_entry,CMV;HIV;Influenza,1,CP006
+0,CP006_entry,HIV,9,CP006
+0,CP013_1m,CMV;HIV;M.tuberculosis,1,CP013
+0,CP013_1m,CMV;HIV;SARS-CoV-2,1,CP013
+0,CP013_1m,HIV,2,CP013
+0,CP013_1m,HIV;Systemic lupus erythematosus,1,CP013
+0,CP013_24m,HIV,1,CP013
+0,CP013_24m,HIV;InfluenzaA,1,CP013
+0,CP013_24m,HIV;M.tuberculosis,1,CP013
+0,CP013_entry,Allergy;HIV;M.tuberculosis,1,CP013
+0,CP013_entry,CMV;HIV,1,CP013
+0,CP013_entry,CMV;HIV;Influenza,1,CP013
+0,CP013_entry,CMV;HIV;M.tuberculosis,1,CP013
+0,CP013_entry,HIV,7,CP013
+0,CP013_entry,HIV;Immunization,2,CP013
+0,CP013_entry,HIV;InfluenzaA,1,CP013
+0,CP018_42m,HIV,1,CP018
+0,CP018_entry,CMV;HIV,1,CP018
+0,CP018_entry,HIV,8,CP018
+0,CP018_entry,HIV;Immunization;Influenza,1,CP018
+0,CP018_entry,HIV;Influenza;InfluenzaA,1,CP018
+0,CP018_entry,HIV;Necrotizing Vasculitis,1,CP018
+0,CP020_1m,CMV;HIV,1,CP020
+0,CP020_1m,HIV,2,CP020
+0,CP020_12m,CMV;HIV,8,CP020
+0,CP020_44m,CMV;HIV,1,CP020
+1,CP003_12m,Allergy;HIV;M.tuberculosis,1,CP003
+1,CP003_12m,CMV;HIV,39,CP003
+1,CP003_12m,CMV;HIV;Influenza,1,CP003
+1,CP003_12m,HIV,27,CP003
+1,CP003_12m,HIV;Neoantigen;Neoantigen,1,CP003
+1,CP003_24m,CMV;HIV,69,CP003
+1,CP003_24m,CMV;HIV;Influenza,1,CP003
+1,CP003_24m,CMV;HIV;M.tuberculosis,1,CP003
+1,CP003_24m,CMV;HIV;SARS-CoV-2,1,CP003
+1,CP003_24m,Dengue virus;HIV;Immunization,1,CP003
+1,CP003_24m,HIV,20,CP003
+1,CP003_24m,HIV;Immunization,1,CP003
+1,CP003_24m,HIV;Neoantigen;Neoantigen,1,CP003
+1,CP003_entry,CMV;HIV;Influenza,2,CP003
+1,CP003_entry,HIV,21,CP003
+1,CP003_entry,HIV;Immunization;Influenza,1,CP003
+1,CP003_entry,HIV;Influenza;InfluenzaA,1,CP003
+1,CP003_entry,HIV;M.tuberculosis,1,CP003
+1,CP003_entry,HIV;Necrotizing Vasculitis,1,CP003
+1,CP006_12m,CMV;HIV;Influenza,15,CP006
+1,CP006_12m,HIV,12,CP006
+1,CP006_12m,HIV;Immunization,1,CP006
+1,CP006_12m,HIV;Systemic lupus erythematosus,2,CP006
+1,CP006_24m,CMV;HIV;Influenza,35,CP006
+1,CP006_24m,HIV,15,CP006
+1,CP006_24m,HIV;Neoantigen;Neoantigen,1,CP006
+1,CP006_entry,CMV;HIV,1,CP006
+1,CP006_entry,CMV;HIV;Influenza,3,CP006
+1,CP006_entry,HIV,20,CP006
+1,CP006_entry,HIV;Immunization,1,CP006
+1,CP013_12m,Dengue virus;HIV;Immunization,1,CP013
+1,CP013_12m,HIV,4,CP013
+1,CP013_12m,HIV;Influenza;InfluenzaA,1,CP013
+1,CP013_12m,HIV;Necrotizing Vasculitis,1,CP013
+1,CP013_1m,CMV;HIV,1,CP013
+1,CP013_1m,CMV;HIV;Influenza,2,CP013
+1,CP013_1m,CMV;HIV;M.tuberculosis,2,CP013
+1,CP013_1m,CMV;HIV;SARS-CoV-2,1,CP013
+1,CP013_1m,HIV,16,CP013
+1,CP013_1m,HIV;Immunization;Influenza,1,CP013
+1,CP013_1m,HIV;M.tuberculosis,1,CP013
+1,CP013_1m,HIV;Necrotizing Vasculitis,1,CP013
+1,CP013_1m,HIV;Systemic lupus erythematosus,1,CP013
+1,CP013_24m,CMV;HIV;SARS-CoV-2,1,CP013
+1,CP013_24m,Dengue virus;HIV;Immunization,1,CP013
+1,CP013_24m,HIV,7,CP013
+1,CP013_24m,HIV;Influenza;InfluenzaA,1,CP013
+1,CP013_24m,HIV;InfluenzaA,2,CP013
+1,CP013_24m,HIV;M.tuberculosis,1,CP013
+1,CP013_24m,HIV;Necrotizing Vasculitis,1,CP013
+1,CP013_entry,Allergy;HIV;M.tuberculosis,1,CP013
+1,CP013_entry,CMV;HIV,2,CP013
+1,CP013_entry,CMV;HIV;Influenza,1,CP013
+1,CP013_entry,CMV;HIV;M.tuberculosis,3,CP013
+1,CP013_entry,HIV,22,CP013
+1,CP013_entry,HIV;Immunization,2,CP013
+1,CP013_entry,HIV;Immunization;Influenza,1,CP013
+1,CP013_entry,HIV;InfluenzaA,2,CP013
+1,CP013_entry,HIV;Necrotizing Vasculitis,1,CP013
+1,CP013_entry,HIV;Systemic lupus erythematosus,1,CP013
+1,CP018_42m,CMV;HIV;M.tuberculosis,2,CP018
+1,CP018_42m,Dengue virus;HIV;Immunization,1,CP018
+1,CP018_42m,HIV,9,CP018
+1,CP018_42m,HIV;Influenza;InfluenzaA,1,CP018
+1,CP018_42m,HIV;M.tuberculosis,1,CP018
+1,CP018_42m,HIV;Systemic lupus erythematosus,1,CP018
+1,CP018_24m,CMV;HIV;SARS-CoV-2,1,CP018
+1,CP018_24m,HIV,4,CP018
+1,CP018_24m,HIV;Influenza,1,CP018
+1,CP018_entry,CMV;HIV,2,CP018
+1,CP018_entry,CMV;HIV;Influenza,3,CP018
+1,CP018_entry,CMV;HIV;SARS-CoV-2,1,CP018
+1,CP018_entry,Dengue virus;HIV;Immunization,1,CP018
+1,CP018_entry,HIV,31,CP018
+1,CP018_entry,HIV;Immunization;Influenza,1,CP018
+1,CP018_entry,HIV;Influenza;InfluenzaA,1,CP018
+1,CP018_entry,HIV;Necrotizing Vasculitis,2,CP018
+1,CP020_1m,CMV;HIV,1,CP020
+1,CP020_1m,CMV;HIV;Influenza,1,CP020
+1,CP020_1m,HIV,8,CP020
+1,CP020_1m,HIV;Influenza,1,CP020
+1,CP020_1m,HIV;Influenza;InfluenzaA,1,CP020
+1,CP020_1m,HIV;InfluenzaA,1,CP020
+1,CP020_12m,CMV;HIV,8,CP020
+1,CP020_12m,HIV,8,CP020
+1,CP020_44m,CMV;HIV,1,CP020
+1,CP020_44m,CMV;HIV;Influenza,1,CP020
+1,CP020_44m,HIV,2,CP020
+1,CP020_44m,HIV;Systemic lupus erythematosus,1,CP020
+2,CP003_12m,CMV;HIV,39,CP003
+2,CP003_12m,Dengue virus;HIV;Immunization,2,CP003
+2,CP003_12m,EBV;HIV;SelfAg,3,CP003
+2,CP003_12m,HIV,52,CP003
+2,CP003_12m,HIV;Immunization,2,CP003
+2,CP003_12m,HIV;Influenza;InfluenzaA,3,CP003
+2,CP003_12m,HIV;InfluenzaA,2,CP003
+2,CP003_12m,HIV;Necrotizing Vasculitis,3,CP003
+2,CP003_12m,HIV;Systemic lupus erythematosus,1,CP003
+2,CP003_24m,CMV;EBV;HIV;Immunization,1,CP003
+2,CP003_24m,CMV;HIV,64,CP003
+2,CP003_24m,CMV;HIV;Influenza,1,CP003
+2,CP003_24m,CMV;HIV;SARS-CoV-2,1,CP003
+2,CP003_24m,HIV,47,CP003
+2,CP003_24m,HIV;Immunization,3,CP003
+2,CP003_24m,HIV;Influenza,1,CP003
+2,CP003_24m,HIV;M.tuberculosis,2,CP003
+2,CP003_24m,HIV;Systemic lupus erythematosus,1,CP003
+2,CP003_entry,CMV;HIV,2,CP003
+2,CP003_entry,CMV;HIV;Influenza,1,CP003
+2,CP003_entry,CMV;HIV;SARS-CoV-2,1,CP003
+2,CP003_entry,Dengue virus;HIV;Immunization,2,CP003
+2,CP003_entry,HIV,48,CP003
+2,CP003_entry,HIV;Immunization,4,CP003
+2,CP003_entry,HIV;Influenza;InfluenzaA,2,CP003
+2,CP003_entry,HIV;InfluenzaA,1,CP003
+2,CP003_entry,HIV;M.tuberculosis,1,CP003
+2,CP003_entry,HIV;Systemic lupus erythematosus,3,CP003
+2,CP006_12m,CMV;HIV,1,CP006
+2,CP006_12m,CMV;HIV;Influenza,2,CP006
+2,CP006_12m,Dengue virus;HIV;Immunization,2,CP006
+2,CP006_12m,HIV,41,CP006
+2,CP006_12m,HIV;Immunization,3,CP006
+2,CP006_12m,HIV;Influenza;InfluenzaA,1,CP006
+2,CP006_12m,HIV;Neoantigen;Neoantigen,1,CP006
+2,CP006_12m,HIV;Systemic lupus erythematosus,6,CP006
+2,CP006_24m,CMV;HIV;SARS-CoV-2,1,CP006
+2,CP006_24m,HIV,35,CP006
+2,CP006_24m,HIV;Immunization,1,CP006
+2,CP006_24m,HIV;Necrotizing Vasculitis,1,CP006
+2,CP006_24m,HIV;Systemic lupus erythematosus,7,CP006
+2,CP006_entry,CMV;HIV;Influenza,3,CP006
+2,CP006_entry,CMV;HIV;M.tuberculosis,1,CP006
+2,CP006_entry,Dengue virus;HIV;Immunization,4,CP006
+2,CP006_entry,EBV;HIV;SelfAg,2,CP006
+2,CP006_entry,HIV,96,CP006
+2,CP006_entry,HIV;Immunization,2,CP006
+2,CP006_entry,HIV;Immunization;Influenza,2,CP006
+2,CP006_entry,HIV;Influenza,1,CP006
+2,CP006_entry,HIV;Influenza;InfluenzaA,3,CP006
+2,CP006_entry,HIV;Systemic lupus erythematosus,8,CP006
+2,CP013_12m,CMV;HIV;Influenza,1,CP013
+2,CP013_12m,Dengue virus;HIV;Immunization,1,CP013
+2,CP013_12m,HIV,38,CP013
+2,CP013_12m,HIV;Immunization,1,CP013
+2,CP013_12m,HIV;Influenza;InfluenzaA,2,CP013
+2,CP013_12m,HIV;M.tuberculosis,1,CP013
+2,CP013_1m,CMV;HIV,1,CP013
+2,CP013_1m,CMV;HIV;M.tuberculosis,1,CP013
+2,CP013_1m,CMV;HIV;SARS-CoV-2,1,CP013
+2,CP013_1m,Dengue virus;HIV;Immunization,2,CP013
+2,CP013_1m,HIV,67,CP013
+2,CP013_1m,HIV;Influenza,1,CP013
+2,CP013_1m,HIV;Influenza;InfluenzaA,1,CP013
+2,CP013_1m,HIV;InfluenzaA,1,CP013
+2,CP013_1m,HIV;Necrotizing Vasculitis,1,CP013
+2,CP013_1m,HIV;Systemic lupus erythematosus,4,CP013
+2,CP013_24m,Dengue virus;HIV;Immunization,1,CP013
+2,CP013_24m,HIV,31,CP013
+2,CP013_24m,HIV;Influenza,1,CP013
+2,CP013_24m,HIV;InfluenzaA,1,CP013
+2,CP013_24m,HIV;M.tuberculosis,3,CP013
+2,CP013_24m,HIV;Necrotizing Vasculitis,2,CP013
+2,CP013_24m,HIV;Systemic lupus erythematosus,2,CP013
+2,CP013_entry,Allergy;HIV;M.tuberculosis,1,CP013
+2,CP013_entry,CMV;EBV;HIV,1,CP013
+2,CP013_entry,CMV;HIV,1,CP013
+2,CP013_entry,CMV;HIV;Influenza,3,CP013
+2,CP013_entry,CMV;HIV;M.tuberculosis,2,CP013
+2,CP013_entry,Dengue virus;HIV;Immunization,7,CP013
+2,CP013_entry,HIV,83,CP013
+2,CP013_entry,HIV;Immunization,3,CP013
+2,CP013_entry,HIV;Influenza;InfluenzaA,2,CP013
+2,CP013_entry,HIV;InfluenzaA,1,CP013
+2,CP013_entry,HIV;M.tuberculosis,1,CP013
+2,CP013_entry,HIV;Necrotizing Vasculitis,1,CP013
+2,CP013_entry,HIV;Systemic lupus erythematosus,5,CP013
+2,CP018_42m,CMV;HIV;M.tuberculosis,1,CP018
+2,CP018_42m,Dengue virus;HIV;Immunization,3,CP018
+2,CP018_42m,HIV,37,CP018
+2,CP018_42m,HIV;Immunization,1,CP018
+2,CP018_42m,HIV;Influenza;InfluenzaA,2,CP018
+2,CP018_24m,CMV;HIV;M.tuberculosis,1,CP018
+2,CP018_24m,CMV;HIV;SARS-CoV-2,1,CP018
+2,CP018_24m,Dengue virus;HIV;Immunization,2,CP018
+2,CP018_24m,HIV,17,CP018
+2,CP018_24m,HIV;Influenza;InfluenzaA,2,CP018
+2,CP018_24m,HIV;Necrotizing Vasculitis,1,CP018
+2,CP018_24m,HIV;Systemic lupus erythematosus,1,CP018
+2,CP018_entry,Allergy;HIV;M.tuberculosis,1,CP018
+2,CP018_entry,CMV;HIV,3,CP018
+2,CP018_entry,CMV;HIV;Influenza,2,CP018
+2,CP018_entry,CMV;HIV;M.tuberculosis,3,CP018
+2,CP018_entry,Dengue virus;HIV;Immunization,8,CP018
+2,CP018_entry,HIV,118,CP018
+2,CP018_entry,HIV;Immunization,3,CP018
+2,CP018_entry,HIV;Immunization;Influenza,1,CP018
+2,CP018_entry,HIV;Influenza;InfluenzaA,6,CP018
+2,CP018_entry,HIV;InfluenzaA,1,CP018
+2,CP018_entry,HIV;M.tuberculosis,2,CP018
+2,CP018_entry,HIV;Necrotizing Vasculitis,4,CP018
+2,CP018_entry,HIV;Systemic lupus erythematosus,2,CP018
+2,CP020_1m,CMV;HIV,1,CP020
+2,CP020_1m,CMV;HIV;Influenza,1,CP020
+2,CP020_1m,CMV;HIV;M.tuberculosis,2,CP020
+2,CP020_1m,CMV;HIV;SARS-CoV-2,1,CP020
+2,CP020_1m,HIV,28,CP020
+2,CP020_1m,HIV;Immunization,1,CP020
+2,CP020_1m,HIV;Influenza,2,CP020
+2,CP020_1m,HIV;Influenza;InfluenzaA,1,CP020
+2,CP020_1m,HIV;Necrotizing Vasculitis,1,CP020
+2,CP020_1m,HIV;Systemic lupus erythematosus,6,CP020
+2,CP020_12m,CMV;HIV,8,CP020
+2,CP020_12m,CMV;HIV;M.tuberculosis,1,CP020
+2,CP020_12m,HIV,7,CP020
+2,CP020_12m,HIV;Necrotizing Vasculitis,2,CP020
+2,CP020_12m,HIV;Systemic lupus erythematosus,13,CP020
+2,CP020_44m,CMV;HIV,2,CP020
+2,CP020_44m,Dengue virus;HIV;Immunization,1,CP020
+2,CP020_44m,HIV,15,CP020
+2,CP020_44m,HIV;Influenza;InfluenzaA,1,CP020
+2,CP020_44m,HIV;Systemic lupus erythematosus,7,CP020
