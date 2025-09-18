@@ -6,7 +6,7 @@ library(dplyr)
 library(readr)
 library(lme4)
 library(lmerTest)
-
+library(SeuratExtend)
 
 # -----------------------------
 # Paths & object
@@ -897,294 +897,180 @@ run_stats_for_comparison(
   force_plot_test_mode = "auto"
 )
 
+
+
+
+##############################3 PLOTS - ANNOTATION ############################
+setwd('~/Documents/CD8_Longitudinal/Annotation/TARA_ALL/Cluster_Plot')
+
+
+
+# By Condition
+p1 <- DimPlot2(
+  TARA_ALL,
+  reduction = "wnn.umap",
+  group.by = "Manual_Annotation",
+  split.by = 'Condition',
+  label.color = "black",
+  cols = 'default',
+  label.size = 3.5,
+  pt.size = 1
+) + ggtitle("TARA_ALL: HIV Status")
+
+p1
+ggsave(
+  filename = "TARA_Annotated_HIV_Status.png",
+  plot = p1,
+  width = 19,
+  height = 8,
+  dpi = 300,
+  bg = "white"
 )
 
-############### DEBUGGING ##########
-# Quick p-value sanity check (no plotting)
-# - obj: a comparison object (e.g., TARA_pre, TARA_hei_all, etc.)
-# - module_field: e.g., "MS_CD8_Effector"; if NULL, it auto-picks the first MS_ column
-# - test: "mixed", "paired", or "unpaired"
-# - covars: only used for mixed (e.g., covars = c("Age"))
-quick_pval_check <- function(obj,
-                             module_field = NULL,
-                             test = c("mixed","paired","unpaired"),
-                             cluster_col = "Manual_Annotation",
-                             group_col   = "Comparison_Group",
-                             pid_col     = "PID",
-                             covars      = NULL,
-                             top_k_clusters = 5) {
-  test <- match.arg(test)
-  
-  # pick a module if not provided
-  if (is.null(module_field)) {
-    ms <- grep("^MS_", colnames(obj@meta.data), value = TRUE)
-    if (length(ms) == 0) stop("No MS_* columns found. Run add_all_module_scores() first.")
-    module_field <- ms[1]
-  }
-  
-  # confirm two groups
-  grps <- sort(unique(obj@meta.data[[group_col]][!is.na(obj@meta.data[[group_col]])]))
-  if (length(grps) != 2) stop("Need exactly two groups in this subset; found: ", paste(grps, collapse=", "))
-  groupA <- grps[1]; groupB <- grps[2]
-  
-  # aggregate to PID x cluster x group
-  pm <- compute_pid_means(obj, module_field, cluster_col, group_col, pid_col)
-  
-  # pick top K clusters by N
-  top_clusters <- pm %>% dplyr::count(Cluster, sort = TRUE) %>% dplyr::slice_head(n = top_k_clusters) %>% dplyr::pull(Cluster)
-  
-  message("Module: ", module_field, " | Groups: ", groupA, " vs ", groupB,
-          " | Test: ", test, if (exists("has_lmerTest")) paste0(" | has_lmerTest=", has_lmerTest) else "")
-  
-  out <- lapply(top_clusters, function(cl) {
-    pmc <- pm %>% dplyr::filter(Cluster == cl)
-    
-    # Run selected test
-    res <- switch(test,
-                  mixed    = analyze_mixed (pmc, groupA, groupB, covars = covars),
-                  paired   = analyze_paired(pmc, groupA, groupB),
-                  unpaired = analyze_unpaired(pmc, groupA, groupB)
-    )
-    
-    tibble::tibble(
-      cluster   = cl,
-      test      = res$test[1],
-      n_groupA  = res$n_groupA[1],
-      n_groupB  = res$n_groupB[1],
-      p_value   = res$p_value[1],
-      estimate  = res$estimate[1],
-      note      = if ("notes" %in% names(res)) res$notes[1] else NA_character_
-    )
-  })
-  
-  dplyr::bind_rows(out)
-}
-# Optional but recommended:
-# install.packages("lmerTest"); library(lmerTest)
+ClusterDistrBar(TARA_ALL$Condition, TARA_ALL$Manual_Annotation, cols = "default", flip = FALSE, border = "black") +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_HIV_Status_Cluster_Distribution_Percent.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
 
-debug_mixed_one <- function(obj,
-                            module_field = "MS_CD8_Effector",
-                            cluster_name = NULL,
-                            cluster_col = "Manual_Annotation",
-                            group_col   = "Comparison_Group",
-                            pid_col     = "PID") {
-  
-  # 1) Figure out the two groups and compute PID×cluster×group means
-  grps <- obj@meta.data[[group_col]]
-  grps <- sort(unique(grps[!is.na(grps)]))
-  if (length(grps) != 2) stop("Need exactly two groups in this subset; found: ", paste(grps, collapse=", "))
-  groupA <- grps[1]; groupB <- grps[2]
-  
-  pm <- compute_pid_means(obj, module_field, cluster_col, group_col, pid_col)  # your existing helper
-  
-  # 2) Pick cluster
-  if (is.null(cluster_name)) {
-    cluster_name <- pm %>% dplyr::count(Cluster, sort = TRUE) %>% dplyr::slice_head(n = 1) %>% dplyr::pull(Cluster)
-  }
-  df <- pm %>% dplyr::filter(Cluster == !!cluster_name)
-  
-  # 3) Basic diagnostics
-  message("=== DEBUG MIXED ===")
-  message("Module: ", module_field)
-  message("Comparison groups: ", groupA, " vs ", groupB)
-  message("Cluster: ", cluster_name)
-  message("Rows: ", nrow(df), " | PIDs: ", length(unique(df$PID)))
-  print(df %>% dplyr::count(Group, name="n_by_group"))
-  
-  # Factor with explicit order
-  df$Group <- factor(df$Group, levels = c(groupA, groupB))
-  
-  # 4) Try to fit the mixed model; show real error if it fails
-  fml <- as.formula(Score ~ Group + (1|PID))
-  message("Formula: ", deparse(fml))
-  
-  fit_full <- tryCatch({
-    if (exists("has_lmerTest") && isTRUE(has_lmerTest)) {
-      lmerTest::lmer(fml, data = df, REML = FALSE)
-    } else {
-      lme4::lmer(fml, data = df, REML = FALSE,
-                 control = lme4::lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-    }
-  }, error = function(e) e)
-  
-  if (inherits(fit_full, "error")) {
-    message("lmer ERROR: ", conditionMessage(fit_full))
-    return(invisible(
-      tibble::tibble(cluster = cluster_name,
-                     test = "mixed_effects",
-                     n_groupA = sum(df$Group == groupA),
-                     n_groupB = sum(df$Group == groupB),
-                     p_value = NA_real_,
-                     estimate = NA_real_,
-                     note = paste("lmer error:", conditionMessage(fit_full)))
-    ))
-  }
-  
-  # 5) Extract estimate + p-value (Satterthwaite if available, else LRT)
-  coef_name <- paste0("Group", groupB)
-  est <- NA_real_; se <- NA_real_; pval <- NA_real_; stat <- NA_real_; label <- "mixed_effects"
-  
-  if (exists("has_lmerTest") && isTRUE(has_lmerTest)) {
-    sm <- summary(fit_full); coefs <- as.data.frame(sm$coefficients)
-    if (coef_name %in% rownames(coefs)) {
-      est  <- coefs[coef_name, "Estimate"]; se <- coefs[coef_name, "Std. Error"]
-      stat <- coefs[coef_name, "t value"];   pval <- coefs[coef_name, "Pr(>|t|)"]
-      label <- "mixed_effects(Satt)"
-    } else {
-      message("Coefficient not found in summary; falling back to LRT.")
-    }
-  }
-  
-  if (is.na(pval)) {
-    # LRT fallback
-    fit_red <- tryCatch(lme4::lmer(update(fml, . ~ . - Group), data = df, REML = FALSE), error = function(e) e)
-    if (!inherits(fit_red, "error")) {
-      aa <- tryCatch(anova(fit_red, fit_full, test = "Chisq"), error = function(e) e)
-      if (!inherits(aa, "error") && nrow(aa) >= 2) {
-        pval <- suppressWarnings(aa$`Pr(>Chisq)`[2])
-        stat <- suppressWarnings(aa$Chisq[2])
-        label <- "mixed_effects(LRT)"
-      } else {
-        message("LRT failed: ", if (inherits(aa, "error")) conditionMessage(aa) else "unknown")
-      }
-    } else {
-      message("Reduced model failed: ", conditionMessage(fit_red))
-    }
-  }
-  
-  # 6) Return a small tibble
-  tibble::tibble(
-    cluster  = cluster_name,
-    test     = label,
-    n_groupA = sum(df$Group == groupA),
-    n_groupB = sum(df$Group == groupB),
-    p_value  = pval,
-    estimate = est
-  )
-}
-# Largest cluster in the comparison:
-debug_mixed_one(TARA_hei_all, module_field = "MS_CD8_Effector")
+ClusterDistrBar(TARA_ALL$Condition, TARA_ALL$Manual_Annotation, cols = "default", flip = FALSE, border = "black",percent=F) +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_HIV_Status_Cluster_Distribution_Raw.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
 
-# Or specify a particular cluster name exactly as it appears in your meta:
-library(lme4)
-# If you want Satterthwaite p-values (instead of LRT), also load:
-# library(lmerTest)
+# By Sample
+p2 <- DimPlot2(
+  TARA_ALL,
+  reduction = "wnn.umap",
+  group.by = "Manual_Annotation",
+  split.by = 'orig.ident',
+  label.color = "black",
+  cols = 'default',
+  label.size = 3.5,
+  pt.size = 1
+) + ggtitle("TARA_ALL: By Sample")
 
-# Pick one module and one cluster from your object
-module_field <- "MS_CD8_Effector"
-cluster_name <- "0: CD4 T cell"
 
-# Aggregate PID × cluster × group means
-pm <- compute_pid_means(TARA_hei_all,
-                        module_field = module_field,
-                        cluster_col  = "Manual_Annotation",
-                        group_col    = "Comparison_Group",
-                        pid_col      = "PID")
+ggsave(
+  filename = "TARA_Annotated_By_Sample.png",
+  plot = p2,
+  width = 25,
+  height = 23,
+  dpi = 300,
+  bg = "white"
+)
 
-# Subset to one cluster
-df <- pm %>% dplyr::filter(Cluster == cluster_name)
+ClusterDistrBar(TARA_ALL$orig.ident, TARA_ALL$Manual_Annotation, cols = "default", flip = FALSE, border = "black") +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_Sample_Cluster_Distribution_Percent.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
 
-# Make sure Group is a factor with consistent order
-grps <- sort(unique(df$Group))
-groupA <- grps[1]; groupB <- grps[2]
-df <- df %>% dplyr::mutate(Group = factor(Group, levels = c(groupA, groupB)))
+ClusterDistrBar(TARA_ALL$orig.ident, TARA_ALL$Manual_Annotation, cols = "default", flip = FALSE, border = "black",percent=F) +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_Sample_Cluster_Distribution_Raw.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
+# By Viral Load
+p3 <- DimPlot2(
+  TARA_entry,
+  reduction = "wnn.umap",
+  group.by = "Manual_Annotation",
+  split.by = 'Viral_Load_Category',
+  label.color = "black",
+  cols = 'default',
+  label.size = 3.5,
+  pt.size = 1
+) + ggtitle("TARA_ALL: By Viral Load (Entry)")
 
-# Build formula
-fml <- Score ~ Group + (1 | PID)
 
-# ---- Run mixed model ----
-fit_full <- lmer(fml, data = df, REML = FALSE)
+ggsave(
+  filename = "TARA_Annotated_By_Viral_Load_Entry.png",
+  plot = p3,
+  width = 17,
+  height = 8,
+  dpi = 300,
+  bg = "white"
+)
 
-# ---- Likelihood ratio test against reduced model ----
-fit_null <- lmer(Score ~ 1 + (1 | PID), data = df, REML = FALSE)
-lrt <- anova(fit_null, fit_full)
+ClusterDistrBar(TARA_entry$Viral_Load_Category, TARA_entry$Manual_Annotation, cols = "default", flip = FALSE, border = "black") +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_Entry_Viral_Load__Cluster_Distribution_Percent.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
 
-# ---- Results ----
-print(summary(fit_full))   # fixed effect estimates
-print(lrt)                 # LRT p-value
-lrt$`Pr(>Chisq)`
-lrt$`Pr(>Chisq)`[2]
-# Extract p-value
-lrt_p <- lrt$`Pr(>Chisq)`[2]
-cat("Cluster:", cluster_name, "| LRT p-value:", lrt_p, "\n")
+ClusterDistrBar(TARA_entry$Viral_Load_Category, TARA_entry$Manual_Annotation, cols = "default", flip = FALSE, border = "black",percent=F) +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_Entry_Viral_Load_Cluster_Distribution_Raw.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
 
-gnitude = β(GroupB) on score scale; controls for repeated PID
-analyze_mixed <- function(pid_means, groupA, groupB, covars = NULL) {
-  df <- pid_means %>% dplyr::mutate(Group = factor(Group, levels = c(groupA, groupB)))
-  rhs <- c("Group", covars)
-  fml <- as.formula(paste("Score ~", paste(rhs, collapse = " + "), "+ (1|PID)"))
-  
-  # Fit full model
-  fit_full <- try({
-    if (has_lmerTest) lmerTest::lmer(fml, data = df, REML = FALSE) else lme4::lmer(fml, data = df, REML = FALSE)
-  }, silent = TRUE)
-  
-  if (inherits(fit_full, "try-error")) {
-    return(tibble::tibble(
-      test="mixed_effects", n_total=nrow(df),
-      n_groupA=sum(df$Group==groupA), n_groupB=sum(df$Group==groupB),
-      n_paired=NA_integer_, estimate=NA_real_, estimate_type="beta_GroupB",
-      ci_lower=NA_real_, ci_upper=NA_real_, statistic=NA_real_, p_value=NA_real_,
-      notes="Mixed model failed to fit"
-    ))
-  }
-  
-  coef_name <- paste0("Group", groupB)
-  
-  # Extract estimate + Wald CI
-  if (has_lmerTest) {
-    sm <- summary(fit_full); coefs <- as.data.frame(sm$coefficients)
-    if (!(coef_name %in% rownames(coefs))) {
-      est <- NA_real_; se <- NA_real_; stat <- NA_real_; p_satt <- NA_real_
-    } else {
-      est <- coefs[coef_name, "Estimate"]
-      se  <- coefs[coef_name, "Std. Error"]
-      stat <- coefs[coef_name, "t value"]
-      p_satt <- coefs[coef_name, "Pr(>|t|)"]
-    }
-  } else {
-    cf <- lme4::fixef(fit_full)
-    est <- if (coef_name %in% names(cf)) unname(cf[coef_name]) else NA_real_
-    V <- try(as.matrix(vcov(fit_full)), silent = TRUE)
-    se <- if (!inherits(V, "try-error") && !is.null(colnames(V)) && coef_name %in% colnames(V)) sqrt(V[coef_name, coef_name]) else NA_real_
-    stat <- NA_real_; p_satt <- NA_real_
-  }
-  ci <- if (!is.na(se)) est + c(-1, 1) * 1.96 * se else c(NA_real_, NA_real_)
-  
-  # P-value: Satterthwaite if available; otherwise LRT (full vs reduced)
-  if (!is.na(p_satt)) {
-    pval <- p_satt
-    test_label <- "mixed_effects(Satt)"
-    stat_out <- stat
-  } else {
-    fml_reduced <- update(fml, . ~ . - Group)
-    fit_reduced <- try(lme4::lmer(fml_reduced, data = df, REML = FALSE), silent = TRUE)
-    if (inherits(fit_reduced, "try-error")) {
-      pval <- NA_real_; test_label <- "mixed_effects"; stat_out <- NA_real_
-    } else {
-      a <- try(anova(fit_reduced, fit_full, test = "Chisq"), silent = TRUE)
-      if (inherits(a, "try-error") || nrow(a) < 2) {
-        pval <- NA_real_; test_label <- "mixed_effects"; stat_out <- NA_real_
-      } else {
-        pval <- suppressWarnings(a$`Pr(>Chisq)`[2])
-        stat_out <- suppressWarnings(a$Chisq[2])
-        test_label <- "mixed_effects(LRT)"
-      }
-    }
-  }
-  
-  tibble::tibble(
-    test          = test_label,
-    n_total       = nrow(df),
-    n_groupA      = sum(df$Group == groupA),
-    n_groupB      = sum(df$Group == groupB),
-    n_paired      = NA_integer_,just run
-    estimate      = est,
-    estimate_type = "beta_GroupB",
-    ci_lower      = ci[1],
-    ci_upper      = ci[2],
-    statistic     = stat_out,
-    p_value       = pval,
-    notes         = ifelse(has_lmerTest, NA_character_, "lmerTest not loaded; LRT p-value used")
-  )
-}
+
+# By ART Status
+p4 <- DimPlot2(
+  TARA_HEI,
+  reduction = "wnn.umap",
+  group.by = "Manual_Annotation",
+  split.by = 'Timepoint_Group',
+  label.color = "black",
+  cols = 'default',
+  label.size = 3.5,
+  pt.size = 1
+) + ggtitle("TARA_ALL: By Sample")
+
+
+ggsave(
+  filename = "TARA_Annotated_By_ART_Status.png",
+  plot = p4,
+  width = 17,
+  height = 8,
+  dpi = 300,
+  bg = "white"
+)
+
+ClusterDistrBar(TARA_HEI$Timepoint_Group, TARA_HEI$Manual_Annotation, cols = "default", flip = FALSE, border = "black") +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_HEI_ART_Status_Cluster_Distribution_Percent.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
+
+ClusterDistrBar(TARA_HEI$Timepoint_Group, TARA_HEI$Manual_Annotation, cols = "default", flip = FALSE, border = "black",percent=F) +
+  theme(axis.title.x = element_blank())
+ggsave(
+  filename = "TARA_HEI_ART_Status_Cluster_Distribution_Raw.png",
+  width = 25,
+  height = 14,
+  dpi = 300,
+  bg = "white"
+)
+
+################## DGE VENN DIAGRAMS #################################
