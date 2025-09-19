@@ -390,6 +390,101 @@ plot_module_score_unpaired <- function(seurat_obj, group_var, score_var = "IFN_s
   ggsave(output_path, plot = gg, width = 20, height = 18, dpi = 300, bg='white')
 }
 
+plot_module_score_unpaired <- function(
+    seurat_obj, group_var, score_var = "IFN_score1",
+    output_path, plot_title,
+    annotation_var = "Manual_Annotation",
+    alpha = 0.05,
+    group_a = NULL, group_b = NULL,   # ⬅️ add these
+    border_size = 1.2
+){
+  meta <- seurat_obj@meta.data
+  needed <- c(group_var, score_var, annotation_var)
+  meta <- meta[stats::complete.cases(meta[, needed, drop = FALSE]), needed, drop = FALSE]
+  
+  if (nrow(meta) == 0L) stop("No complete rows after filtering NA in group/score/annotation.")
+  
+  # ... after creating `meta` and removing NAs ...
+  if (!is.null(group_a) && !is.null(group_b)) {
+    # keep only A/B (optional—remove this line if you want to keep other groups)
+    meta <- meta[meta[[group_var]] %in% c(group_a, group_b), , drop = FALSE]
+    
+    # set order so A is first, B second (affects box order and stats)
+    meta[[group_var]] <- factor(meta[[group_var]], levels = c(group_a, group_b))
+  } else {
+    # fallback: infer the first two levels present
+    lv <- unique(as.character(meta[[group_var]]))
+    if (length(lv) >= 2) {
+      group_a <- lv[1]; group_b <- lv[2]
+      meta <- meta[meta[[group_var]] %in% c(group_a, group_b), , drop = FALSE]
+      meta[[group_var]] <- factor(meta[[group_var]], levels = c(group_a, group_b))
+    }
+  }
+  
+  # Per-facet p-value (BH) and direction by median(GroupA − GroupB)
+  facet_list <- split(meta, meta[[annotation_var]])
+  stats_list <- lapply(names(facet_list), function(nm){
+    df <- facet_list[[nm]]
+    lv <- unique(df[[group_var]])
+    # Require exactly 2 groups with data
+    if (length(lv) != 2 || any(table(df[[group_var]]) == 0)) {
+      return(data.frame(facet = nm, p_raw = NA_real_, med_A = NA_real_, med_B = NA_real_))
+    }
+    other <- setdiff(lv, group_a)
+    if (length(other) == 0) {
+      other <- lv[lv != group_a]
+      if (length(other) == 0) return(data.frame(facet = nm, p_raw = NA_real_, med_A = NA_real_, med_B = NA_real_))
+    }
+    a_vals <- df[df[[group_var]] == group_a, score_var]
+    b_vals <- df[df[[group_var]] == group_b, score_var]
+    p_raw  <- suppressWarnings(stats::wilcox.test(a_vals, b_vals)$p.value)
+    med_A  <- stats::median(a_vals, na.rm = TRUE)
+    med_B  <- stats::median(b_vals, na.rm = TRUE)
+    data.frame(facet = nm, p_raw = p_raw, med_A = med_A, med_B = med_B)
+  })
+  stats_df <- do.call(rbind, stats_list)
+  stats_df$p_adj <- ifelse(is.na(stats_df$p_raw), NA_real_, p.adjust(stats_df$p_raw, method = "BH"))
+  stats_df$dir  <- sign(stats_df$med_A - stats_df$med_B)
+  stats_df$sig  <- !is.na(stats_df$p_adj) & stats_df$p_adj < alpha
+  stats_df$border_col <- ifelse(
+    stats_df$sig & stats_df$dir > 0, "#19a974",   # green (higher in Group A)
+    ifelse(stats_df$sig & stats_df$dir < 0, "#e74c3c", NA) # red (higher in Group B), else none
+  )
+  
+  # One rectangle per facet to draw the border (no fill, just color)
+  border_df <- data.frame(
+    xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = Inf,
+    border_col = stats_df$border_col
+  )
+  # Attach facet key with the exact column name used in faceting
+  border_df[[annotation_var]] <- stats_df$facet
+  
+  # Build your original plot unchanged
+  gg <- ggplot(meta, aes_string(x = group_var, y = score_var, fill = group_var)) +
+    geom_boxplot(outlier.shape = NA, alpha = 0.85) +
+    geom_jitter(width = 0.2, size = 0.4, alpha = 0.3) +
+    ggpubr::stat_compare_means(method = "wilcox.test", label = "p.signif",hjust=-1.5) +
+    facet_wrap(stats::as.formula(paste("~", annotation_var)), scales = "free_y") +
+    scale_y_continuous(expand = expansion(mult = c(0.02, 0.10))) +  # headroom so label isn't cramped
+    theme_minimal(base_size = 16) +
+    xlab("") + ylab("IFN Module Score") +
+    ggtitle(plot_title) +
+    theme(
+      strip.text = element_text(size = 12, face = "bold"),
+      plot.margin = margin(10, 10, 15, 10)
+    ) +
+    # Draw the per-facet border LAST so it sits on top of the panel
+    geom_rect(
+      data = border_df,
+      aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax, colour = border_col),
+      fill = NA, linewidth = border_size, inherit.aes = FALSE, show.legend = FALSE
+    ) +
+    scale_colour_identity()
+  
+  ggsave(output_path, plot = gg, width = 20, height = 18, dpi = 300, bg = "white")
+  
+  invisible(stats_df)  # returns the table of p_adj/medians/border colors
+}
 
 # Ensure PID is extracted
 TARA_ALL$PID <- sub("_.*", "", TARA_ALL$orig.ident)
@@ -405,10 +500,12 @@ subset1 <- subset(TARA_ALL, (Condition == "HEI" & Age <= 2) | Condition == "HEU"
 
 plot_module_score_unpaired(
   seurat_obj = subset1,
-  group_var = "Condition",
+  group_var  = "Condition",
   output_path = file.path(module_score_dir, "HEI_vs_HEU_IFNscore.png"),
-  plot_title = "IFN Pathway Activity: HEI (Entry, <2 Months) vs HEU"
+  plot_title  = "IFN Pathway Activity: HEI (Entry, <2 Months) vs HEU",
+  group_a = "HEI", group_b = "HEU"   # ⬅️ this sets A and B
 )
+
 
 ## ------------------------
 ## 2. HEU vs HUU
@@ -419,7 +516,8 @@ plot_module_score_unpaired(
   seurat_obj = subset2,
   group_var = "Condition",
   output_path = file.path(module_score_dir, "HEU_vs_HUU_IFNscore.png"),
-  plot_title = "IFN Pathway Activity: HEU vs HUU"
+  plot_title = "IFN Pathway Activity: HEU vs HUU",
+  group_a = "HEU", group_b = "HUU"   # ⬅️ this sets A and B
 )
 
 ## ------------------------
@@ -431,7 +529,8 @@ plot_module_score_unpaired(
   seurat_obj = subset3,
   group_var = "VL_Group",
   output_path = file.path(module_score_dir, "HighVL_vs_LowVL_IFNscore.png"),
-  plot_title = "IFN Pathway Activity: High vs Low Viral Load (HEI, Entry)"
+  plot_title = "IFN Pathway Activity: High vs Low Viral Load (HEI, Entry)",
+  group_a = "High", group_b = "Low" 
 )
 
 ## ------------------------
@@ -449,7 +548,8 @@ plot_module_score_unpaired(
   seurat_obj = subset4,
   group_var = "ART_Group",
   output_path = file.path(module_score_dir, "PreART_vs_PostART_IFNscore.png"),
-  plot_title = "IFN Pathway Activity: Pre vs Post ART"
+  plot_title = "IFN Pathway Activity: Pre vs Post ART",
+  group_a = "PostART_Suppressed", group_b = "PreART_Entry"
 )
 
 ## ------------------------
