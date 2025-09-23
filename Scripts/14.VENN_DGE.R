@@ -5,7 +5,7 @@ library(fs)
 library(stringr)
 library(eulerr)
 library(ggplot2)
-
+library(readr)
 ################## DGE VENN DIAGRAMS #################################
 
 
@@ -97,67 +97,158 @@ split_up_down <- function(df, padj_thr, lfc_thr) {
     arrange(padj, avg_log2FC)
   list(up = up, down = down)
 }
-
 # ---- 1) Venn: Post-ART Unsuppressed vs Pre-ART  vs  Post-ART Suppressed vs Pre-ART ----
+library(eulerr)
+library(ggplotify)
 
 unsup_dir <- input_dirs$PostART_Unsuppressed_vs_PreART
 supp_dir  <- input_dirs$PostART_Suppressed_vs_PreART
 
-unsup_list <- read_contrast_dir(unsup_dir)
-supp_list  <- read_contrast_dir(supp_dir)
+# Read all files
+unsup_files <- fs::dir_ls(unsup_dir, regexp = "\\.csv$", type = "file")
+supp_files  <- fs::dir_ls(supp_dir,  regexp = "\\.csv$", type = "file")
 
-venn_out_dir <- path(out_root, "Venn_PostART_vs_PreART")
-dir_create(c(venn_out_dir, path(venn_out_dir, "plots"), path(venn_out_dir, "tables")))
+# Map: file stem -> base cluster key (strip contrast suffix)
+base_key_unsup <- unsup_files %>%
+  path_file() %>% path_ext_remove() %>% 
+  str_remove("_PostART_Unsuppressed_vs_PreART$")
+base_key_supp  <- supp_files %>%
+  path_file() %>% path_ext_remove() %>% 
+  str_remove("_PostART_Suppressed_vs_PreART$")
 
-# Collect union of cluster labels from both contrasts
-clusters <- union(names(unsup_list), names(supp_list))
+# Build named lists of data frames keyed by base cluster
+unsup_list <- purrr::map(unsup_files, read_markers_csv) %>% rlang::set_names(base_key_unsup)
+supp_list  <- purrr::map(supp_files,  read_markers_csv) %>% rlang::set_names(base_key_supp)
 
-venn_counts <- tibble()
-venn_genes_long <- tibble()
+# Intersection of cluster keys present in BOTH contrasts
+clusters <- intersect(names(unsup_list), names(supp_list))
+
+venn_root <- fs::path(out_root, "Venn_PostART_vs_PreART")
+fs::dir_create(fs::path(venn_root, "_summary"))
+
+venn_counts <- tibble()         # summary counts (sig-based, for diagram)
+all_clusters_table <- tibble()  # big tidy table (presence-based membership)
 
 for (cl in clusters) {
   df_u <- unsup_list[[cl]]
   df_s <- supp_list[[cl]]
   
-  genes_u <- if (!is.null(df_u)) sig_genes(df_u, padj_thr, lfc_thr) else character(0)
-  genes_s <- if (!is.null(df_s)) sig_genes(df_s, padj_thr, lfc_thr) else character(0)
+  # ---------- Diagram sets (SIG genes only) ----------
+  genes_u_sig <- sig_genes(df_u, padj_thr, lfc_thr)
+  genes_s_sig <- sig_genes(df_s, padj_thr, lfc_thr)
   
-  # Venn plot (2-set)
-  lst <- list(Unsuppressed = genes_u, Suppressed = genes_s)
-  p <- ggVennDiagram(lst, label_alpha = 0) +
-    ggtitle(paste0("Cluster: ", cl, " | padj<", padj_thr, ", |log2FC|≥", lfc_thr))
-  ggsave(filename = path(venn_out_dir, "plots", paste0("Venn_", cl, ".png")),
-         plot = p, width = 6, height = 5, dpi = 300)
+  venn.list <- list(
+    "Post-ART Unsuppressed" = genes_u_sig,
+    "Post-ART Suppressed"   = genes_s_sig
+  )
   
-  # Counts
-  overlap <- intersect(genes_u, genes_s)
-  u_only  <- setdiff(genes_u, genes_s)
-  s_only  <- setdiff(genes_s, genes_u)
+  # counts for summary (diagram logic)
+  overlap_sig <- intersect(genes_u_sig, genes_s_sig)
+  u_only_sig  <- setdiff(genes_u_sig, genes_s_sig)
+  s_only_sig  <- setdiff(genes_s_sig, genes_u_sig)
   
   venn_counts <- bind_rows(
     venn_counts,
     tibble(
-      cluster = cl,
-      n_unsuppressed = length(genes_u),
-      n_suppressed   = length(genes_s),
-      n_overlap      = length(overlap),
-      n_unsup_only   = length(u_only),
-      n_supp_only    = length(s_only)
+      cluster           = cl,
+      n_unsuppressed    = length(genes_u_sig),
+      n_suppressed      = length(genes_s_sig),
+      n_overlap         = length(overlap_sig),
+      n_unsup_only      = length(u_only_sig),
+      n_supp_only       = length(s_only_sig)
     )
   )
   
-  # Long table of genes
-  venn_genes_long <- bind_rows(
-    venn_genes_long,
-    tibble(cluster = cl, set = "Unsuppressed_only", gene = u_only),
-    tibble(cluster = cl, set = "Suppressed_only",   gene = s_only),
-    tibble(cluster = cl, set = "Overlap",           gene = overlap)
+  # ---------- Plot with eulerr ----------
+  fit <- euler(venn.list, shape = "circle")
+  # Pretty cluster name & full title with both thresholds
+  pretty_cl <- gsub("_", " ", cl)  # "0_CD4_T_cell" -> "0 CD4 T cell"
+  title_txt <- sprintf("Cluster: %s  (padj < %s, |log2FC| \u2265 %s)",
+                       pretty_cl,
+                       format(padj_thr, trim = TRUE, scientific = FALSE),
+                       format(lfc_thr, trim = TRUE, scientific = FALSE))
+  
+  gp <- plot(
+    fit,
+    fills = list(
+      fill  = c("Post-ART Unsuppressed" = "#54928D",
+                "Post-ART Suppressed"   = "#941C50"),
+      alpha = 0.90
+    ),
+    edges = list(col = "#0F172A", lwd = 1),
+    labels = FALSE,                                               # legend only
+    quantities = list(col = "black", font = 2, cex = 1.15),       # region counts
+    legend = TRUE
+  )
+  
+  p <- ggplotify::as_ggplot(gp) +
+    ggtitle(title_txt) +
+    theme_void(base_size = 12) +
+    theme(
+      plot.title      = element_text(hjust = 0.5, face = "bold"),
+      plot.margin     = margin(14, 22, 14, 22),
+      legend.position = "bottom"
+    )
+  
+  
+  # Per-cluster folder
+  cl_dir <- fs::path(venn_root, cl)
+  fs::dir_create(cl_dir)
+  
+  ggsave(fs::path(cl_dir, paste0("Venn_", cl, "_eulerr.png")),
+         p, width = 9, height = 5, dpi = 300)
+  
+  # ---------- Single tidy CSV per cluster (ALL genes; membership by PRESENCE) ----------
+  comb <- full_join(
+    df_u %>% select(gene, avg_log2FC_unsup = avg_log2FC, padj_unsup = padj),
+    df_s %>% select(gene, avg_log2FC_supp = avg_log2FC, padj_supp  = padj),
+    by = "gene"
+  ) %>%
+    mutate(
+      in_unsup = !is.na(padj_unsup) | !is.na(avg_log2FC_unsup),
+      in_supp  = !is.na(padj_supp)  | !is.na(avg_log2FC_supp),
+      set_membership = dplyr::case_when(
+        in_unsup & in_supp ~ "Overlap",
+        in_unsup & !in_supp ~ "Unsuppressed_only",
+        !in_unsup & in_supp ~ "Suppressed_only",
+        TRUE ~ NA_character_
+      ),
+      # keep optional significance flags (NOT used for membership)
+      sig_unsup = !is.na(padj_unsup) & padj_unsup < padj_thr &
+        !is.na(avg_log2FC_unsup) & abs(avg_log2FC_unsup) >= lfc_thr,
+      sig_supp  = !is.na(padj_supp)  & padj_supp  < padj_thr &
+        !is.na(avg_log2FC_supp)  & abs(avg_log2FC_supp)  >= lfc_thr
+    ) %>%
+    select(gene, set_membership, padj_unsup, padj_supp, avg_log2FC_unsup, avg_log2FC_supp,
+           sig_unsup, sig_supp)
+  
+  readr::write_csv(comb, fs::path(cl_dir, paste0("Venn_Table_", cl, ".csv")))
+  
+  # Also collect into one big table with a cluster column
+  all_clusters_table <- bind_rows(
+    all_clusters_table,
+    comb %>% mutate(cluster = cl, .before = 1)
   )
 }
 
-# Write Venn outputs
-write_csv(venn_counts,     path(venn_out_dir, "tables", "Venn_Counts_PostART_vs_PreART.csv"))
-write_csv(venn_genes_long, path(venn_out_dir, "tables", "Venn_GeneLists_PostART_vs_PreART.csv"))
+# ---------- Write summaries (robust) ----------
+summary_dir <- fs::path(venn_root, "_summary")
+
+# If a *file* named "_summary" exists, fail with a clear message
+if (fs::file_exists(summary_dir) && !fs::is_dir(summary_dir)) {
+  stop("A file named '_summary' exists at: ", summary_dir,
+       "\nPlease remove/rename it so I can create the summary folder.")
+}
+
+# Create the directory (recursively) if missing
+fs::dir_create(summary_dir, recurse = TRUE)
+
+# (Optional) sanity check + diagnostics if something goes wrong
+stopifnot(fs::dir_exists(summary_dir))
+
+# Now write safely
+readr::write_csv(venn_counts,      fs::path(summary_dir, "Venn_Counts.csv"))
+readr::write_csv(all_clusters_table, fs::path(summary_dir, "All_Genes_Table.csv"))
 
 # ---- 2) Up/Down counts for High VL vs Low VL (PreART and ALL) + gene tables ----
 
@@ -384,60 +475,73 @@ cat("Unsuppressed:", length(venn.list[[1]]),
     " | Overlap:", length(intersect(venn.list[[1]], venn.list[[2]])), "\n")
 
 # 3) Fit with circles (keeps them circular and side-by-side horizontally)
+pretty_cl <- gsub("_", " ", cl)  # "0_CD4_T_cell" -> "0 CD4 T cell"
+title_txt <- paste0("Cluster: ", pretty_cl, "  (padj <", padj_thr, ")")
 fit <- euler(venn.list, shape = "circle")
 
-# 4) Plot (nice flat colors, bold labels & counts)
 p <- plot(
   fit,
   fills = list(
-    fill  = c("Post-ART Unsuppressed" = "#54928D",   # teal
-              "Post-ART Suppressed"   = "#941C50"),  # wine
+    fill  = c("Post-ART Unsuppressed" = "#54928D",
+              "Post-ART Suppressed"   = "#941C50"),
     alpha = 0.90
   ),
   edges = list(col = "#0F172A", lwd = 1),
-  labels = list(col = "black", font = 2, cex = 1.2),        # set names
-  quantities = list(col = "black", font = 2, cex = 1.15),   # region counts
-  legend = T,
-) 
+  labels = FALSE,  # only legend labels
+  quantities = list(col = "black", font = 2, cex = 1.15),
+  legend = TRUE
+)
+
 p <- as_ggplot(p)
 
-p +
-  ggtitle(paste0("Cluster: ", cl, "  (padj<", padj_thr, ", |log2FC|≥", lfc_thr, ")")) +
+p <- p +
+  ggtitle(title_txt) +
   theme_void(base_size = 12) +
   theme(
-    plot.title  = element_text(hjust = 0.5, face = "bold"),
-    plot.margin = margin(14, 22, 14, 22)  # prevents clipping
+    plot.title      = element_text(hjust = 0.5, face = "bold"),
+    plot.margin     = margin(14, 22, 14, 22),
+    legend.position = "bottom"
   )
 
 p
-# 5) Save wide so it reads HORIZONTALLY (no stretching)
+
 ggsave(file.path(out_dir, paste0("Venn_", cl, "_eulerr.png")),
        p, width = 9, height = 5, dpi = 300)
 
+
 # ========= 8) Write tiny tables for this single cluster =========
-unsup_tbl <- unsup %>% filter(gene %in% unsup_genes) %>% select(gene, avg_log2FC, padj)
-supp_tbl  <- supp  %>% filter(gene %in% supp_genes)  %>% select(gene, avg_log2FC, padj)
+# ---- One tidy CSV with ALL genes present in either file; membership by presence, NOT significance ----
+comb <- full_join(
+  unsup %>% select(gene, avg_log2FC_unsup = avg_log2FC, padj_unsup = padj),
+  supp  %>% select(gene, avg_log2FC_supp = avg_log2FC, padj_supp  = padj),
+  by = "gene"
+) %>%
+  mutate(
+    in_unsup = !is.na(padj_unsup) | !is.na(avg_log2FC_unsup),
+    in_supp  = !is.na(padj_supp)  | !is.na(avg_log2FC_supp),
+    set_membership = case_when(
+      in_unsup & in_supp ~ "Overlap",
+      in_unsup & !in_supp ~ "Unsuppressed_only",
+      !in_unsup & in_supp ~ "Suppressed_only",
+      TRUE ~ NA_character_  # should not really happen, but keeps it explicit
+    )
+  ) %>%
+  # (optional) keep sig flags too, purely informational (but NOT used for membership)
+  mutate(
+    sig_unsup = !is.na(padj_unsup) & padj_unsup < padj_thr &
+      !is.na(avg_log2FC_unsup) & abs(avg_log2FC_unsup) >= lfc_thr,
+    sig_supp  = !is.na(padj_supp)  & padj_supp  < padj_thr &
+      !is.na(avg_log2FC_supp)  & abs(avg_log2FC_supp)  >= lfc_thr
+  ) %>%
+  arrange(factor(set_membership, levels = c("Overlap","Unsuppressed_only","Suppressed_only")),
+          coalesce(padj_unsup, Inf), coalesce(padj_supp, Inf))
 
-overlap_tbl <- unsup %>%
-  filter(gene %in% overlap_genes) %>%
-  select(gene, avg_log2FC, padj) %>%
-  rename(avg_log2FC_unsup = avg_log2FC, padj_unsup = padj) %>%
-  left_join(
-    supp %>% filter(gene %in% overlap_genes) %>% select(gene, avg_log2FC, padj) %>%
-      rename(avg_log2FC_supp = avg_log2FC, padj_supp = padj),
-    by = "gene"
-  )
+# minimal columns (you can drop the LFCs or sig flags if you don’t want them)
+one_csv <- comb %>%
+  select(gene, set_membership, padj_unsup, padj_supp, avg_log2FC_unsup, avg_log2FC_supp,
+         sig_unsup, sig_supp)
 
-unsup_only_tbl <- tibble(gene = unsup_only) %>%
-  left_join(unsup %>% select(gene, avg_log2FC, padj), by = "gene")
+readr::write_csv(one_csv, file.path(out_dir, paste0("Venn_Table_", cl, ".csv")))
 
-supp_only_tbl <- tibble(gene = supp_only) %>%
-  left_join(supp %>% select(gene, avg_log2FC, padj), by = "gene")
-
-readr::write_csv(unsup_tbl,     file.path(out_dir, paste0("UNSUPP_sig_", cl, ".csv")))
-readr::write_csv(supp_tbl,      file.path(out_dir, paste0("SUPP_sig_",   cl, ".csv")))
-readr::write_csv(overlap_tbl,   file.path(out_dir, paste0("OVERLAP_",    cl, ".csv")))
-readr::write_csv(unsup_only_tbl,file.path(out_dir, paste0("UNSUPP_only_",cl, ".csv")))
-readr::write_csv(supp_only_tbl, file.path(out_dir, paste0("SUPP_only_",  cl, ".csv")))
 
 cat("\nDone for one cluster. Files in: ", out_dir, "\n", sep = "")
