@@ -24,13 +24,3 @@ cluster,n_unsuppressed,n_suppressed,n_overlap,n_unsup_only,n_supp_only
 2_Na_ve_CD4_T_cell_1,1640,2479,1205,435,1274
 30_DN_T_cell_6,73,188,57,16,131
 31_B_cell,1,80,1,0,79
-32_Plasmablast,9,42,7,2,35
-33_pDC,0,77,0,0,77
-35_TNF_B_cell,5,0,0,5,0
-3_IL2RB_NK_cell,945,2590,811,134,1779
-4_IgD_IgM_B_cell,698,2405,520,178,1885
-5_Na_ve_CD4_T_cell_2,1575,2873,1278,297,1595
-6_Na_ve_CD8_T_cell,1253,1692,855,398,837
-7_Memory_CD4_T_cell,928,2790,746,182,2044
-8_CTL-like,1133,431,314,819,117
-9_TRDV1_CTL-like,276,680,211,65,469
