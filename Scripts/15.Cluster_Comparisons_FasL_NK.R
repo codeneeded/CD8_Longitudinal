@@ -317,35 +317,91 @@ run_de <- function(seurat_object, clusters, assay = "RNA", latent_var = "nCount_
 }
 write_de <- function(de_table, outdir, prefix) {
   dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
-  # Combined
-  write.csv(de_table, file.path(outdir, paste0(prefix, "_ALL.csv")))
-  # Per cluster
-  split(de_table, de_table$cluster) |>
-    lapply(function(df) {
-      write.csv(df, file.path(outdir, paste0(prefix, "_", make.names(unique(df$cluster)), ".csv")))
+  
+  # Preserve original rownames (which currently look like "<cluster>.<gene>")
+  rn <- rownames(de_table)
+  df <- de_table
+  df$._rn <- rn  # keep for debugging if needed
+  
+  # Vectorized extraction of gene by removing the "<cluster>." prefix ONLY if present
+  # Works even when cluster has spaces/colons/plus signs, and gene may contain dots.
+  gene <- ifelse(
+    startsWith(rn, paste0(df$cluster, ".")),
+    substring(rn, nchar(df$cluster) + 2L),  # +1 for the dot and +1 for 1-based indexing
+    rn
+  )
+  df$gene <- gene
+  
+  # Reorder columns: gene first, then the stats, then cluster
+  # Keep a clean table for output
+  keep_order <- c("gene", setdiff(colnames(df), c("gene", "._rn")))
+  df <- df[, keep_order, drop = FALSE]
+  
+  # Sort for readability
+  df <- df[order(df$cluster, df$p_val_adj, -abs(df$avg_log2FC)), ]
+  
+  # Combined CSV (no row names)
+  write.csv(df, file.path(outdir, paste0(prefix, "_ALL.csv")), row.names = FALSE)
+  
+  # Per-cluster CSVs
+  split(df, df$cluster) |>
+    lapply(function(dd) {
+      fn <- file.path(outdir, paste0(prefix, "_", make.names(unique(dd$cluster)), ".csv"))
+      write.csv(dd, fn, row.names = FALSE)
+      invisible(NULL)
     })
 }
-plot_volcano <- function(de_table, outdir, padj_thr = 0.05, lfc_thr = 0.25) {
+
+
+plot_volcano <- function(de_table, outdir, padj_thr = 0.05, lfc_thr = 0.25, top_n = 10) {
   dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
   
-  clusters <- unique(de_table$cluster)
-  for (cl in clusters) {
-    df <- subset(de_table, cluster == cl)
+  # Ensure we have a gene column (if write_de ran first, it’s there already)
+  df_all <- de_table
+  if (!"gene" %in% colnames(df_all)) {
+    rn <- rownames(df_all)
+    df_all$gene <- ifelse(
+      startsWith(rn, paste0(df_all$cluster, ".")),
+      substring(rn, nchar(df_all$cluster) + 2L),
+      rn
+    )
+  }
+  
+  for (cl in unique(df_all$cluster)) {
+    df <- subset(df_all, cluster == cl)
     df$neglog10_padj <- -log10(df$p_val_adj + 1e-300)
     df$sig <- ifelse(df$p_val_adj < padj_thr & df$avg_log2FC >  lfc_thr, "Up in FASL+",
                      ifelse(df$p_val_adj < padj_thr & df$avg_log2FC < -lfc_thr, "Down in FASL+", "NS"))
+    
+    # pick top labels on each side by significance
+    lab_up <- subset(df, p_val_adj < padj_thr & avg_log2FC >  lfc_thr)
+    lab_dn <- subset(df, p_val_adj < padj_thr & avg_log2FC < -lfc_thr)
+    lab_up <- lab_up[order(-lab_up$neglog10_padj), ][seq_len(min(nrow(lab_up), top_n)), , drop = FALSE]
+    lab_dn <- lab_dn[order(-lab_dn$neglog10_padj), ][seq_len(min(nrow(lab_dn), top_n)), , drop = FALSE]
+    lab_genes <- unique(c(lab_up$gene, lab_dn$gene))
     
     p <- ggplot(df, aes(x = avg_log2FC, y = neglog10_padj, color = sig)) +
       geom_point(size = 1.5) +
       geom_vline(xintercept = c(-lfc_thr, lfc_thr), linetype = 2) +
       geom_hline(yintercept = -log10(padj_thr), linetype = 2) +
       scale_color_manual(values = c("Up in FASL+" = "#D55E00", "Down in FASL+" = "#0072B2", "NS" = "grey")) +
-      labs(title = paste("Volcano:", cl), x = "avg_log2FC (FASL+ vs FASL-)", y = "-log10(adj p)") +
-      theme_bw()
+      labs(title = paste("Volcano:", cl),
+           x = "avg_log2FC (FASL+ vs FASL-)",
+           y = "-log10(adj p)") +
+      theme_bw() +
+      geom_text_repel(
+        data = subset(df, gene %in% lab_genes),
+        aes(label = gene),
+        max.overlaps = Inf,
+        size = 3
+      )
     
-    ggsave(file.path(outdir, paste0("Volcano_", make.names(cl), ".png")), p, width = 7, height = 5, dpi = 300)
+    ggsave(file.path(outdir, paste0("Volcano_", make.names(cl), ".png")),
+           p, width = 7, height = 5, dpi = 300)
   }
 }
+
+    
 # RNA
 de_rna <- run_de(TARA_ALL, clusters_fasl, assay = "RNA", latent_var = "nCount_RNA")
 write_de(de_rna, dge_dir, "DGE_RNA")
