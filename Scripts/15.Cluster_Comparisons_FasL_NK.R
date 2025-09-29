@@ -7,6 +7,8 @@ library(lme4)
 library(lmerTest)
 library(SeuratExtend)
 library(scCustomize)
+library(tidyr)
+
 # -----------------------------
 # Paths & object
 # -----------------------------
@@ -172,63 +174,184 @@ make_heatmap_adt(
   outfile = "B_Cells_All_Heatmap_TARA_ALL.png"
 )
 
-######################### NK Cell FasL Analysis #################################
 
-
-
-
-####################### Find FasL+ and - Cells within the cluster and then deferentiate them ###########
-DimPlot2(TARA_ALL, features = c("FAS", "FASLG"),reduction = 'wnn.umap')
-FeaturePlot3(TARA_ALL, color = "ryb", feature.1 = "FAS", feature.2 = "FASLG", pt.size = 0.5,reduction = 'wnn.umap')
-VlnPlot2(TARA_ALL,'FASLG',show.mean = T)
-
-
-### Set viral load status
-TARA_entry <- subset(TARA_ALL, subset = Age %in% c(1,2) & Condition == "HEI")
-TARA_entry$Viral_Load_Category <- ifelse(TARA_entry$Viral_Load >= 100000, "High", "Low")
-VlnPlot2(TARA_entry,'FAS',show.mean = T,split.by = 'Viral_Load_Category',
-         stat.method = "wilcox.test")
-VlnPlot2(TARA_entry,'FASLG',show.mean = T,split.by = 'Viral_Load_Category',
-         stat.method = "wilcox.test")
+########### Cluster Distribution Plots ##############
+setwd ('/home/akshay-iyer/Documents/CD8_Longitudinal/Annotation/TARA_ALL/')
 
 ClusterDistrPlot(
   origin = TARA_ALL$orig.ident,
   cluster = TARA_ALL$Manual_Annotation,
   condition = TARA_ALL$Condition
 )
+ggsave('Clust_Distribution_TARA_ALL_By_Condition.png', width = 15, height = 13)
 
 ClusterDistrPlot(
-  origin = TARA_entry$orig.ident,
+  origin = TARA_entry$orig.ident, ### make tara entry first which is in the next section, needs reordering)
   cluster = TARA_entry$Manual_Annotation,
   condition = TARA_entry$Viral_Load_Category
 )
-
-ClusterDistrBar(origin = TARA_entry$Viral_Load_Category, cluster = TARA_entry$orig.ident, flip = FALSE, reverse_order = FALSE)
-
-levels(TARA_ALL$Manual_Annotation)
+ggsave('Clust_Distribution_TARA_Entry_HEI_By_Viral_Load.png', width = 15, height = 13)
 
 
 
+######################### NK Cell FasL Analysis #################################
 
-# Select some variable features
-# Subset to clusters 8, 9, and 27
+setwd ('/home/akshay-iyer/Documents/CD8_Longitudinal/FASL')
+
+DimPlot2(TARA_ALL, features = c("FAS", "FASLG"),reduction = 'wnn.umap')
+ggsave('FAS_FASLG_Featureplot.png', width = 12, height = 6)
 
 
-genes <- VariableFeatures(TARA_subset)[1:20]
-DotPlot2(TARA_ALL, features = genes)
+VlnPlot2(TARA_ALL,'FAS',show.mean = T,cols = 'default',angle = 90)
+ggsave('FAS_VLN_Plot_ALL.png', width = 12, height =7)
 
-# Create grouped features
-grouped_features <- list(
-  "B_cell_markers" = c("MS4A1", "CD79A"),
-  "T_cell_markers" = c("CD3D", "CD8A", "IL7R"),
-  "Myeloid_markers" = c("CD14", "FCGR3A", "S100A8")
+VlnPlot2(TARA_ALL,'FASLG',show.mean = T,cols = 'default',angle = 90)
+ggsave('FASLG_VLN_Plot_ALL.png', width = 12, height = 7)
+
+### Set viral load status
+TARA_entry <- subset(TARA_ALL, subset = Age %in% c(1,2) & Condition == "HEI")
+TARA_entry$Viral_Load_Category <- ifelse(TARA_entry$Viral_Load >= 100000, "High", "Low")
+
+VlnPlot2(TARA_entry,c('FAS','FASLG'),show.mean = T,split.by = 'Viral_Load_Category',
+         stat.method = "wilcox.test")
+ggsave('FASL_FASLG_VLN_Plot_HEI_ENTRY_HIGHvsLOW.png', width = 17, height = 11)
+
+
+# ---- SETTINGS ----------------------------------------------------------------
+nk_clusters <- c("3: IL2RB+ NK cell","15: NK cell_1","17: NK cell_2","25: CD56bright NK")
+
+assay_to_use <- "RNA"; fasl_feature <- "FASLG"   
+
+# ---- 1) LABEL CELLS AS FASL+ / FASL- -----------------------------------------
+DefaultAssay(TARA_ALL) <- assay_to_use
+
+# Use normalized values (slot='data'). Threshold: > 0 (for RNA log-normalized or ADT CLR)
+vals <- as.numeric(GetAssayData(TARA_ALL, assay = assay_to_use, slot = "data")[fasl_feature, ])
+TARA_ALL$FASL_expr <- vals
+TARA_ALL$FASL_status <- ifelse(TARA_ALL$FASL_expr > 0, "FASL_pos", "FASL_neg")
+
+
+fasl_pct_all <- TARA_ALL@meta.data %>%
+  count(Manual_Annotation, FASL_status) %>%
+  group_by(Manual_Annotation) %>%
+  mutate(pct = 100 * n / sum(n)) %>%
+  ungroup()
+
+# Save as CSV
+write.csv(fasl_pct_all, "FASL_Positive_Fractions_byCluster.csv", row.names = FALSE)
+
+# order clusters by % FASL_pos for readability
+order_df <- fasl_pct_all %>%
+  filter(FASL_status == "FASL_pos") %>%
+  arrange(pct)
+
+fasl_pct_all$Manual_Annotation <- factor(
+  fasl_pct_all$Manual_Annotation,
+  levels = order_df$Manual_Annotation
 )
 
-DotPlot2(TARA_ALL, features = grouped_features)
-# Using colors instead of borders for split groups
-DotPlot2(TARA_ALL, 
-         features = genes, 
-         group.by = "Manual_Annotation", 
-         split.by = "Condition", 
-         split.by.method = "color", 
-         show_grid = FALSE)
+fasl_pct_all <- fasl_pct_all %>%
+  filter(!is.na(Manual_Annotation), FASL_status %in% c("FASL_neg","FASL_pos")) %>%
+  complete(Manual_Annotation, FASL_status = c("FASL_neg","FASL_pos"),
+           fill = list(n = 0, pct = 0)) %>%
+  droplevels()
+p_stack <- ggplot(fasl_pct_all,
+                  aes(x = Manual_Annotation, y = pct/100, fill = FASL_status)) +
+  geom_col(width = 0.8) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  coord_flip() +
+  labs(x = NULL, y = "Fraction of cells", fill = "FASL status",
+       title = "FASL+ / FASL− fractions by cluster") +
+  theme_bw()
+
+
+ggsave("FASL_fraction_byCluster_stacked.png", p_stack, width = 8, height = 10, dpi = 300)
+
+
+########################### DGE and DPE ########################################
+library(dplyr)
+library(ggplot2)
+# Optional: label a few points nicely if you have ggrepel installed
+has_ggrepel <- requireNamespace("ggrepel", quietly = TRUE)
+
+# ----------------------- SETTINGS --------------------------------------------
+clusters_fasl <- c(
+  "3: IL2RB+ NK cell",
+  "21: Gamma Delta 2 T cells",
+  "30: DN T cell_6",
+  "25: CD56bright NK",
+  "15: NK cell_1",
+  "17: NK cell_2",
+  "9: TRDV1+ CTL-like",
+  "27: GZMK+ CD8 T cell",
+  "8: CTL-like"
+)
+
+base_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/FASL"
+dge_dir  <- file.path(base_dir, "DGE")  # RNA
+dpe_dir  <- file.path(base_dir, "DPE")  # ADT
+dir.create(dge_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(dpe_dir, recursive = TRUE, showWarnings = FALSE)
+
+# ----------------------- HELPERS ---------------------------------------------
+run_de <- function(seurat_object, clusters, assay = "RNA", latent_var = "nCount_RNA",
+                   pos_label = "FASL_pos", neg_label = "FASL_neg") {
+  DefaultAssay(seurat_object) <- assay
+  de_list <- list()
+  
+  for (cl in clusters) {
+    de <- FindMarkers(
+      subset(seurat_object, subset = Manual_Annotation == cl),
+      ident.1        = pos_label,
+      ident.2        = neg_label,
+      test.use       = "MAST",
+      group.by       = "FASL_status",
+      latent.vars    = latent_var,
+      logfc.threshold= 0
+    )
+    de$cluster <- cl
+    de_list[[cl]] <- de
+  }
+  
+  do.call(rbind, de_list)
+}
+write_de <- function(de_table, outdir, prefix) {
+  dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+  # Combined
+  write.csv(de_table, file.path(outdir, paste0(prefix, "_ALL.csv")))
+  # Per cluster
+  split(de_table, de_table$cluster) |>
+    lapply(function(df) {
+      write.csv(df, file.path(outdir, paste0(prefix, "_", make.names(unique(df$cluster)), ".csv")))
+    })
+}
+plot_volcano <- function(de_table, outdir, padj_thr = 0.05, lfc_thr = 0.25) {
+  dir.create(outdir, recursive = TRUE, showWarnings = FALSE)
+  
+  clusters <- unique(de_table$cluster)
+  for (cl in clusters) {
+    df <- subset(de_table, cluster == cl)
+    df$neglog10_padj <- -log10(df$p_val_adj + 1e-300)
+    df$sig <- ifelse(df$p_val_adj < padj_thr & df$avg_log2FC >  lfc_thr, "Up in FASL+",
+                     ifelse(df$p_val_adj < padj_thr & df$avg_log2FC < -lfc_thr, "Down in FASL+", "NS"))
+    
+    p <- ggplot(df, aes(x = avg_log2FC, y = neglog10_padj, color = sig)) +
+      geom_point(size = 1.5) +
+      geom_vline(xintercept = c(-lfc_thr, lfc_thr), linetype = 2) +
+      geom_hline(yintercept = -log10(padj_thr), linetype = 2) +
+      scale_color_manual(values = c("Up in FASL+" = "#D55E00", "Down in FASL+" = "#0072B2", "NS" = "grey")) +
+      labs(title = paste("Volcano:", cl), x = "avg_log2FC (FASL+ vs FASL-)", y = "-log10(adj p)") +
+      theme_bw()
+    
+    ggsave(file.path(outdir, paste0("Volcano_", make.names(cl), ".png")), p, width = 7, height = 5, dpi = 300)
+  }
+}
+# RNA
+de_rna <- run_de(TARA_ALL, clusters_fasl, assay = "RNA", latent_var = "nCount_RNA")
+write_de(de_rna, dge_dir, "DGE_RNA")
+plot_volcano(de_rna, file.path(dge_dir, "Volcano"))
+
+# ADT
+de_adt <- run_de(TARA_ALL, clusters_fasl, assay = "ADT", latent_var = "nCount_ADT")
+write_de(de_adt, dpe_dir, "DPE_ADT")
+plot_volcano(de_adt, file.path(dpe_dir, "Volcano"))
