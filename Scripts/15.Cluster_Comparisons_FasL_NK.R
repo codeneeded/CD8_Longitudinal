@@ -411,3 +411,114 @@ plot_volcano(de_rna, file.path(dge_dir, "Volcano"))
 de_adt <- run_de(TARA_ALL, clusters_fasl, assay = "ADT", latent_var = "nCount_ADT")
 write_de(de_adt, dpe_dir, "DPE_ADT")
 plot_volcano(de_adt, file.path(dpe_dir, "Volcano"))
+
+colnames(TARA_ALL@assays$ADT@layers$data[1])
+###################3 Plot specific volcano plots ##################
+# ---- Setup ----
+library(tidyverse)
+library(ggrepel)
+
+# Input file
+infile <- "/home/akshay-iyer/Documents/CD8_Longitudinal/FASL/DPE/DPE_ADT_X3..IL2RB..NK.cell.csv"
+
+# Output dir (will be created if it doesn't exist)
+out_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/FASL/DPE/Volcano"
+dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+
+# Thresholds
+padj_thr <- 0.05
+lfc_thr  <- 0.25   # change if you prefer another log2FC cutoff
+
+# Labels to highlight (case-insensitive match; aliases handled below)
+lab_genes <- c(
+  "FCGR3A",
+  "C5AR1",
+  "GGT1",
+  "KLRD1",
+  "SLAMF7",
+  "IL2RB",
+  "KLRB1",
+  "CD81",
+  "CD226",
+  "TIGIT",
+  "CX3CR1",
+  "KIR3DL1",
+  "TNFRSF14",
+  "KIR2DL3",
+  "PECAM1",
+  "ICOS",
+  "ITGAM",
+  "FAS"
+)
+
+
+
+# ---- Load & prep data ----
+df <- readr::read_csv(infile, show_col_types = FALSE)
+
+# Ensure required columns exist
+req_cols <- c("gene","p_val_adj","avg_log2FC","cluster")
+stopifnot(all(req_cols %in% names(df)))
+
+# Clean/augment
+df <- df %>%
+  mutate(
+    neglog10_padj = -log10(p_val_adj),
+    sig = case_when(
+      p_val_adj < padj_thr & avg_log2FC >=  lfc_thr ~ "Up in FASL+",
+      p_val_adj < padj_thr & avg_log2FC <= -lfc_thr ~ "Down in FASL+",
+      TRUE ~ "NS"
+    )
+  )
+df <- df %>% filter(between(avg_log2FC, -10, 10))
+message("Post-filter FC range: ", paste(range(df$avg_log2FC, na.rm = TRUE), collapse = " to "))
+
+# Cluster name for titles/filenames (use unique cluster in file)
+cl <- df %>% dplyr::pull(cluster) %>% unique() %>% paste(collapse = "; ")
+
+# Case-insensitive matching for labels, also check alias names
+gene_lower <- tolower(df$gene)
+want_lower <- tolower(lab_genes)
+label_idx  <- gene_lower %in% want_lower
+
+# Report any requested labels not found (informative message only)
+not_found <- setdiff(tolower(lab_genes), gene_lower)
+if (length(not_found) > 0) {
+  message("Note: Some requested labels not found in 'gene' column (case-insensitive): ",
+          paste(sort(unique(not_found)), collapse = ", "))
+}
+
+# ---- Plot ----
+p <- ggplot(df, aes(x = avg_log2FC, y = neglog10_padj, color = sig)) +
+  geom_point(size = 1.5) +
+  geom_vline(xintercept = c(-lfc_thr, lfc_thr), linetype = 2) +
+  geom_hline(yintercept = -log10(padj_thr), linetype = 2) +
+  scale_color_manual(values = c("Up in FASL+" = "#D55E00",
+                                "Down in FASL+" = "#0072B2",
+                                "NS" = "grey70")) +
+  labs(
+    title = paste0("Volcano: ", cl),
+    x = "avg_log2FC (FASL+ vs FASL-)",
+    y = "-log10(adj p)",
+    color = NULL
+  ) +
+  theme_bw(base_size = 12) +
+  theme(legend.position = "right") +
+  geom_label_repel(
+    data = df[label_idx, ],
+    aes(label = gene),
+    max.overlaps = Inf,
+    size = 3,
+    min.segment.length = 0,
+    box.padding = 0.4,
+    label.size = 0.3,          # thickness of the box border
+    fill = "white",            # background color of box
+    alpha = 0.9                # slight transparency if you want
+  )
+
+p
+# ---- Save ----
+
+
+ggsave(paste0(out_dir,'/IL2RB_NK_volcano_specified_prot.png'), p, width =11, height = 7, dpi = 300)
+
