@@ -516,7 +516,7 @@ p <- ggplot(df, aes(x = avg_log2FC, y = neglog10_padj, color = sig)) +
     alpha = 0.9                # slight transparency if you want
   )
 
-p
+'#36A374'
 # ---- Save ----
 
 
