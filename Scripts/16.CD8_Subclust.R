@@ -175,10 +175,9 @@ for (gene in rna.features) {
 ### RNA Feature Plot
 for (gene in rna.features) {
   if (gene %in% rownames(tara_cdnk[["RNA"]])) {
-    fp <- Dimplot2(
+    fp <- DimPlot2(
       tara_cdnk,
       features = gene,
-      group.by = 'wsnn_res.0.4',
       reduction = "wnn.umap"
     ) + ggtitle(paste("RNA |", gene))
     
@@ -215,10 +214,9 @@ for (prot in prot.features) {
 
 for (prot in prot.features) {
   if (prot %in% rownames(tara_cdnk[["ADT"]])) {
-    fp <- Dimplot2(
+    fp <- DimPlot2(
       tara_cdnk,
       features = prot,
-      group.by = 'wsnn_res.0.4',
       assay = "ADT",
       reduction = "wnn.umap"
     ) + ggtitle(paste("ADT |", prot))
@@ -231,6 +229,15 @@ for (prot in prot.features) {
   }
 }
 
+
+?DimPlot2
+
+
+
+
+
+
+##########3
 TARA_ALL$Viral_Load
 TARA_entry <- subset(TARA_ALL, subset = Age %in% c(1, 2) & Condition == "HEI")  # VL is defined only for HEI
 TARA_entry$Viral_Load_Category <- ifelse(TARA_entry$Viral_Load >= 100000, "High", "Low")
