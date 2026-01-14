@@ -109,10 +109,11 @@ ggsave(
   width = 10,
   height = 8,
   dpi = 500,
-  bg = "white"# ensure PCA model exists for downstream plots (does not touch your WNN UMAP)
-  cd8_cds_A <- estimate_size_factors(cd8_cds_A)
-  cd8_cds_A <- preprocess_cds(cd8_cds_A, method = "PCA", num_dim = 50, norm_method = "log")
+  bg = "white",# ensure PCA model exists for downstream plots (does not touch your WNN UMAP)
 )
+cd8_cds_A <- estimate_size_factors(cd8_cds_A)
+cd8_cds_A <- preprocess_cds(cd8_cds_A, method = "PCA", num_dim = 50, norm_method = "log")
+
 
 
 # --- Timepoint_Group plot ---

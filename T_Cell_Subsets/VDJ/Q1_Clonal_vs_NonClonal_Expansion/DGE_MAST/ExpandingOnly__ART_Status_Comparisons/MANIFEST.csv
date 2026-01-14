@@ -1,0 +1,7 @@
+"Analysis","Comparison","OK","Reason","n_tp1","n_tp2","Latent"
+"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PostART_Suppressed",FALSE,"Too few cells: HEU=22, PostART_Suppressed=2113",22,2113,""
+"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PostART_Unsuppressed",FALSE,"Too few cells: HEU=22, PostART_Unsuppressed=1531",22,1531,""
+"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PreART_Entry",FALSE,"Too few cells: HEU=22, PreART_Entry=1509",22,1509,""
+"ExpandingOnly__ART_Status_Comparisons","PostART_Suppressed_vs_PostART_Unsuppressed",TRUE,"",2113,1531,"nCount_RNA;PID"
+"ExpandingOnly__ART_Status_Comparisons","PostART_Suppressed_vs_PreART_Entry",TRUE,"",2113,1509,"nCount_RNA;PID"
+"ExpandingOnly__ART_Status_Comparisons","PostART_Unsuppressed_vs_PreART_Entry",TRUE,"",1531,1509,"nCount_RNA;PID"
