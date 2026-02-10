@@ -29,6 +29,7 @@ levels(as.factor(tara_cdnk$clonalFrequency))
 ## ---------------------------
 
 
+
 # tara_cdnk already exists in your environment
 # 1) Keep only cells with a valid clonalFrequency:
 #    - exclude NA (no TCR)
@@ -63,7 +64,28 @@ base_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/VDJ"
 # One folder for this question
 q_dir <- file.path(base_dir, "Q1_Clonal_vs_NonClonal_Expansion")
 dir.create(q_dir, recursive = TRUE, showWarnings = FALSE)
+################
+# 1) UMAP: overall
+ DimPlot2(
+  tara_cdnk,
+  group.by  = "Timepoint_Group",
+  reduction = "wnn.umap",
+  pt.size   = 0.1
+)
 
+ggsave(
+  filename = file.path(q_dir, "UMAP__Overall_by_Condition.png"),
+  width    = 7,
+  height   = 6,
+  dpi      = 300,
+  bg='white'
+)
+
+
+
+
+
+######################
 # 1) UMAP: overall
 p_umap_overall <- DimPlot2(
   tara_cdnk_tcr,
