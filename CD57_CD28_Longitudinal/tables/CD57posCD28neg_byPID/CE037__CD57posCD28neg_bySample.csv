@@ -1,0 +1,3 @@
+"orig.ident","PID","Age_months","Gender","Condition","Timepoint_Group","n_cd8","n_CD57posCD28neg","freq_CD57posCD28neg","orig_label","freq_delta_from_first"
+"CE037_entry","CE037",1,"M","HEU","HEU",597,1,0.0016750418760469,"CE037_entry
+(1m)",0

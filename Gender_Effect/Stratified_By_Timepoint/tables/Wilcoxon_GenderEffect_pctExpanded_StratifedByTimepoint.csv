@@ -1,0 +1,16 @@
+"Timepoint_Group","Manual_Annotation","nF","nM","p","p_adj"
+"HEU","8: CTL-like",2,1,NA,NA
+"HEU","9: TRDV1+ CTL-like",2,1,NA,NA
+"HEU","27: GZMK+ CD8 T cell",2,1,NA,NA
+"HUU","8: CTL-like",2,0,NA,NA
+"HUU","9: TRDV1+ CTL-like",2,0,NA,NA
+"HUU","27: GZMK+ CD8 T cell",1,0,NA,NA
+"PreART_Entry","8: CTL-like",5,3,0.571428571428571,0.73469387755102
+"PreART_Entry","9: TRDV1+ CTL-like",5,3,0.750751184646232,0.844595082727012
+"PreART_Entry","27: GZMK+ CD8 T cell",5,3,0.25,0.73469387755102
+"PostART_Suppressed","8: CTL-like",5,2,0.571428571428571,0.73469387755102
+"PostART_Suppressed","9: TRDV1+ CTL-like",5,2,1,1
+"PostART_Suppressed","27: GZMK+ CD8 T cell",5,2,0.380952380952381,0.73469387755102
+"PostART_Unsuppressed","8: CTL-like",4,2,0.533333333333333,0.73469387755102
+"PostART_Unsuppressed","9: TRDV1+ CTL-like",4,2,0.533333333333333,0.73469387755102
+"PostART_Unsuppressed","27: GZMK+ CD8 T cell",4,2,0.266666666666667,0.73469387755102

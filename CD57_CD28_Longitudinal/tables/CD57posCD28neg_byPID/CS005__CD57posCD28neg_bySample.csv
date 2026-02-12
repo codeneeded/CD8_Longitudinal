@@ -1,0 +1,3 @@
+"orig.ident","PID","Age_months","Gender","Condition","Timepoint_Group","n_cd8","n_CD57posCD28neg","freq_CD57posCD28neg","orig_label","freq_delta_from_first"
+"CS005_entry","CS005",2,"F","HUU","HUU",1024,6,0.005859375,"CS005_entry
+(2m)",0

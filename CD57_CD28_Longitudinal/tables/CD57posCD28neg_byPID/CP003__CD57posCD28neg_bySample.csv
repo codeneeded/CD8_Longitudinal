@@ -1,0 +1,7 @@
+"orig.ident","PID","Age_months","Gender","Condition","Timepoint_Group","n_cd8","n_CD57posCD28neg","freq_CD57posCD28neg","orig_label","freq_delta_from_first"
+"CP003_entry","CP003",1,"M","HEI","PreART_Entry",908,134,0.147577092511013,"CP003_entry
+(1m)",0
+"CP003_V12","CP003",12,"M","HEI","PostART_Unsuppressed",1654,309,0.186819830713422,"CP003_V12
+(12m)",0.0392427382024088
+"CP003_V24","CP003",24,"M","HEI","PostART_Unsuppressed",1999,288,0.144072036018009,"CP003_V24
+(24m)",-0.00350505649300423
