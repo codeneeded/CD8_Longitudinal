@@ -89,6 +89,7 @@ tara_cdnk <- combineExpression(combined.TCR.TARA,
 #)
 
 ######## Add metadata
+tara_cdnk$Viral_Load <- as.numeric(tara_cdnk$Viral_Load)
 
 tara_cdnk@meta.data <- tara_cdnk@meta.data %>%
   mutate(
@@ -112,6 +113,21 @@ tara_cdnk@meta.data <- tara_cdnk@meta.data %>%
     )
   )
 
+
+orig_timepoint_vl_table <- tara_cdnk@meta.data %>%
+  tibble::rownames_to_column("cell") %>%
+  group_by(orig.ident) %>%
+  summarise(
+    PID = sub("_.*$", "", unique(orig.ident)[1]),
+    Timepoint_Group = unique(Timepoint_Group)[1],
+    Condition = unique(Condition)[1],
+    Age_months = median(Age, na.rm = TRUE),
+    Viral_Load = unique(Viral_Load)[1],
+    .groups = "drop"
+  ) %>%
+  arrange(PID, Age_months)
+
+orig_timepoint_vl_table
 ##### Annotate ##################
 Idents(tara_cdnk) <- 'wsnn_res.0.4'
 
@@ -123,7 +139,7 @@ tara_cdnk <- subset(tara_cdnk, idents = setdiff(levels(Idents(tara_cdnk)), c("23
 
 
 ### Plot Output
-setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/VDJ")
+setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/VDJ/Seurat_Overlays")
 
 
 #Define color palette 
@@ -192,7 +208,7 @@ make_heatmap <- function(seu, clusters, outfile, n_top_genes = 10, width = 10, h
 
 DefaultAssay(tara_cdnk) <-'RNA'
 
-setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Heatmaps/RNA")
+setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation/Heatmaps/RNA")
 
 make_heatmap(
   tara_cdnk,
@@ -228,7 +244,7 @@ make_heatmap(
 DefaultAssay(tara_cdnk) <- "ADT"
 
 # Set working directory
-setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Heatmaps/ADT")
+setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation/Heatmaps/ADT")
 
 # --- Resting / Naïve T Cells ---
 make_heatmap(
@@ -266,9 +282,73 @@ make_heatmap(
   height = 10
 )
 
+# --- PAVE ---
+# ---------------------------- #
+# PAVE (force-include proteins)
+# ---------------------------- #
+
+# Make sure ADT assay is active
+DefaultAssay(tara_cdnk) <- "ADT"
+
+# ADT feature names
+adt_feats <- rownames(tara_cdnk[["ADT"]])
+
+# Synonyms / patterns to try (ADT naming varies a lot)
+syn_map <- list(
+  CD3  = c("^CD3$", "CD3[DEGZ]?", "CD3\\s*\\(", "CD3-"),
+  CD8  = c("^CD8$", "^CD8A$", "^CD8B$", "CD8A", "CD8B", "CD8\\s*\\(", "CD8-"),
+  CD56 = c("^CD56$", "CD56\\s*\\(", "CD56-", "NCAM1", "NCAM1\\s*\\("),
+  `PD-1` = c("^PD-1$", "^PD1$", "PD-1\\s*\\(", "PD1\\s*\\(", "PDCD1", "CD279", "CD279\\s*\\(")
+)
+
+# Helper to find ADT hits for a given target
+find_adt_hits <- function(target, patterns, feats) {
+  hits <- unique(unlist(lapply(patterns, function(pat) {
+    grep(pat, feats, value = TRUE, ignore.case = TRUE)
+  })))
+  hits
+}
+
+# Get hits
+hits_list <- lapply(names(syn_map), function(k) find_adt_hits(k, syn_map[[k]], adt_feats))
+names(hits_list) <- names(syn_map)
+
+# Print what we found (so you can sanity check)
+for (nm in names(hits_list)) {
+  message(nm, " hits: ", ifelse(length(hits_list[[nm]])==0, "<none>", paste(hits_list[[nm]], collapse = " | ")))
+}
+
+# Choose what to include:
+# - If multiple hits exist, keep them all (safe; guarantees inclusion)
+pave_hits_extra <- unique(unlist(hits_list))
+
+# Your original hits (already found)
+pave_hits_existing <- c("FCGR3A", "KIR2DL1", "KLRG1", "B3GAT1", "CCR5")
+
+# Final set to force-include
+pave_force <- unique(c(pave_hits_existing, pave_hits_extra))
+pave_force <- intersect(pave_force, adt_feats)  # ensure valid
+
+message("FORCING these ADT features into heatmap: ", paste(pave_force, collapse = ", "))
+
+seu_pave <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% c(11, 17, 6, 2, 10, 16, 22))
+DefaultAssay(seu_pave) <- "ADT"
+
+vf_old <- VariableFeatures(seu_pave)
+VariableFeatures(seu_pave) <- unique(c(vf_old, pave_force))
+
+make_heatmap(
+  seu_pave,
+  clusters = c(11, 17, 6, 2, 10, 16, 22),
+  outfile = "PAVE_talk_specified_clusters_tara_cdnk_ADT.png",
+  width = 10,
+  height = 10
+)
+
+
 ######### Cluster Distribution #########33
 ########### Cluster Distribution Plots ##############
-setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets")
+setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation")
 
 
 ClusterDistrPlot(
