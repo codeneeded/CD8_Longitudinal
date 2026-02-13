@@ -9,7 +9,7 @@ library(SeuratExtend)
 library(scCustomize)
 library(tidyr)
 library(stringr)
-
+library(qs2)
 # -----------------------------
 # Paths & object
 # -----------------------------
@@ -145,41 +145,38 @@ library(dplyr)
 # ---------------------------- #
 # 0) Sanity check columns exist
 # ---------------------------- #
-stopifnot(all(c("Condition","Age","Viral_Load") %in% colnames(TARA_ALL@meta.data)))
+# Make Viral_Load numeric (handles factor/character and "<20" etc.)
+TARA_ALL$Viral_Load_num <- as.character(TARA_ALL$Viral_Load)
+TARA_ALL$Viral_Load_num <- gsub("[^0-9.]", "", TARA_ALL$Viral_Load_num)
+TARA_ALL$Viral_Load_num <- as.numeric(TARA_ALL$Viral_Load_num)
 
 # ---------------------------- #
 # 1) Build unified Timepoint_Group
 # ---------------------------- #
-TARA_ALL$Timepoint_Group <- NA_character_
 
-# HEU/HUU labeled directly
-TARA_ALL$Timepoint_Group[TARA_ALL$Condition == "HEU"] <- "HEU"
-TARA_ALL$Timepoint_Group[TARA_ALL$Condition == "HUU"] <- "HUU"
-
-# HEI stratified by Age then Viral_Load
 is_HEI <- TARA_ALL$Condition == "HEI"
 
-TARA_ALL$Timepoint_Group[is_HEI] <- dplyr::case_when(
-  # Pre-ART entry: <2 months (your rule)
-  !is.na(TARA_ALL$Age[is_HEI]) & TARA_ALL$Age[is_HEI] < 2 ~ "PreART_Entry",
+TARA_ALL$Timepoint_Group <- dplyr::case_when(
+  TARA_ALL$Condition == "HEU" ~ "HEU",
+  TARA_ALL$Condition == "HUU" ~ "HUU",
   
-  # Post-ART suppressed/unsuppressed only when Age >= 2
-  !is.na(TARA_ALL$Age[is_HEI]) & TARA_ALL$Age[is_HEI] >= 2 &
-    !is.na(TARA_ALL$Viral_Load[is_HEI]) & TARA_ALL$Viral_Load[is_HEI] < 200 ~ "PostART_Suppressed",
+  # HEI rules
+  is_HEI & !is.na(TARA_ALL$Age) & TARA_ALL$Age <= 2 ~ "PreART_Entry",
   
-  !is.na(TARA_ALL$Age[is_HEI]) & TARA_ALL$Age[is_HEI] >= 2 &
-    !is.na(TARA_ALL$Viral_Load[is_HEI]) & TARA_ALL$Viral_Load[is_HEI] >= 200 ~ "PostART_Unsuppressed",
+  is_HEI & !is.na(TARA_ALL$Age) & TARA_ALL$Age > 2 &
+    !is.na(TARA_ALL$Viral_Load_num) & TARA_ALL$Viral_Load_num < 200 ~ "PostART_Suppressed",
+  
+  is_HEI & !is.na(TARA_ALL$Age) & TARA_ALL$Age > 2 &
+    !is.na(TARA_ALL$Viral_Load_num) & TARA_ALL$Viral_Load_num >= 200 ~ "PostART_Unsuppressed",
   
   TRUE ~ NA_character_
 )
 
-# ---------------------------- #
-# 2) Factor order
-# ---------------------------- #
 TARA_ALL$Timepoint_Group <- factor(
   TARA_ALL$Timepoint_Group,
   levels = c("HEU","HUU","PreART_Entry","PostART_Suppressed","PostART_Unsuppressed")
 )
+
 
 # ---------------------------- #
 # 3) QC tables
@@ -189,6 +186,23 @@ print(table(TARA_ALL$Condition, TARA_ALL$Timepoint_Group, useNA = "ifany"))
 
 message("\nCounts by Timepoint_Group:")
 print(table(TARA_ALL$Timepoint_Group, useNA = "ifany"))
+
+
+orig_timepoint_vl_table <- TARA_ALL@meta.data %>%
+  tibble::rownames_to_column("cell") %>%
+  group_by(orig.ident) %>%
+  summarise(
+    PID = sub("_.*$", "", unique(orig.ident)[1]),
+    Timepoint_Group = unique(Timepoint_Group)[1],
+    Condition = unique(Condition)[1],
+    Gender = unique(Gender)[1],
+    Age_months = median(Age, na.rm = TRUE),
+    Viral_Load = unique(Viral_Load)[1],
+    .groups = "drop"
+  ) %>%
+  arrange(PID, Age_months)
+
+orig_timepoint_vl_table
 
 
 ############## Gender effect on TCR ################
@@ -994,3 +1008,9 @@ for (pid in pids) {
   )
   message("DONE PID: ", pid)
 }
+
+qs_save(
+  TARA_ALL,
+  file = file.path(saved_dir, "TARA_ALL_sorted.qs2")
+)
+
