@@ -240,6 +240,80 @@ make_heatmap(
   height = 10
 )
 
+############################################################
+# Clonal succession genes heatmaps (RNA)
+# 1) Z-score heatmap (like your make_heatmap workflow, but ONLY these genes)
+# 2) Seurat DoHeatmap (cells shown; grouped by wsnn_res.0.4)
+#
+# Output dir:
+# /home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation/Heatmaps/RNA
+############################################################
+############################################################
+# Clonal succession genes heatmaps (RNA)
+# Restricted to clusters: 11,17,6,2,10,16,22
+############################################################
+
+setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation/Heatmaps/RNA")
+
+DefaultAssay(tara_cdnk) <- "RNA"
+
+clusters_use <- c(11, 17, 6, 2, 10, 16, 22)
+
+clonal_genes <- c(
+  "GZMK","IL7R","TCF7","NELL2","CD28","TC2N","FOS","FOSB","JUN",
+  "PRF1","GZMB","GZMH","FGFBP2","SLA","SLA2","PRDM1","ADGRG1","NR3C1",
+  "PLAC8","HAVCR2","ISG15","IFIT3","IFI6","IFI27","IFI44L","IFI35","LY6E"
+)
+
+# ---------------------------- #
+# Subset object to clusters
+# ---------------------------- #
+tara_sub <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% clusters_use)
+
+Idents(tara_sub) <- tara_sub$wsnn_res.0.4
+
+# Keep only genes present
+genes_use <- intersect(clonal_genes, rownames(tara_sub[["RNA"]]))
+missing   <- setdiff(clonal_genes, genes_use)
+
+message("Genes found (RNA): ", length(genes_use), "/", length(clonal_genes))
+if (length(missing) > 0) message("Missing genes: ", paste(missing, collapse = ", "))
+
+############################################################
+# 1) Z-score cluster-level heatmap
+############################################################
+
+toplot <- CalcStats(
+  tara_sub,
+  features = genes_use,
+  method   = "zscore",
+  order    = "p",
+  n        = length(genes_use)
+)
+
+p_z <- Heatmap(toplot, lab_fill = "zscore") +
+  ggtitle("Clonal succession genes (RNA) — clusters 11,17,6,2,10,16,22")
+
+ggsave("ClonalSuccession_Genes_RNA_zscore_selectedClusters.png",
+       p_z, width = 10, height = 8, dpi = 300)
+
+############################################################
+# 2) Cell-level DoHeatmap
+############################################################
+
+p_cells <- DoHeatmap(
+  tara_sub,
+  features = genes_use,
+  group.by = "wsnn_res.0.4",
+  assay    = "RNA",
+  slot     = "data"
+) +
+  ggtitle("Clonal succession genes (RNA) — DoHeatmap (selected clusters)")
+
+ggsave("ClonalSuccession_Genes_RNA_DoHeatmap_cells_selectedClusters.png",
+       p_cells, width = 14, height = 8, dpi = 300)
+
+
 # Set default assay to ADT
 DefaultAssay(tara_cdnk) <- "ADT"
 
