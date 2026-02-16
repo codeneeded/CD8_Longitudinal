@@ -389,15 +389,15 @@ make_heatmap(
   width = 10,
   height = 10
 )
+############## PAVE PLOT##########3
 
-# --- PAVE ---
 # ---------------------------- #
-# PAVE (force-include proteins)
+# PAVE ADT heatmaps (ONLY relevel Idents; no post-hoc reordering)
 # ---------------------------- #
+
 setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation/Heatmaps/ADT")
-
-# Make sure ADT assay is active
 DefaultAssay(tara_cdnk) <- "ADT"
+
 # --- PAVE ADT proteins (ONLY these) ---
 pave_proteins <- c(
   "ITGAL","ITGB2","ITGA4","CD45RA","FCGR3A","KLRD1","NCAM1","CD69","B3GAT1",
@@ -405,7 +405,6 @@ pave_proteins <- c(
   "NT5E","SELL","KIR3DL1"
 )
 
-DefaultAssay(tara_cdnk) <- "ADT"
 adt_feats <- rownames(tara_cdnk[["ADT"]])
 
 # Robust matching (exact or substring, case-insensitive)
@@ -418,43 +417,55 @@ pave_force <- unique(unlist(lapply(pave_proteins, function(p) {
 message("Found ADT hits: ", paste(pave_force, collapse = ", "))
 message("Missing (no ADT match): ",
         paste(setdiff(pave_proteins, toupper(pave_force)), collapse = ", "))
+
+# ---------------------------- #
+# Plot helper: relevel idents only, then CalcStats + Heatmap
+# ---------------------------- #
+plot_pave_identlevel <- function(seu, clusters, features_force, outfile, width=10, height=10) {
+  
+  seu_sub <- subset(seu, subset = wsnn_res.0.4 %in% clusters)
+  DefaultAssay(seu_sub) <- "ADT"
+  
+  # Relevel cluster order BEFORE CalcStats
+  seu_sub$wsnn_res.0.4 <- factor(seu_sub$wsnn_res.0.4, levels = clusters)
+  Idents(seu_sub) <- seu_sub$wsnn_res.0.4
+  
+  # Force only specified proteins
+  VariableFeatures(seu_sub) <- features_force
+  
+  # CalcStats normally (no post-hoc reordering)
+  toplot <- CalcStats(
+    seu_sub,
+    features = VariableFeatures(seu_sub),
+    method   = "zscore",
+    order    = "p",
+    n        = length(features_force)
+  )
+  
+  p <- Heatmap(toplot, lab_fill = "zscore")
+  ggsave(outfile, p, width = width, height = height, dpi = 300)
+}
+
 # ---- PAVE plot 1: clusters ordered 11,17,6,10,16,22 ----
 clusters_pave1 <- c(11, 17, 6, 10, 16, 22)
-
-seu_pave1 <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% clusters_pave1)
-DefaultAssay(seu_pave1) <- "ADT"
-
-# enforce column order of clusters (this drives Heatmap column order)
-seu_pave1$wsnn_res.0.4 <- factor(seu_pave1$wsnn_res.0.4, levels = clusters_pave1)
-
-# force features used by your make_heatmap() (it reads VariableFeatures)
-VariableFeatures(seu_pave1) <- pave_force
-
-make_heatmap(
-  seu_pave1,
-  clusters = clusters_pave1,
-  outfile  = "PAVE_ADT_onlySpecifiedProteins_clusters_11_17_6_10_16_22.png",
-  n_top_genes = length(pave_force),  # keep ALL proteins
-  width = 10,
-  height = 10
+plot_pave_identlevel(
+  seu            = tara_cdnk,
+  clusters       = clusters_pave1,
+  features_force = pave_force,
+  outfile        = "PAVE_ADT_onlySpecifiedProteins_clusters_11_17_6_10_16_22.png",
+  width          = 10,
+  height         = 10
 )
+
 # ---- PAVE plot 2: clusters ordered 0,4,11,17,6,10,16,22 ----
 clusters_pave2 <- c(0, 4, 11, 17, 6, 10, 16, 22)
-
-seu_pave2 <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% clusters_pave2)
-DefaultAssay(seu_pave2) <- "ADT"
-
-seu_pave2$wsnn_res.0.4 <- factor(seu_pave2$wsnn_res.0.4, levels = clusters_pave2)
-
-VariableFeatures(seu_pave2) <- pave_force
-
-make_heatmap(
-  seu_pave2,
-  clusters = clusters_pave2,
-  outfile  = "PAVE_ADT_onlySpecifiedProteins_clusters_0_4_11_17_6_10_16_22.png",
-  n_top_genes = length(pave_force),
-  width = 12,
-  height = 10
+plot_pave_identlevel(
+  seu            = tara_cdnk,
+  clusters       = clusters_pave2,
+  features_force = pave_force,
+  outfile        = "PAVE_ADT_onlySpecifiedProteins_clusters_0_4_11_17_6_10_16_22.png",
+  width          = 12,
+  height         = 10
 )
 
 
