@@ -1,6 +1,6 @@
 "Analysis","ART_Status","Comparison","OK","Reason","n_Expanding","n_NonExpanding","Latent"
 "SplitBy_ART_Status","HEU","Clonally_Expanding_vs_Non_Expanding",FALSE,"Too few cells: Clonally_Expanding=22, Non_Expanding=3878",22,3878,""
 "SplitBy_ART_Status","HUU","Clonally_Expanding_vs_Non_Expanding",FALSE,"Too few cells: Clonally_Expanding=0, Non_Expanding=1430",0,1430,""
-"SplitBy_ART_Status","PostART_Suppressed","Clonally_Expanding_vs_Non_Expanding",TRUE,"",2113,3300,"nCount_RNA;PID"
-"SplitBy_ART_Status","PostART_Unsuppressed","Clonally_Expanding_vs_Non_Expanding",TRUE,"",1531,2296,"nCount_RNA;PID"
+"SplitBy_ART_Status","PostART_Suppressed","Clonally_Expanding_vs_Non_Expanding",TRUE,"",2492,3932,"nCount_RNA;PID"
+"SplitBy_ART_Status","PostART_Unsuppressed","Clonally_Expanding_vs_Non_Expanding",TRUE,"",1152,1664,"nCount_RNA;PID"
 "SplitBy_ART_Status","PreART_Entry","Clonally_Expanding_vs_Non_Expanding",TRUE,"",1509,8485,"nCount_RNA;PID"

@@ -24,16 +24,16 @@
 "SplitBy_Cluster_T_Cell_A","Clonally_Expanding_vs_Non_Expanding",FALSE,"Too few cells: Clonally_Expanding=201, Non_Expanding=21",NA,NA,"","NK-like_CD8+ T_KIR3DL1+",201,21,NA,NA,NA,NA,NA
 "SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",FALSE,"Too few cells: Clonally_Expanding=22, Non_Expanding=3878",NA,NA,"",NA,22,3878,"HEU",NA,NA,NA,NA
 "SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",FALSE,"Too few cells: Clonally_Expanding=0, Non_Expanding=1430",NA,NA,"",NA,0,1430,"HUU",NA,NA,NA,NA
-"SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",TRUE,"",NA,NA,"nCount_RNA;PID",NA,2113,3300,"PostART_Suppressed",NA,NA,NA,NA
-"SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",TRUE,"",NA,NA,"nCount_RNA;PID",NA,1531,2296,"PostART_Unsuppressed",NA,NA,NA,NA
+"SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",TRUE,"",NA,NA,"nCount_RNA;PID",NA,2492,3932,"PostART_Suppressed",NA,NA,NA,NA
+"SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",TRUE,"",NA,NA,"nCount_RNA;PID",NA,1152,1664,"PostART_Unsuppressed",NA,NA,NA,NA
 "SplitBy_ART_Status","Clonally_Expanding_vs_Non_Expanding",TRUE,"",NA,NA,"nCount_RNA;PID",NA,1509,8485,"PreART_Entry",NA,NA,NA,NA
-"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PostART_Suppressed",FALSE,"Too few cells: HEU=22, PostART_Suppressed=2113",NA,NA,"",NA,NA,NA,NA,22,2113,NA,NA
-"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PostART_Unsuppressed",FALSE,"Too few cells: HEU=22, PostART_Unsuppressed=1531",NA,NA,"",NA,NA,NA,NA,22,1531,NA,NA
+"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PostART_Suppressed",FALSE,"Too few cells: HEU=22, PostART_Suppressed=2492",NA,NA,"",NA,NA,NA,NA,22,2492,NA,NA
+"ExpandingOnly__ART_Status_Comparisons","HEU_vs_PostART_Unsuppressed",FALSE,"Too few cells: HEU=22, PostART_Unsuppressed=1152",NA,NA,"",NA,NA,NA,NA,22,1152,NA,NA
 "ExpandingOnly__ART_Status_Comparisons","HEU_vs_PreART_Entry",FALSE,"Too few cells: HEU=22, PreART_Entry=1509",NA,NA,"",NA,NA,NA,NA,22,1509,NA,NA
-"ExpandingOnly__ART_Status_Comparisons","PostART_Suppressed_vs_PostART_Unsuppressed",TRUE,"",NA,NA,"nCount_RNA;PID",NA,NA,NA,NA,2113,1531,NA,NA
-"ExpandingOnly__ART_Status_Comparisons","PostART_Suppressed_vs_PreART_Entry",TRUE,"",NA,NA,"nCount_RNA;PID",NA,NA,NA,NA,2113,1509,NA,NA
-"ExpandingOnly__ART_Status_Comparisons","PostART_Unsuppressed_vs_PreART_Entry",TRUE,"",NA,NA,"nCount_RNA;PID",NA,NA,NA,NA,1531,1509,NA,NA
-"ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=2, PostART_Unsuppressed=1",NA,NA,"","CD8+ T_resting",NA,NA,NA,NA,NA,2,1
+"ExpandingOnly__ART_Status_Comparisons","PostART_Suppressed_vs_PostART_Unsuppressed",TRUE,"",NA,NA,"nCount_RNA;PID",NA,NA,NA,NA,2492,1152,NA,NA
+"ExpandingOnly__ART_Status_Comparisons","PostART_Suppressed_vs_PreART_Entry",TRUE,"",NA,NA,"nCount_RNA;PID",NA,NA,NA,NA,2492,1509,NA,NA
+"ExpandingOnly__ART_Status_Comparisons","PostART_Unsuppressed_vs_PreART_Entry",TRUE,"",NA,NA,"nCount_RNA;PID",NA,NA,NA,NA,1152,1509,NA,NA
+"ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=3, PostART_Unsuppressed=0",NA,NA,"","CD8+ T_resting",NA,NA,NA,NA,NA,3,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=1, PostART_Unsuppressed=0",NA,NA,"","NK_resting",NA,NA,NA,NA,NA,1,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",TRUE,"",NA,NA,"nCount_RNA;PID","NK-T_CD64+",NA,NA,NA,NA,NA,891,335
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"No cells found for this Cluster x (Suppressed/Unsuppressed)",NA,NA,"","NK_activated",NA,NA,NA,NA,NA,0,0
@@ -44,13 +44,13 @@
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=20, PostART_Unsuppressed=10",NA,NA,"","CD8+ T_memory_costim+integrin",NA,NA,NA,NA,NA,20,10
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"No cells found for this Cluster x (Suppressed/Unsuppressed)",NA,NA,"","NK_bright",NA,NA,NA,NA,NA,0,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=613, PostART_Unsuppressed=11",NA,NA,"","NK-T",NA,NA,NA,NA,NA,613,11
-"ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=3, PostART_Unsuppressed=8",NA,NA,"","NK-like_CD8+ T_PD1+",NA,NA,NA,NA,NA,3,8
+"ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=11, PostART_Unsuppressed=0",NA,NA,"","NK-like_CD8+ T_PD1+",NA,NA,NA,NA,NA,11,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=1, PostART_Unsuppressed=0",NA,NA,"","NK_56low",NA,NA,NA,NA,NA,1,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=13, PostART_Unsuppressed=5",NA,NA,"","CD8+ T_B-like",NA,NA,NA,NA,NA,13,5
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"No cells found for this Cluster x (Suppressed/Unsuppressed)",NA,NA,"","γδ1 T",NA,NA,NA,NA,NA,0,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=4, PostART_Unsuppressed=6",NA,NA,"","γδ2_CTL",NA,NA,NA,NA,NA,4,6
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",TRUE,"",NA,NA,"nCount_RNA;PID","NK-like_CD8+ T_KLRG1+",NA,NA,NA,NA,NA,202,105
-"ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=2, PostART_Unsuppressed=370",NA,NA,"","NK-like_CD8+ T_CCR6+",NA,NA,NA,NA,NA,2,370
+"ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=372, PostART_Unsuppressed=0",NA,NA,"","NK-like_CD8+ T_CCR6+",NA,NA,NA,NA,NA,372,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"No cells found for this Cluster x (Suppressed/Unsuppressed)",NA,NA,"","CD8+ T_effector_prog",NA,NA,NA,NA,NA,0,0
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=133, PostART_Unsuppressed=7",NA,NA,"","CD4+ T",NA,NA,NA,NA,NA,133,7
 "ExpandingOnly__Suppressed_vs_Unsuppressed__SplitBy_Cluster","PostART_Suppressed_vs_PostART_Unsuppressed",FALSE,"Too few cells: PostART_Suppressed=193, PostART_Unsuppressed=8",NA,NA,"","NK-like_CD8+ T_KIR3DL1+",NA,NA,NA,NA,NA,193,8

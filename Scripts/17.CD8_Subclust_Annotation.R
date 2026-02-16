@@ -261,25 +261,19 @@ clusters_use <- c(11, 17, 6, 2, 10, 16, 22)
 
 clonal_genes <- c(
   "GZMK","IL7R","TCF7","NELL2","CD28","TC2N","FOS","FOSB","JUN",
-  "PRF1","GZMB","GZMH","FGFBP2","SLA","SLA2","PRDM1","ADGRG1","NR3C1",
+  "PRF1","GZMB","FASLG","GZMH","FGFBP2","SLA","SLA2","PRDM1","ADGRG1","NR3C1",
   "PLAC8","HAVCR2","ISG15","IFIT3","IFI6","IFI27","IFI44L","IFI35","LY6E"
 )
 
-# ---------------------------- #
-# Subset object to clusters
-# ---------------------------- #
 tara_sub <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% clusters_use)
-
 Idents(tara_sub) <- tara_sub$wsnn_res.0.4
 
-# Keep only genes present
 genes_use <- intersect(clonal_genes, rownames(tara_sub[["RNA"]]))
-missing   <- setdiff(clonal_genes, genes_use)
-
-message("Genes found (RNA): ", length(genes_use), "/", length(clonal_genes))
+missing <- setdiff(clonal_genes, genes_use)
 if (length(missing) > 0) message("Missing genes: ", paste(missing, collapse = ", "))
 
-############################################################
+# Your BuRd palette
+cols_burd <- c("#F7FCFDFF", "#E5F5F9FF", "#CCECE6FF", "#99D8C9FF", "#66C2A4FF", "#41AE76FF", "#238B45FF", "#006D2CFF", "#00441BFF")##########
 # 1) Z-score cluster-level heatmap
 ############################################################
 
@@ -290,7 +284,7 @@ toplot <- CalcStats(
   order    = "p",
   n        = length(genes_use)
 )
-
+toplot
 p_z <- Heatmap(toplot, lab_fill = "zscore") +
   ggtitle("Clonal succession genes (RNA) — clusters 11,17,6,2,10,16,22")
 
@@ -301,19 +295,59 @@ ggsave("ClonalSuccession_Genes_RNA_zscore_selectedClusters.png",
 # 2) Cell-level DoHeatmap
 ############################################################
 
+# Keep genes that actually exist in toplot AND enforce your order
+genes_order <- intersect(clonal_genes, rownames(toplot))
+toplot_ord  <- toplot[genes_order, , drop = FALSE]
+
+# Hierarchical clustering of columns (clusters)
+hc <- hclust(dist(t(toplot_ord)))
+col_order <- hc$labels[hc$order]
+toplot_ord <- toplot_ord[, col_order, drop = FALSE]
+
+# Optional: annotate columns with cluster IDs
+ann_col <- data.frame(Cluster = factor(colnames(toplot_ord), levels = colnames(toplot_ord)))
+rownames(ann_col) <- colnames(toplot_ord)
+
+# Plot + save (uses pheatmap)
+library(pheatmap)
+
+pheatmap(
+  mat = toplot_ord,
+  color = colorRampPalette(cols_burd)(101),
+  cluster_rows = T,     # keep your gene order
+  cluster_cols = T,     # we already applied hc order (deterministic)
+  annotation_col = ann_col,
+  border_color = NA,
+  fontsize_row = 10,
+  fontsize_col = 10,
+  filename = "ClonalSuccession_Genes_RNA_zscore_selectedClusters_hclustCols_BuGn.png",
+  width = 10,
+  height = 8
+)
+
+######
+
+# Make DoHeatmap
 p_cells <- DoHeatmap(
   tara_sub,
-  features = genes_use,
+  features = genes_use,       # preserves this order
   group.by = "wsnn_res.0.4",
   assay    = "RNA",
-  slot     = "data"
+  slot     = "data",
+  raster   = TRUE
 ) +
-  ggtitle("Clonal succession genes (RNA) — DoHeatmap (selected clusters)")
+  ggtitle("Clonal succession genes (RNA)") +
+  scale_fill_gradientn(colors = colorRampPalette(cols_burd)(101))
 
-ggsave("ClonalSuccession_Genes_RNA_DoHeatmap_cells_selectedClusters.png",
-       p_cells, width = 14, height = 8, dpi = 300)
-
-
+p_cells
+ggsave(
+  "ClonalSuccession_Genes_RNA_DoHeatmap_cells_selectedClusters_BuGn.png",
+  p_cells,
+  width = 14,
+  height = 8,
+  dpi = 300
+)
+##################################################################
 # Set default assay to ADT
 DefaultAssay(tara_cdnk) <- "ADT"
 
@@ -360,62 +394,66 @@ make_heatmap(
 # ---------------------------- #
 # PAVE (force-include proteins)
 # ---------------------------- #
+setwd("/home/akshay-iyer/Documents/CD8_Longitudinal/T_Cell_Subsets/Pre-Annotation/Heatmaps/ADT")
 
 # Make sure ADT assay is active
 DefaultAssay(tara_cdnk) <- "ADT"
-
-# ADT feature names
-adt_feats <- rownames(tara_cdnk[["ADT"]])
-
-# Synonyms / patterns to try (ADT naming varies a lot)
-syn_map <- list(
-  CD3  = c("^CD3$", "CD3[DEGZ]?", "CD3\\s*\\(", "CD3-"),
-  CD8  = c("^CD8$", "^CD8A$", "^CD8B$", "CD8A", "CD8B", "CD8\\s*\\(", "CD8-"),
-  CD56 = c("^CD56$", "CD56\\s*\\(", "CD56-", "NCAM1", "NCAM1\\s*\\("),
-  `PD-1` = c("^PD-1$", "^PD1$", "PD-1\\s*\\(", "PD1\\s*\\(", "PDCD1", "CD279", "CD279\\s*\\(")
+# --- PAVE ADT proteins (ONLY these) ---
+pave_proteins <- c(
+  "ITGAL","ITGB2","ITGA4","CD45RA","FCGR3A","KLRD1","NCAM1","CD69","B3GAT1",
+  "KLRB1","CD45RO","KIR2DL3","TIGIT","PDCD1","CD47","CD38","FAS","KLRG1",
+  "NT5E","SELL","KIR3DL1"
 )
 
-# Helper to find ADT hits for a given target
-find_adt_hits <- function(target, patterns, feats) {
-  hits <- unique(unlist(lapply(patterns, function(pat) {
-    grep(pat, feats, value = TRUE, ignore.case = TRUE)
-  })))
+DefaultAssay(tara_cdnk) <- "ADT"
+adt_feats <- rownames(tara_cdnk[["ADT"]])
+
+# Robust matching (exact or substring, case-insensitive)
+pave_force <- unique(unlist(lapply(pave_proteins, function(p) {
+  hits <- grep(paste0("^", p, "$"), adt_feats, value = TRUE, ignore.case = TRUE)
+  if (length(hits) == 0) hits <- grep(p, adt_feats, value = TRUE, ignore.case = TRUE)
   hits
-}
+})))
 
-# Get hits
-hits_list <- lapply(names(syn_map), function(k) find_adt_hits(k, syn_map[[k]], adt_feats))
-names(hits_list) <- names(syn_map)
+message("Found ADT hits: ", paste(pave_force, collapse = ", "))
+message("Missing (no ADT match): ",
+        paste(setdiff(pave_proteins, toupper(pave_force)), collapse = ", "))
+# ---- PAVE plot 1: clusters ordered 11,17,6,10,16,22 ----
+clusters_pave1 <- c(11, 17, 6, 10, 16, 22)
 
-# Print what we found (so you can sanity check)
-for (nm in names(hits_list)) {
-  message(nm, " hits: ", ifelse(length(hits_list[[nm]])==0, "<none>", paste(hits_list[[nm]], collapse = " | ")))
-}
+seu_pave1 <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% clusters_pave1)
+DefaultAssay(seu_pave1) <- "ADT"
 
-# Choose what to include:
-# - If multiple hits exist, keep them all (safe; guarantees inclusion)
-pave_hits_extra <- unique(unlist(hits_list))
+# enforce column order of clusters (this drives Heatmap column order)
+seu_pave1$wsnn_res.0.4 <- factor(seu_pave1$wsnn_res.0.4, levels = clusters_pave1)
 
-# Your original hits (already found)
-pave_hits_existing <- c("FCGR3A", "KIR2DL1", "KLRG1", "B3GAT1", "CCR5")
-
-# Final set to force-include
-pave_force <- unique(c(pave_hits_existing, pave_hits_extra))
-pave_force <- intersect(pave_force, adt_feats)  # ensure valid
-
-message("FORCING these ADT features into heatmap: ", paste(pave_force, collapse = ", "))
-
-seu_pave <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% c(11, 17, 6, 2, 10, 16, 22))
-DefaultAssay(seu_pave) <- "ADT"
-
-vf_old <- VariableFeatures(seu_pave)
-VariableFeatures(seu_pave) <- unique(c(vf_old, pave_force))
+# force features used by your make_heatmap() (it reads VariableFeatures)
+VariableFeatures(seu_pave1) <- pave_force
 
 make_heatmap(
-  seu_pave,
-  clusters = c(11, 17, 6, 2, 10, 16, 22),
-  outfile = "PAVE_talk_specified_clusters_tara_cdnk_ADT.png",
+  seu_pave1,
+  clusters = clusters_pave1,
+  outfile  = "PAVE_ADT_onlySpecifiedProteins_clusters_11_17_6_10_16_22.png",
+  n_top_genes = length(pave_force),  # keep ALL proteins
   width = 10,
+  height = 10
+)
+# ---- PAVE plot 2: clusters ordered 0,4,11,17,6,10,16,22 ----
+clusters_pave2 <- c(0, 4, 11, 17, 6, 10, 16, 22)
+
+seu_pave2 <- subset(tara_cdnk, subset = wsnn_res.0.4 %in% clusters_pave2)
+DefaultAssay(seu_pave2) <- "ADT"
+
+seu_pave2$wsnn_res.0.4 <- factor(seu_pave2$wsnn_res.0.4, levels = clusters_pave2)
+
+VariableFeatures(seu_pave2) <- pave_force
+
+make_heatmap(
+  seu_pave2,
+  clusters = clusters_pave2,
+  outfile  = "PAVE_ADT_onlySpecifiedProteins_clusters_0_4_11_17_6_10_16_22.png",
+  n_top_genes = length(pave_force),
+  width = 12,
   height = 10
 )
 
