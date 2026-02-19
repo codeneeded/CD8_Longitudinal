@@ -21,7 +21,7 @@ saved_dir  <- file.path(base_dir, "saved_R_data")
 rds_in     <- file.path(saved_dir, "tara_cdnk.rds")
 
 tara_cdnk <- readRDS(rds_in) ### START FROM PSEUDOTIME
-
+levels(as.factor(tara_cdnk$orig.ident))
 #################### LOAD VDJ DATA  ##########################
 
 #Filenames
