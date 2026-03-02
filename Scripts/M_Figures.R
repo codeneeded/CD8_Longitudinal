@@ -15,7 +15,9 @@ library(monocle3)
 library(SeuratWrappers)
 library(qs2)
 library(tidyr)
-
+library(Matrix)
+library(ggrepel)
+library(patchwork)
 ############################## Read files ######################################
 base_dir   <- "~/Documents/CD8_Longitudinal"
 saved_dir  <- file.path(base_dir, "saved_R_data")
@@ -476,3 +478,288 @@ ClusterDistrPlot(
   cluster = seu_pre$Manual_Annotation,
   condition = seu_pre$Gender
 )
+
+################## Build sample-level expression matrices (RNA + ADT) at PreART_Entry #########
+
+####### Create Dir 
+
+dir_expr <- file.path(fig2_dir, "05_VL_Associated_Features")
+dir_pbmc <- file.path(dir_expr, "01_PBMC_Level")
+dir_clst <- file.path(dir_expr, "02_Cluster_Within_Sample")
+
+dir.create(dir_expr, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_pbmc, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_clst, showWarnings = FALSE, recursive = TRUE)
+
+dir_pbmc_data  <- file.path(dir_pbmc, "01_Data")
+dir_pbmc_res   <- file.path(dir_pbmc, "02_Results")
+dir_pbmc_plots <- file.path(dir_pbmc, "03_Plots")
+dir_clst_res   <- file.path(dir_clst, "02_Results")
+dir_clst_plots <- file.path(dir_clst, "03_Plots")
+
+dir.create(dir_pbmc_data,  showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_pbmc_res,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_pbmc_plots, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_clst_res,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_clst_plots, showWarnings = FALSE, recursive = TRUE)
+
+# -----------------------------
+# Cluster-within-sample unified folders
+# -----------------------------
+dir_clst_rna <- file.path(dir_clst, "RNA")
+dir_clst_adt <- file.path(dir_clst, "ADT")
+
+dir_rna_avg   <- file.path(dir_clst_rna, "01_AvgExpr")
+dir_rna_res   <- file.path(dir_clst_rna, "02_Results")
+dir_rna_plots <- file.path(dir_clst_rna, "03_Plots")
+
+dir_adt_avg   <- file.path(dir_clst_adt, "01_AvgExpr")
+dir_adt_res   <- file.path(dir_clst_adt, "02_Results")
+dir_adt_plots <- file.path(dir_clst_adt, "03_Plots")
+
+dir.create(dir_rna_avg,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_rna_res,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_rna_plots, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_adt_avg,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_adt_res,   showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_adt_plots, showWarnings = FALSE, recursive = TRUE)
+
+### Func - Spearman per feature + volcano-like plot
+
+
+safe_spearman_vec <- function(x, y, min_n = 5) {
+  ok <- is.finite(x) & is.finite(y)
+  x2 <- x[ok]; y2 <- y[ok]
+  n_ok <- length(x2)
+  if (n_ok < min_n) return(c(rho = NA_real_, p = NA_real_, n = n_ok))
+  if (length(unique(x2)) < 2 || length(unique(y2)) < 2) return(c(rho = NA_real_, p = NA_real_, n = n_ok))
+  ct <- suppressWarnings(cor.test(x2, y2, method = "spearman", exact = FALSE))
+  c(rho = unname(ct$estimate), p = ct$p.value, n = n_ok)
+}
+
+correlate_matrix_vs_vl <- function(mat_features_by_sample, vl_df, vl_col = "Viral_Load_log10", min_n = 5) {
+  
+  samp <- intersect(colnames(mat_features_by_sample), vl_df$orig.ident)
+  mat  <- mat_features_by_sample[, samp, drop = FALSE]
+  y    <- vl_df[[vl_col]][match(samp, vl_df$orig.ident)]
+  
+  res <- t(apply(mat, 1, function(x) safe_spearman_vec(as.numeric(x), y, min_n = min_n)))
+  res <- as.data.frame(res)
+  res$feature <- rownames(res)
+  
+  res <- res %>%
+    mutate(
+      rho = as.numeric(rho),
+      p = as.numeric(p),
+      n = as.integer(n),
+      neglog10p = -log10(p)
+    ) %>%
+    arrange(p)
+  
+  res
+}
+
+plot_corr_volcano <- function(df, title, out_png, label_top = 12, alpha = 0.05) {
+  df2 <- df %>% filter(is.finite(rho), is.finite(p))
+  if (nrow(df2) == 0) return(NULL)
+  
+  # label top by p-value
+  lab <- df2 %>% arrange(p) %>% slice_head(n = label_top)
+  
+  p1 <- ggplot(df2, aes(x = rho, y = -log10(p))) +
+    geom_point(alpha = 0.7) +
+    geom_hline(yintercept = -log10(alpha), linetype = "dashed") +
+    ggrepel::geom_text_repel(data = lab, aes(label = feature), size = 3, max.overlaps = Inf) +
+    labs(title = title, x = "Spearman rho", y = "-log10(p)") +
+    theme_classic(base_size = 16)
+  
+  ggsave(out_png, p1, width = 8.5, height = 6.5, dpi = 300)
+  p1
+}
+
+
+###### PBMC-level (sample aggregated) RNA + ADT correlations
+# Ensure we use only samples with finite log10(VL)
+vl_df_use <- vl_df %>% filter(is.finite(Viral_Load_log10))
+cells_keep <- rownames(seu_pre@meta.data)[seu_pre$orig.ident %in% vl_df_use$orig.ident]
+seu_pre2 <- subset(seu_pre, cells = cells_keep)
+
+# RNA (log-normalized data slot)
+DefaultAssay(seu_pre2) <- "RNA"
+rna_avg <- AverageExpression(
+  seu_pre2,
+  group.by = "orig.ident",
+  assays = "RNA",
+  slot = "data",
+  verbose = FALSE
+)$RNA
+
+write.csv(as.data.frame(rna_avg),
+          file.path(dir_pbmc_data, "PBMC_RNA_AverageExpression_bySample.csv"))
+
+# ADT (normalized data slot, e.g. CLR/DSB)
+
+adt_test <- AverageExpression(
+  seu_pre2,
+  group.by = "orig.ident",
+  assays = "ADT",
+  slot = "data",
+  verbose = FALSE
+)
+
+adt_avg <- adt_test$ADT
+
+write.csv(
+  as.data.frame(adt_avg),
+  file.path(dir_pbmc_data, "PBMC_ADT_AverageExpression_bySample.csv")
+)
+
+vl_df_use <- vl_df_use %>%
+  mutate(orig.ident = gsub("_", "-", orig.ident))
+
+# RNA correlations
+rna_cor <- correlate_matrix_vs_vl(rna_avg, vl_df_use, vl_col = "Viral_Load_log10", min_n = 5)
+write_csv(rna_cor, file.path(dir_pbmc_res, "PBMC_RNA_FeatureCorrelation_vs_log10VL.csv"))
+plot_corr_volcano(
+  rna_cor,
+  title = "PBMC-level RNA features vs log10(VL) (PreART_Entry)",
+  out_png = file.path(dir_pbmc_plots, "PBMC_RNA_CorrVolcano_vs_log10VL.png"),
+  label_top = 15,
+  alpha = 0.05
+)
+
+# ADT correlations
+if (exists("adt_avg")) {
+  adt_cor <- correlate_matrix_vs_vl(adt_avg, vl_df_use, vl_col = "Viral_Load_log10", min_n = 5)
+  write_csv(adt_cor, file.path(dir_pbmc_res, "PBMC_ADT_FeatureCorrelation_vs_log10VL.csv"))
+  plot_corr_volcano(
+    adt_cor,
+    title = "PBMC-level ADT features vs log10(VL) (PreART_Entry)",
+    out_png = file.path(dir_pbmc_plots, "PBMC_ADT_CorrVolcano_vs_log10VL.png"),
+    label_top = 15,
+    alpha = 0.05
+  )
+}
+
+
+#### Cluster-within-sample correlations (RNA + ADT)
+run_cluster_within_sample <- function(seu, cluster_col = "Manual_Annotation", cl, vl_df_use,
+                                      assay_name = "RNA", slot_name = "data",
+                                      min_cells_per_sample = 30, min_n_samples = 5,
+                                      out_avg_dir, out_res_dir, out_plot_dir) {
+  
+  # sanitize cluster name for filenames
+  cl_tag <- gsub("[^A-Za-z0-9]+", "_", cl)
+  
+  # keep cells in this cluster
+  cells_cl <- rownames(seu@meta.data)[seu@meta.data[[cluster_col]] == cl]
+  if (length(cells_cl) == 0) return(NULL)
+  
+  seu_cl <- subset(seu, cells = cells_cl)
+  DefaultAssay(seu_cl) <- assay_name
+  
+  # cell counts per sample within cluster (explicit dplyr::count to avoid masking)
+  cc <- seu_cl@meta.data %>%
+    dplyr::count(orig.ident, name = "n_cells_cluster")
+  
+  keep_samples <- cc %>%
+    filter(n_cells_cluster >= min_cells_per_sample) %>%
+    pull(orig.ident)
+  
+  if (length(keep_samples) < min_n_samples) {
+    return(NULL)
+  }
+  
+  seu_cl <- subset(seu_cl, subset = orig.ident %in% keep_samples)
+  
+  # average expression within cluster per sample
+  avg <- AverageExpression(
+    seu_cl,
+    group.by = "orig.ident",
+    assays = assay_name,
+    slot = slot_name,
+    verbose = FALSE
+  )[[assay_name]]
+  
+  # correlate features vs VL (only those samples)
+  vl_sub <- vl_df_use %>% filter(orig.ident %in% colnames(avg))
+  res <- correlate_matrix_vs_vl(avg, vl_sub, vl_col = "Viral_Load_log10", min_n = min_n_samples)
+  
+  # save (unique filenames per cluster)
+  write.csv(as.data.frame(avg), file.path(out_avg_dir, paste0(cl_tag, "_", assay_name, "_AvgExpr_bySample.csv")))
+  readr::write_csv(res,          file.path(out_res_dir, paste0(cl_tag, "_", assay_name, "_FeatureCorrelation_vs_log10VL.csv")))
+  
+  # plot
+  plot_corr_volcano(
+    res,
+    title = paste0(cl, ": ", assay_name, " features vs log10(VL)"),
+    out_png = file.path(out_plot_dir, paste0(cl_tag, "_", assay_name, "_CorrVolcano_vs_log10VL.png")),
+    label_top = 12,
+    alpha = 0.05
+  )
+  
+  # return summary-style table for merging
+  res %>%
+    mutate(cluster = cl, assay = assay_name) %>%
+    select(cluster, assay, feature, rho, p, n, neglog10p)
+}
+
+
+### Run 
+clusters_use <- sort(unique(seu_pre2$Manual_Annotation))
+min_cells_per_sample <- 30
+min_n_samples <- 5
+all_cluster_hits <- list()
+
+for (cl in clusters_use) {
+  
+  # RNA
+  rna_res <- run_cluster_within_sample(
+    seu = seu_pre2,
+    cluster_col = "Manual_Annotation",
+    cl = cl,
+    vl_df_use = vl_df_use,
+    assay_name = "RNA",
+    slot_name = "data",
+    min_cells_per_sample = min_cells_per_sample,
+    min_n_samples = min_n_samples,
+    out_avg_dir  = dir_rna_avg,
+    out_res_dir  = dir_rna_res,
+    out_plot_dir = dir_rna_plots
+  )
+  if (is.data.frame(rna_res)) all_cluster_hits[[paste0(cl, "_RNA")]] <- rna_res
+  
+  # ADT (no if; safely skip if ADT not available)
+  adt_res <- tryCatch(
+    run_cluster_within_sample(
+      seu = seu_pre2,
+      cluster_col = "Manual_Annotation",
+      cl = cl,
+      vl_df_use = vl_df_use,
+      assay_name = "ADT",
+      slot_name = "data",
+      min_cells_per_sample = min_cells_per_sample,
+      min_n_samples = min_n_samples,
+      out_avg_dir  = dir_adt_avg,
+      out_res_dir  = dir_adt_res,
+      out_plot_dir = dir_adt_plots
+    ),
+    error = function(e) NULL
+  )
+  if (is.data.frame(adt_res)) all_cluster_hits[[paste0(cl, "_ADT")]] <- adt_res
+}
+
+# Combine and save global summaries
+dir.create(dir_clst_res, showWarnings = FALSE, recursive = TRUE)
+
+if (length(all_cluster_hits) > 0) {
+  summary_hits <- dplyr::bind_rows(all_cluster_hits) %>% arrange(p)
+  readr::write_csv(summary_hits, file.path(dir_clst_res, "ClusterWithinSample_AllFeatures_vs_log10VL_Summary.csv"))
+  
+  top_hits <- summary_hits %>%
+    group_by(cluster, assay) %>%
+    slice_min(order_by = p, n = 20, with_ties = FALSE) %>%
+    ungroup()
+  
+  readr::write_csv(top_hits, file.path(dir_clst_res, "ClusterWithinSample_Top20Hits_perClusterAssay.csv"))
+}
