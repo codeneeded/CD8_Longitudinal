@@ -17,6 +17,7 @@ library(qs2)
 library(tidyr)
 library(Matrix)
 library(ggrepel)
+library(pheatmap)
 library(patchwork)
 ############################## Read files ######################################
 base_dir   <- "~/Documents/CD8_Longitudinal"
@@ -478,6 +479,179 @@ ClusterDistrPlot(
   cluster = seu_pre$Manual_Annotation,
   condition = seu_pre$Gender
 )
+############################ CLECL4C Correlation ############
+# PBMC-level folder
+dir_pbmc_level <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Manuscript/Fig 2/Cluster_Size_Vs_Viral_Load/05_VL_Associated_Features/01_PBMC_Level"
+dir_pbmc_plots <- file.path(dir_pbmc_level, "03_Plots")
+dir_pbmc_res   <- file.path(dir_pbmc_level, "02_Results")
+dir.create(dir_pbmc_plots, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_pbmc_res,   showWarnings = FALSE, recursive = TRUE)
+
+# Match sample IDs: rna_avg/adt_avg columns are like "CP002-entry"
+# Ensure vl_df_use uses hyphen too
+vl_df_use_match <- vl_df_use %>%
+  mutate(orig.ident = gsub("_", "-", orig.ident)) %>%
+  filter(is.finite(Viral_Load_log10))
+
+# ---- find CLEC4C row robustly ----
+if (!"CLEC4C" %in% rownames(adt_avg)) {
+  hit <- grep("^CLEC4C$|CLEC4C", rownames(adt_avg), value = TRUE)
+  if (length(hit) == 0) stop("CLEC4C not found in rownames(adt_avg). Check ADT feature names.")
+  clec_name <- hit[1]
+} else {
+  clec_name <- "CLEC4C"
+}
+
+# ---- build plotting df (align samples) ----
+samp <- intersect(colnames(adt_avg), vl_df_use_match$orig.ident)
+
+df_clec <- tibble(
+  orig.ident = samp,
+  Viral_Load_log10 = vl_df_use_match$Viral_Load_log10[match(samp, vl_df_use_match$orig.ident)],
+  CLEC4C_ADT = as.numeric(adt_avg[clec_name, samp])
+) %>% filter(is.finite(Viral_Load_log10), is.finite(CLEC4C_ADT))
+
+# ---- plot ----
+p_clec <- ggplot(df_clec, aes(x = Viral_Load_log10, y = CLEC4C_ADT)) +
+  geom_point(size = 3, alpha = 0.85) +
+  geom_smooth(method = "lm", se = FALSE) +
+  ggpubr::stat_cor(method = "spearman", label.x.npc = "left", label.y.npc = "top") +
+  labs(
+    title = paste0("PBMC-level ADT: ", clec_name, " vs log10(Viral Load)"),
+    x = "log10(Viral Load)",
+    y = paste0(clec_name, " (ADT, DSB normalized)")
+  ) +
+  theme_classic(base_size = 16)
+
+ggsave(
+  filename = file.path(dir_pbmc_plots, "PBMC_ADT_CLEC4C_vs_log10VL.png"),
+  plot = p_clec, width = 6.5, height = 5.5, dpi = 300
+)
+
+# save df used
+readr::write_csv(df_clec, file.path(dir_pbmc_res, "PBMC_ADT_CLEC4C_vs_log10VL_data.csv"))
+
+# Curated Type I IFN/ISG set (edit if you have your own)
+ifn1_genes <- c(
+  "ISG15","IFI6","IFIT1","IFIT2","IFIT3","IFITM1","IFITM3",
+  "MX1","MX2","OAS1","OAS2","OASL","RSAD2","USP18",
+  "IRF7","STAT1","DDX58","IFIH1","HERC5","BST2"
+)
+
+genes_present <- intersect(rownames(rna_avg), ifn1_genes)
+if (length(genes_present) < 5) {
+  stop(paste0("Too few IFN genes found in rna_avg (found ", length(genes_present), "). Check gene symbols / rownames(rna_avg)."))
+}
+
+samp_rna <- intersect(colnames(rna_avg), vl_df_use_match$orig.ident)
+
+# Option: z-score each gene across samples, then average (recommended)
+rna_sub <- as.matrix(rna_avg[genes_present, samp_rna, drop = FALSE])
+rna_z   <- t(scale(t(rna_sub)))  # gene-wise z-score across samples
+
+ifn1_score <- colMeans(rna_z, na.rm = TRUE)
+
+df_ifn <- tibble(
+  orig.ident = samp_rna,
+  Viral_Load_log10 = vl_df_use_match$Viral_Load_log10[match(samp_rna, vl_df_use_match$orig.ident)],
+  IFN1_Module_Zmean = as.numeric(ifn1_score)
+) %>% filter(is.finite(Viral_Load_log10), is.finite(IFN1_Module_Zmean))
+
+readr::write_csv(df_ifn, file.path(dir_pbmc_res, "PBMC_RNA_IFN1_Module_vs_log10VL_data.csv"))
+
+p_ifn <- ggplot(df_ifn, aes(x = Viral_Load_log10, y = IFN1_Module_Zmean)) +
+  geom_point(size = 3, alpha = 0.85) +
+  geom_smooth(method = "lm", se = FALSE) +
+  ggpubr::stat_cor(method = "spearman", label.x.npc = "left", label.y.npc = "top") +
+  labs(
+    title = paste0("PBMC-level RNA: Type I IFN Module vs log10(Viral Load)\n(n genes=", length(genes_present), ")"),
+    x = "log10(Viral Load)",
+    y = "Type I IFN module score (mean z-scored expression)"
+  ) +
+  theme_classic(base_size = 16)
+
+ggsave(
+  filename = file.path(dir_pbmc_plots, "PBMC_RNA_IFN1_Module_vs_log10VL.png"),
+  plot = p_ifn, width = 6.5, height = 5.5, dpi = 300
+)
+#### Per cluster
+dir_cluster_level <- file.path(dir_pbmc_level, "04_Cluster_Level")
+dir_cluster_plots <- file.path(dir_cluster_level, "03_Plots")
+dir_cluster_res   <- file.path(dir_cluster_level, "02_Results")
+
+dir.create(dir_cluster_plots, showWarnings = FALSE, recursive = TRUE)
+dir.create(dir_cluster_res, showWarnings = FALSE, recursive = TRUE)
+
+
+DefaultAssay(seu_pre2) <- "ADT"
+
+clec_name <- if ("CLEC4C" %in% rownames(seu_pre2)) "CLEC4C" else grep("CLEC4C", rownames(seu_pre2), value = TRUE)[1]
+
+# Extract per-cell data
+adt_df <- FetchData(seu_pre2, vars = c("orig.ident", "Manual_Annotation", clec_name))
+
+colnames(adt_df)[3] <- "CLEC4C_ADT"
+
+# Aggregate per cluster per sample
+adt_cluster_avg <- adt_df %>%
+  group_by(orig.ident, Manual_Annotation) %>%
+  summarise(
+    CLEC4C_mean = mean(CLEC4C_ADT, na.rm = TRUE),
+    n_cells = n(),
+    .groups = "drop"
+  )
+
+# Merge VL
+adt_cluster_avg <- adt_cluster_avg %>%
+  mutate(orig.ident = gsub("_", "-", orig.ident)) %>%
+  left_join(vl_df_use_match, by = "orig.ident")
+
+write.csv(adt_cluster_avg,
+          file.path(dir_cluster_res, "CLEC4C_ADT_ClusterLevel_Data.csv"),
+          row.names = FALSE)
+
+
+min_n_samples <- 5
+
+clusters_to_plot <- adt_cluster_avg %>%
+  filter(is.finite(CLEC4C_mean), is.finite(Viral_Load_log10)) %>%
+  group_by(Manual_Annotation) %>%
+  summarise(n_samples = n(), .groups = "drop") %>%
+  filter(n_samples >= min_n_samples) %>%
+  pull(Manual_Annotation)
+
+for (cl in clusters_to_plot) {
+  
+  df_plot <- adt_cluster_avg %>%
+    filter(Manual_Annotation == cl,
+           is.finite(CLEC4C_mean),
+           is.finite(Viral_Load_log10))
+  
+  p <- ggplot(df_plot, aes(x = Viral_Load_log10, y = CLEC4C_mean)) +
+    geom_point(size = 3) +
+    geom_smooth(method = "lm", se = FALSE) +
+    stat_cor(method = "spearman", label.x.npc = "left", label.y.npc = "top") +
+    labs(
+      title = paste0("CLEC4C ADT vs log10(VL) — ", cl),
+      x = "log10(Viral Load)",
+      y = "Mean CLEC4C (ADT)"
+    ) +
+    theme_classic(base_size = 15)
+  
+  ggsave(
+    file.path(dir_cluster_plots,
+              paste0("CLEC4C_ADT_vs_log10VL_", gsub("[/: ]+", "_", cl), ".png")),
+    plot = p,
+    width = 6,
+    height = 5,
+    dpi = 300
+  )
+}
+
+
+
+
+
 
 ################## Build sample-level expression matrices (RNA + ADT) at PreART_Entry #########
 
@@ -763,3 +937,110 @@ if (length(all_cluster_hits) > 0) {
   
   readr::write_csv(top_hits, file.path(dir_clst_res, "ClusterWithinSample_Top20Hits_perClusterAssay.csv"))
 }
+levels(as.factor(TARA_ALL$Manual_Annotation))
+
+###### Feature Selection VL corelations ################
+
+summary_csv <- file.path(dir_clst_res, "ClusterWithinSample_AllFeatures_vs_log10VL_Summary.csv")
+summary_hits <- readr::read_csv(summary_csv, show_col_types = FALSE)
+
+# -----------------------------
+# Parameters
+# -----------------------------
+min_n <- 8
+top_per_cluster_rna <- 5
+top_per_cluster_adt <- 3
+max_total_features <- 40
+
+# -----------------------------
+# Exclude DN T cell clusters
+# -----------------------------
+summary_hits_noDN <- summary_hits %>%
+  filter(!grepl("DN T cell", cluster))
+
+# -----------------------------
+# Pure math ranking
+# -----------------------------
+hits_clean <- summary_hits_noDN %>%
+  filter(is.finite(rho), is.finite(n)) %>%
+  filter(n >= min_n) %>%
+  mutate(abs_rho = abs(rho)) %>%
+  arrange(desc(abs_rho))
+
+# Save full ranked table
+write_csv(hits_clean,
+          file.path(dir_heatmap, "MathRanked_NoDN_AllFeatures_by_absRho.csv"))
+
+# -----------------------------
+# Top per cluster
+# -----------------------------
+top_rna <- hits_clean %>%
+  filter(assay == "RNA") %>%
+  group_by(cluster) %>%
+  slice_max(order_by = abs_rho,
+            n = top_per_cluster_rna,
+            with_ties = FALSE) %>%
+  ungroup()
+
+top_adt <- hits_clean %>%
+  filter(assay == "ADT") %>%
+  group_by(cluster) %>%
+  slice_max(order_by = abs_rho,
+            n = top_per_cluster_adt,
+            with_ties = FALSE) %>%
+  ungroup()
+
+shortlist <- bind_rows(top_rna, top_adt) %>%
+  arrange(desc(abs_rho)) %>%
+  slice_head(n = max_total_features)
+
+write_csv(shortlist,
+          file.path(dir_heatmap, "MathRanked_NoDN_Shortlist_forHeatmap.csv"))
+
+shortlist
+
+feats <- unique(shortlist$feature)
+clust <- unique(shortlist$cluster)
+
+mat <- matrix(NA_real_,
+              nrow = length(feats),
+              ncol = length(clust),
+              dimnames = list(feats, clust))
+
+for (i in seq_len(nrow(shortlist))) {
+  mat[shortlist$feature[i], shortlist$cluster[i]] <- shortlist$rho[i]
+}
+
+# fill missing with 0 so clustering works
+mat2 <- mat
+mat2[is.na(mat2)] <- 0
+
+png(file.path(dir_heatmap, "Ranked_VL_Associated_Features_Heatmap.png"),
+    width = 6000, height = 9000, res = 300)
+
+pheatmap::pheatmap(
+  mat2,
+  cluster_rows = TRUE,
+  cluster_cols = TRUE,
+  
+  # --- Make tiles big so fonts + borders are visible
+  cellwidth  = 55,
+  cellheight = 30,
+  
+  # --- Fonts
+  fontsize_row = 12,
+  fontsize_col = 14,
+  angle_col = 90,
+  
+  # --- Grid boxes (dark + visible)
+  border_color = "black",
+  
+  # --- Dendrogram space
+  treeheight_row = 60,
+  treeheight_col = 60,
+  
+  main = "Top Cluster-Level Associations with log10(Viral Load) (Spearman ρ)"
+)
+
+dev.off()
+
