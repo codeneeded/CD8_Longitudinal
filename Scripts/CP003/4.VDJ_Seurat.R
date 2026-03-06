@@ -391,7 +391,7 @@ ggsave(
   height = 6,
   dpi = 400,
   bg = "white"
-)
+)E
 
 # -----------------------------
 # 2c) UMAP highlight (explicit): highlight only SHARED-clone cells
@@ -421,3 +421,5 @@ ggsave(
 # -----------------------------
 out_qs2_tcr <- file.path(save_dir, "CP003_RNA_integrated_CCA_MNN_withTCR.qs2")
 qs_save(seu, file = out_qs2_tcr)
+
+####

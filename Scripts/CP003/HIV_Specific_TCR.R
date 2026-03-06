@@ -190,6 +190,59 @@ write.csv(
   file = file.path(plot_dir, "CP003_HIV_Specific_TCR_clone_list.csv"),
   row.names = FALSE
 )
+
+# ----------------------------- #
+# 3B) Quick check of specific target clones
+# ----------------------------- #
+
+target_clones <- c(
+  "TRAV19.TRAJ39.TRAC;TGTGCTCTGAGTGTTTACCCCATTAATAATGCAGGCAACATGCTCACCTTT_TRBV2.NA.TRBJ2-2.TRBC2;TGTGCCAGCAGCCCATTTATACTAGCGGGGGCCGGGGAGCTGTTTTTT",
+  "TRAV19.TRAJ48.TRAC;TGTGCTCTGAGTGAGGCGGGGATATCTAACTTTGGAAATGAGAAATTAACCTTT_TRBV14.TRBD1.TRBJ2-7.TRBC2;TGTGCCAGCAGCCAAGATCAAAGGGACAGGGGGCTGAACGAGCAGTACTTC",
+  "TRAV3.TRAJ29.TRAC;TGTGCTGTGAGACCATTTTCAGGAAACACACCTCTTGTCTTT_TRBV24-1.TRBD1.TRBJ2-1.TRBC2;TGTGCCACCAGTGAGCCCAACAGGGGGCCTGAGGATGAGCAGTTCTTC",
+  "NA;NA_TRBV2.NA.TRBJ2-2.TRBC2;TGTGCCAGCAGCCCATTTATACTAGCGGGGGCCGGGGAGCTGTTTTTT"
+)
+
+# Label cells carrying any of these target clones
+seu$Target_Clone_Status <- ifelse(
+  !is.na(seu$CTstrict) & seu$CTstrict %in% target_clones,
+  "Target Clone",
+  "Other"
+)
+
+seu$Target_Clone_Status <- factor(
+  seu$Target_Clone_Status,
+  levels = c("Other", "Target Clone")
+)
+
+# Combined status: target clone and whether it meets your HIV-specific rule
+seu$Target_Clone_HIV_Status <- ifelse(
+  !is.na(seu$CTstrict) & seu$CTstrict %in% target_clones & seu$HIV_Specific_TCR == "HIV-Specific TCR",
+  "Target Clone + HIV-Specific TCR",
+  ifelse(
+    !is.na(seu$CTstrict) & seu$CTstrict %in% target_clones,
+    "Target Clone only",
+    "Other"
+  )
+)
+
+seu$Target_Clone_HIV_Status <- factor(
+  seu$Target_Clone_HIV_Status,
+  levels = c("Other", "Target Clone only", "Target Clone + HIV-Specific TCR")
+)
+
+# Quick table
+target_clone_table <- meta_hiv %>%
+  filter(!is.na(CTstrict), CTstrict %in% target_clones) %>%
+  group_by(CTstrict, Sample, Cluster, HIV_Specific_TCR) %>%
+  summarise(
+    n_cells = n(),
+    max_clonalFrequency = max(clonalFrequency_num, na.rm = TRUE),
+    mean_MKI67 = mean(MKI67, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(CTstrict, Sample, Cluster)
+
+target_clone_table
 # ----------------------------- #
 # 4) Visualizations of HIV-specific TCRs
 # ----------------------------- #

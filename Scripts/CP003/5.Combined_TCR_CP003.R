@@ -80,7 +80,7 @@ combined.TCR.TARA <- combineTCR(
   filterMulti = FALSE
 )
 
-# ----------------------------- #
+# ----------------------------- #CP003_RNA_integrated_CCA_MNN_withTCR.qs2
 # 5) Add metadata to combined object
 # ----------------------------- #
 samples_all <- names(combined.TCR.TARA)
@@ -165,4 +165,21 @@ ggsave(
   height = 11,
   dpi = 300,
   bg = "white"
+)
+p_compare_2 <- clonalCompare(
+  combined.TCR.TARA,
+  top.clones = 20,
+  samples = cp003_samples,
+  order.by = cp003_samples,
+  cloneCall = "strict",
+  relabel.clones = TRUE,
+  proportion = FALSE,
+  graph = "alluvial",
+  exportTable = T
+)
+
+write.csv(
+  p_compare_2,
+  file.path(out.dir, "CP003_Clonal_Comparison_Alluvial.csv"),
+  row.names = FALSE
 )
