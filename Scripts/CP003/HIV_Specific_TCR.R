@@ -94,12 +94,168 @@ ggsave(
 # - ignore 0 / NA / non-expanded as not HIV-specific
 # ----------------------------- #
 
-mki67_expr <- FetchData(seu, vars = "MKI67")[, 1]
-
 freq_num <- suppressWarnings(as.numeric(as.character(seu$clonalFrequency)))
+cluster_num <- seu$mnn_snn_res.0.6
 
 seu$HIV_Specific_TCR <- ifelse(
-  !is.na(mki67_expr) & mki67_expr >= 0.4 &
+  !is.na(cluster_num) & !(cluster_num %in% c(0, 1)) &
+    !is.na(freq_num) & freq_num > 1,
+  "HIV-Specific TCR",
+  "Other"
+)
+
+seu$HIV_Specific_TCR <- factor(
+  seu$HIV_Specific_TCR,
+  levels = c("Other", "HIV-Specific TCR")
+)
+### Cell Cycle
+# Run cell cycle scoring (uses built-in Seurat gene lists)
+s.genes <- cc.genes$s.genes
+g2m.genes <- cc.genes$g2m.genes
+
+seu <- CellCycleScoring(
+  seu,
+  s.features = s.genes,
+  g2m.features = g2m.genes,
+  set.ident = FALSE
+)
+
+# ---- Summary table: phase proportions per cluster ----
+cc_cluster <- seu@meta.data %>%
+  group_by(mnn_snn_res.0.6, Phase) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(mnn_snn_res.0.6) %>%
+  mutate(proportion = n / sum(n))
+
+write.csv(
+  cc_cluster,
+  file = file.path(plot_dir, "CellCycle_by_Cluster.csv"),
+  row.names = FALSE
+)
+
+# ---- Plot 1: stacked bar of phase proportions per cluster ----
+p_cc_bar <- ggplot(cc_cluster,
+                   aes(x = as.factor(mnn_snn_res.0.6),
+                       y = proportion,
+                       fill = Phase)) +
+  geom_col() +
+  scale_fill_manual(values = c("G1" = "#AEC6CF", "S" = "#FFD700", "G2M" = "#E63946")) +
+  theme_classic(base_size = 14) +
+  labs(
+    x = "Cluster",
+    y = "Proportion of cells",
+    fill = "Cell Cycle Phase",
+    title = "Cell Cycle Phase by Cluster"
+  )
+
+ggsave(
+  file.path(plot_dir, "CellCycle_Phase_by_Cluster.png"),
+  p_cc_bar,
+  width = 10,
+  height = 6,
+  dpi = 300,
+  bg = "white"
+)
+
+# ---- Plot 2: UMAP colored by Phase ----
+p_cc_umap <- DimPlot2(
+  seu,
+  features = "Phase",
+  reduction = "umap.mnn.rna",
+  theme = NoAxes()
+)
+
+ggsave(
+  file.path(plot_dir, "UMAP_CellCycle_Phase.png"),
+  p_cc_umap,
+  width = 8,
+  height = 7,
+  dpi = 300,
+  bg = "white"
+)
+
+# ---- Plot 3: S and G2M scores per cluster as violin ----
+p_cc_violin <- VlnPlot(
+  seu,
+  features = c("S.Score", "G2M.Score"),
+  group.by = "mnn_snn_res.0.6",
+  pt.size = 0,
+  ncol = 2
+)
+
+ggsave(
+  file.path(plot_dir, "CellCycle_Scores_Violin_by_Cluster.png"),
+  p_cc_violin,
+  width = 14,
+  height = 6,
+  dpi = 300,
+  bg = "white"
+)
+# ----------------------------- #
+# 3) Extract HIV-specific clone list
+# Includes:
+# - clone
+# - sample
+# - cluster
+# - clonalFrequency
+# - number of cells
+# - mean MKI67
+# - where they came from
+# ----------------------------- #
+
+meta_hiv <- data.frame(
+  Cell = colnames(seu),
+  Sample = seu$Sample,
+  Cluster = seu$mnn_snn_res.0.6,
+  CTstrict = seu$CTstrict,
+  clonalFrequency = seu$clonalFrequency,
+  HIV_Specific_TCR = seu$HIV_Specific_TCR,
+  MKI67 = mki67_expr,
+  stringsAsFactors = FALSE
+)
+
+meta_hiv$clonalFrequency_num <- suppressWarnings(as.numeric(as.character(meta_hiv$clonalFrequency)))
+
+hiv_cells <- meta_hiv %>%
+  filter(
+    HIV_Specific_TCR == "HIV-Specific TCR",
+    !is.na(CTstrict),
+    CTstrict != "",
+    !is.na(clonalFrequency_num),
+    clonalFrequency_num > 1
+  )
+
+# Per-cell table
+write.csv(
+  hiv_cells,
+  file = file.path(plot_dir, "CP003_HIV_Specific_TCR_cells.csv"),
+  row.names = FALSE
+)
+
+# Clone-level summary
+hiv_clone_summary <- hiv_cells %>%
+  group_by(CTstrict, Sample, Cluster) %>%
+  summarise(
+    n_cells = n(),
+    max_clonalFrequency = max(clonalFrequency_num, na.rm = TRUE),
+    mean_MKI67 = mean(MKI67, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(max_clonalFrequency), desc(n_cells))
+
+# ----------------------------- #
+# 2) Label HIV-specific TCR in metadata
+# Definition:
+# - NOT from cluster 0 or 1 (mnn_snn_res.0.6)
+# - clonalFrequency > 1
+# - ignore 0 / NA / non-expanded as not HIV-specific
+# ----------------------------- #
+
+freq_num <- suppressWarnings(as.numeric(as.character(seu$clonalFrequency)))
+cluster_num <- seu$mnn_snn_res.0.6
+
+seu$HIV_Specific_TCR <- ifelse(
+  !is.na(cluster_num) & !(cluster_num %in% c(0, 1)) &
     !is.na(freq_num) & freq_num > 1,
   "HIV-Specific TCR",
   "Other"
@@ -111,7 +267,10 @@ seu$HIV_Specific_TCR <- factor(
 )
 
 # Optional finer annotation if you want to see component logic later
-seu$MKI67_Positive <- ifelse(!is.na(mki67_expr) & mki67_expr >= 0.4, "MKI67+", "MKI67-")
+seu$Not_Cluster0or1 <- ifelse(
+  !is.na(cluster_num) & !(cluster_num %in% c(0, 1)),
+  "Not_Cluster0or1", "Cluster0or1"
+)
 seu$Expanded_TCR_gt1 <- ifelse(!is.na(freq_num) & freq_num > 1, "Expanded", "Not_Expanded")
 
 # ----------------------------- #
@@ -125,6 +284,8 @@ seu$Expanded_TCR_gt1 <- ifelse(!is.na(freq_num) & freq_num > 1, "Expanded", "Not
 # - mean MKI67
 # - where they came from
 # ----------------------------- #
+
+mki67_expr <- FetchData(seu, vars = "MKI67")[, 1]
 
 meta_hiv <- data.frame(
   Cell = colnames(seu),
@@ -243,6 +404,7 @@ target_clone_table <- meta_hiv %>%
   arrange(CTstrict, Sample, Cluster)
 
 target_clone_table
+
 # ----------------------------- #
 # 4) Visualizations of HIV-specific TCRs
 # ----------------------------- #
@@ -251,7 +413,7 @@ plot_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/Proliferation"
 dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 
 ############################################################
-# 4A UMAP highlighting HIV-specific TCR cells
+# 4A UMAP highlighting HIV-specific TCR cells (scCustom)
 ############################################################
 
 p_umap_hiv <- DimPlot_scCustom(
@@ -269,7 +431,6 @@ ggsave(
   bg = "white"
 )
 
-
 p_umap_hiv_split <- DimPlot_scCustom(
   seu,
   group.by = "HIV_Specific_TCR",
@@ -281,6 +442,46 @@ p_umap_hiv_split <- DimPlot_scCustom(
 ggsave(
   file.path(plot_dir, "UMAP_HIV_Specific_TCR_SplitBySample.png"),
   p_umap_hiv_split,
+  width = 16,
+  height = 10,
+  dpi = 300,
+  bg = "white"
+)
+
+############################################################
+# 4A2 UMAP highlighting HIV-specific TCR cells (SeuratExtend DimPlot2)
+############################################################
+
+p_umap_hiv_dim2 <- DimPlot2(
+  seu,
+  features = "HIV_Specific_TCR",
+  reduction = "umap.mnn.rna",
+  cols = c("Other" = "grey85", "HIV-Specific TCR" = "#E63946"),
+  theme = NoAxes()
+)
+
+ggsave(
+  file.path(plot_dir, "UMAP_HIV_Specific_TCR_DimPlot2.png"),
+  p_umap_hiv_dim2,
+  width = 8,
+  height = 7,
+  dpi = 300,
+  bg = "white"
+)
+
+# Split by sample using DimPlot2
+p_umap_hiv_dim2_split <- DimPlot2(
+  seu,
+  features = "HIV_Specific_TCR",
+  reduction = "umap.mnn.rna",
+  split.by = "Sample",
+  cols = c("Other" = "grey85", "HIV-Specific TCR" = "#E63946"),
+  theme = NoAxes()
+)
+
+ggsave(
+  file.path(plot_dir, "UMAP_HIV_Specific_TCR_DimPlot2_SplitBySample.png"),
+  p_umap_hiv_dim2_split,
   width = 16,
   height = 10,
   dpi = 300,
@@ -389,7 +590,6 @@ ggsave(
   bg = "white"
 )
 
-
 ############################################################
 # 4H MKI67 vs clone expansion
 ############################################################
@@ -425,11 +625,20 @@ ggsave(
   dpi = 300,
   bg = "white"
 )
+
 # ----------------------------- #
 # 5) Save Seurat object with new metadata
 # ----------------------------- #
 qs2::qs_save(
   seu,
   file = file.path(save_dir, "seu_CP003_HIVSpecificTCR_annotated.qs")
+)
+DimPlot2(
+  seu,
+  features = "HIV_Specific_TCR",
+  reduction = "umap.mnn.rna",
+  split.by = "mnn_snn_res.0.6",
+  cols = c("Other" = "grey85", "HIV-Specific TCR" = "#E63946"),
+  theme = NoAxes()
 )
 
