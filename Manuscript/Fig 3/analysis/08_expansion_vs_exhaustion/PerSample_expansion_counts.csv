@@ -1,0 +1,62 @@
+"orig.ident","PID","Timepoint_Group","CD8_Annotation","total_cells","n_expanding","pct_expanding"
+"CP002_entry","CP002","PreART_Entry","Effector CD8",305,230,75.4098360655738
+"CP002_entry","CP002","PreART_Entry","Terminal TEMRA CD8",337,297,88.1305637982196
+"CP002_entry","CP002","PreART_Entry","Transitional Tem CD8",46,27,58.695652173913
+"CP003_V12","CP003","PostART_Unsuppressed","Effector CD8",253,110,43.4782608695652
+"CP003_V12","CP003","PostART_Unsuppressed","Terminal TEMRA CD8",322,161,50
+"CP003_V12","CP003","PostART_Unsuppressed","Transitional Tem CD8",65,9,13.8461538461538
+"CP003_V24","CP003","PostART_Unsuppressed","Effector CD8",554,263,47.4729241877256
+"CP003_V24","CP003","PostART_Unsuppressed","Terminal TEMRA CD8",242,132,54.5454545454545
+"CP003_V24","CP003","PostART_Unsuppressed","Transitional Tem CD8",100,24,24
+"CP003_entry","CP003","PreART_Entry","Effector CD8",70,43,61.4285714285714
+"CP003_entry","CP003","PreART_Entry","Terminal TEMRA CD8",197,174,88.3248730964467
+"CP003_entry","CP003","PreART_Entry","Transitional Tem CD8",9,3,33.3333333333333
+"CP006_12m","CP006","PostART_Suppressed","Effector CD8",257,179,69.6498054474708
+"CP006_12m","CP006","PostART_Suppressed","Terminal TEMRA CD8",131,94,71.7557251908397
+"CP006_12m","CP006","PostART_Suppressed","Transitional Tem CD8",27,8,29.6296296296296
+"CP006_V24","CP006","PostART_Suppressed","Effector CD8",560,319,56.9642857142857
+"CP006_V24","CP006","PostART_Suppressed","Terminal TEMRA CD8",332,221,66.566265060241
+"CP006_V24","CP006","PostART_Suppressed","Transitional Tem CD8",314,78,24.8407643312102
+"CP006_entry","CP006","PreART_Entry","Effector CD8",58,14,24.1379310344828
+"CP006_entry","CP006","PreART_Entry","Transitional Tem CD8",11,0,0
+"CP011_entry","CP011","PreART_Entry","Effector CD8",304,175,57.5657894736842
+"CP011_entry","CP011","PreART_Entry","Terminal TEMRA CD8",218,168,77.0642201834862
+"CP011_entry","CP011","PreART_Entry","Transitional Tem CD8",64,43,67.1875
+"CP013_12m","CP013","PostART_Suppressed","Effector CD8",337,217,64.3916913946587
+"CP013_12m","CP013","PostART_Suppressed","Terminal TEMRA CD8",442,340,76.9230769230769
+"CP013_12m","CP013","PostART_Suppressed","Transitional Tem CD8",130,26,20
+"CP013_24m","CP013","PostART_Suppressed","Effector CD8",69,25,36.231884057971
+"CP013_24m","CP013","PostART_Suppressed","Terminal TEMRA CD8",108,73,67.5925925925926
+"CP013_24m","CP013","PostART_Suppressed","Transitional Tem CD8",111,6,5.40540540540541
+"CP013_entry","CP013","PreART_Entry","Effector CD8",23,0,0
+"CP013_entry","CP013","PreART_Entry","Transitional Tem CD8",31,0,0
+"CP016_entry","CP016","PreART_Entry","Effector CD8",149,93,62.4161073825503
+"CP016_entry","CP016","PreART_Entry","Terminal TEMRA CD8",11,5,45.4545454545455
+"CP016_entry","CP016","PreART_Entry","Transitional Tem CD8",15,1,6.66666666666667
+"CP017_entry","CP017","PreART_Entry","Effector CD8",71,26,36.6197183098592
+"CP017_entry","CP017","PreART_Entry","Terminal TEMRA CD8",3,0,0
+"CP017_entry","CP017","PreART_Entry","Transitional Tem CD8",14,3,21.4285714285714
+"CP018_42m","CP018","PostART_Suppressed","Effector CD8",79,15,18.9873417721519
+"CP018_42m","CP018","PostART_Suppressed","Terminal TEMRA CD8",47,29,61.7021276595745
+"CP018_42m","CP018","PostART_Suppressed","Transitional Tem CD8",103,3,2.9126213592233
+"CP018_V24","CP018","PostART_Suppressed","Effector CD8",141,73,51.7730496453901
+"CP018_V24","CP018","PostART_Suppressed","Terminal TEMRA CD8",114,76,66.6666666666667
+"CP018_V24","CP018","PostART_Suppressed","Transitional Tem CD8",13,5,38.4615384615385
+"CP018_entry","CP018","PreART_Entry","Effector CD8",64,39,60.9375
+"CP018_entry","CP018","PreART_Entry","Terminal TEMRA CD8",8,3,37.5
+"CP018_entry","CP018","PreART_Entry","Transitional Tem CD8",11,0,0
+"CP020_V1","CP020","PreART_Entry","Effector CD8",128,44,34.375
+"CP020_V1","CP020","PreART_Entry","Terminal TEMRA CD8",11,5,45.4545454545455
+"CP020_V1","CP020","PreART_Entry","Transitional Tem CD8",88,24,27.2727272727273
+"CP020_V12","CP020","PostART_Unsuppressed","Effector CD8",503,323,64.2147117296223
+"CP020_V12","CP020","PostART_Unsuppressed","Terminal TEMRA CD8",175,136,77.7142857142857
+"CP020_V12","CP020","PostART_Unsuppressed","Transitional Tem CD8",94,27,28.7234042553192
+"CP020_V44","CP020","PostART_Suppressed","Effector CD8",624,345,55.2884615384615
+"CP020_V44","CP020","PostART_Suppressed","Terminal TEMRA CD8",137,88,64.2335766423358
+"CP020_V44","CP020","PostART_Suppressed","Transitional Tem CD8",106,25,23.5849056603774
+"CP022_entry","CP022","PreART_Entry","Effector CD8",158,97,61.3924050632911
+"CP022_entry","CP022","PreART_Entry","Terminal TEMRA CD8",199,160,80.4020100502513
+"CP022_entry","CP022","PreART_Entry","Transitional Tem CD8",12,1,8.33333333333333
+"CP042_entry","CP042","PreART_Entry","Effector CD8",28,7,25
+"CP042_entry","CP042","PreART_Entry","Terminal TEMRA CD8",5,3,60
+"CP042_entry","CP042","PreART_Entry","Transitional Tem CD8",3,0,0
