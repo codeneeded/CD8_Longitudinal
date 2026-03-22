@@ -405,45 +405,57 @@ if (file.exists(m3_pt_path)) {
          plot = p_4A, width = 11, height = 9, dpi = 300, bg = "white")
 }
 
-# ── Fig4B: Paired patient exhaustion vs viral load ───────────────────────────
-vl_path <- file.path(analysis_dir, "09_viral_load", "PerSample_ModuleScores_and_ViralLoad.csv")
-paired_vl_path <- file.path(analysis_dir, "09_viral_load", "H4_Paired_Exhaustion_vs_ViralLoad.png")
-
-if (file.exists(vl_path)) {
-  sample_scores <- read.csv(vl_path)
-  sample_scores$log10_VL <- log10(sample_scores$Viral_Load_num + 1)
+# ── Fig4B: Pseudotime density by ART status ──────────────────────────────────
+# Shows where each ART group sits along the differentiation trajectory
+if (file.exists(m3_pt_path)) {
+  if (!exists("m3_pt")) m3_pt <- read.csv(m3_pt_path)
   
-  # Paired patients (>1 timepoint)
-  paired_patients <- sample_scores %>%
-    group_by(PID) %>% filter(n_distinct(Timepoint_Group) > 1) %>% ungroup()
+  pt_density_df <- m3_pt %>%
+    filter(!is.na(monocle3_pseudotime) & is.finite(monocle3_pseudotime))
   
-  if (nrow(paired_patients) > 2 & "Exhaustion" %in% colnames(paired_patients)) {
-    p_4B <- ggplot(paired_patients, aes(x = log10_VL, y = Exhaustion)) +
-      geom_line(aes(group = PID), color = "grey40", linewidth = 0.8, linetype = "dashed") +
-      geom_point(aes(color = Timepoint_Group), size = 6, alpha = 0.9) +
-      geom_text_repel(aes(label = paste0(PID, "\n",
-                                         c("PreART_Entry"="Pre","PostART_Suppressed"="Sup","PostART_Unsuppressed"="Unsup")[as.character(Timepoint_Group)])),
-                      size = 5, max.overlaps = 20, lineheight = 0.8) +
-      scale_color_manual(values = art_colors, name = "ART Status",
-                         labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
-      labs(x = expression(log[10]~viral~load), y = "Mean exhaustion score",
-           title = "Paired patients: exhaustion tracks viral load") +
-      theme_cowplot(font_size = 22) +
-      theme(
-        axis.text        = element_text(size = 16),
-        axis.title       = element_text(size = 18),
-        plot.title       = element_text(size = 20, face = "bold"),
-        legend.text      = element_text(size = 16),
-        legend.title     = element_text(size = 17, face = "bold"),
-        legend.position  = "right",
-        plot.background  = element_rect(fill = "white", color = NA),
-        panel.background = element_rect(fill = "white", color = NA)
-      ) +
-      guides(color = guide_legend(override.aes = list(size = 5)))
-    
-    ggsave(file.path(fig4_dir, "Fig4B_Paired_Exhaustion_vs_ViralLoad.png"),
-           plot = p_4B, width = 10, height = 8, dpi = 300, bg = "white")
+  # Handle column name: might be Timepoint or Timepoint_Group
+  if ("Timepoint" %in% colnames(pt_density_df) & !"Timepoint_Group" %in% colnames(pt_density_df)) {
+    pt_density_df$Timepoint_Group <- pt_density_df$Timepoint
   }
+  
+  pt_density_df$Timepoint_Group <- factor(pt_density_df$Timepoint_Group,
+                                          levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
+  pt_density_df <- pt_density_df %>% filter(!is.na(Timepoint_Group))
+  
+  # Compute median pseudotime per group for vertical lines
+  medians_pt <- pt_density_df %>%
+    group_by(Timepoint_Group) %>%
+    summarise(median_pt = median(monocle3_pseudotime, na.rm = TRUE), .groups = "drop")
+  
+  p_4B <- ggplot(pt_density_df, aes(x = monocle3_pseudotime, fill = Timepoint_Group,
+                                    color = Timepoint_Group)) +
+    geom_density(alpha = 0.35, linewidth = 1.2) +
+    geom_vline(data = medians_pt, aes(xintercept = median_pt, color = Timepoint_Group),
+               linewidth = 1, linetype = "dashed", show.legend = FALSE) +
+    scale_fill_manual(values = art_colors, name = "ART Status",
+                      labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+    scale_color_manual(values = art_colors, name = "ART Status",
+                       labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+    labs(x = "Monocle3 pseudotime", y = "Density",
+         title = "Distribution along differentiation trajectory",
+         subtitle = "Dashed lines = median pseudotime per group") +
+    theme_cowplot(font_size = 22) +
+    theme(
+      axis.text        = element_text(size = 16),
+      axis.title       = element_text(size = 18),
+      plot.title       = element_text(size = 20, face = "bold"),
+      plot.subtitle    = element_text(size = 14, color = "grey40"),
+      legend.text      = element_text(size = 16),
+      legend.title     = element_text(size = 17, face = "bold"),
+      legend.position  = "bottom",
+      plot.background  = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA)
+    ) +
+    guides(fill = guide_legend(override.aes = list(alpha = 0.6)),
+           color = "none")
+  
+  ggsave(file.path(fig4_dir, "Fig4B_Pseudotime_density_by_ART.png"),
+         plot = p_4B, width = 10, height = 7, dpi = 300, bg = "white")
 }
 
 # ── Fig4C: Exhaustion along pseudotime ───────────────────────────────────────
