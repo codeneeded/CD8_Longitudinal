@@ -21,7 +21,7 @@ out_dir   <- file.path(base_dir, "CP003/Shared_clone_Tables_Bulk")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 qs_cp003_in  <- file.path(saved_dir, "seu_CP003_HIVSpecificTCR_annotated.qs2")
-rds_tara_in  <- file.path(saved_dir, "tara_cdnk_annotated.rds")
+rds_tara_in  <- file.path(saved_dir, "TARA_cd8_HEI_annotated_final.qs2")
 rds_cp003_out <- file.path(saved_dir, "cp003_with_cc_epitope.qs2")
 rds_tara_out  <- file.path(saved_dir, "tara_cdnk_with_cp003_matches.qs2")
 
@@ -29,7 +29,7 @@ rds_tara_out  <- file.path(saved_dir, "tara_cdnk_with_cp003_matches.qs2")
 # 1) Load objects
 # ----------------------------- #
 cp003     <- qs2::qs_read(qs_cp003_in)
-tara_cdnk <- readRDS(rds_tara_in)
+tara_cdnk <- qs_read(rds_tara_in)
 
 # ----------------------------- #
 # 2) Cell cycle scoring — CP003
@@ -155,7 +155,7 @@ tara_meta <- tara_cdnk@meta.data %>%
     Cell              = rownames(.),
     CTstrict          = CTstrict,
     Sample            = orig.ident,
-    Tara_Cluster      = T_Cell_A,
+    Tara_Cluster      = CD8_Annotation,
     clonalFrequency   = clonalFrequency,
     Tara_Phase        = Phase,
     Tara_S_Score      = S.Score,
@@ -354,11 +354,7 @@ ggsave(
 # ----------------------------- #
 adt_expr <- GetAssayData(tara_cdnk, assay = "ADT", layer = "data")
 
-# Check distributions to set thresholds
-par(mfrow = c(2, 3))
-for (m in adt_tscm) {
-  hist(adt_expr[m, ], breaks = 50, main = m, xlab = "CLR expression")
-}
+
 
 # ----------------------------- #
 # Tscm definition
@@ -431,7 +427,7 @@ ggsave(
 # Summary table
 # ----------------------------- #
 tscm_summary <- tara_cdnk@meta.data %>%
-  group_by(Tscm_Candidate, T_Cell_A) %>%
+  group_by(Tscm_Candidate, CD8_Annotation) %>%
   summarise(n_cells = n(), .groups = "drop") %>%
   arrange(desc(Tscm_Candidate), desc(n_cells))
 
@@ -584,3 +580,4 @@ write.csv(
   file      = file.path(plot_dir, "Tscm_Proportion_Pairwise_Stats.csv"),
   row.names = FALSE
 )
+

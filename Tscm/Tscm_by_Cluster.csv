@@ -1,35 +1,21 @@
-"Tscm_Candidate","T_Cell_A","n_cells"
-"Tscm","CD8+ T_naive",280
-"Tscm","CD8+ T_naive_IL7R+",158
-"Tscm","γδ1 T",91
-"Tscm","CD8+ T_effector_prog",60
-"Tscm","CD4+ T",24
-"Tscm","CD8+ T_B-like",13
-"Tscm","CD8+ T_resting",11
-"Tscm","γδ2 T",11
-"Tscm","CD8+ T_memory",9
-"Tscm","CD8+ T_memory_costim+integrin",2
-"Tscm","NK_activated",1
-"Tscm","CTL",1
-"Other","NK_resting",4889
-"Other","CD8+ T_resting",4579
-"Other","NK-T_CD64+",4060
-"Other","NK_activated",4031
-"Other","CD8+ T_memory",3359
-"Other","CTL",2934
-"Other","CD8+ T_naive_IL7R+",2786
-"Other","CD8+ T_memory_costim+integrin",2559
-"Other","CD8+ T_naive",2548
-"Other","NK_bright",2054
-"Other","NK-T",1924
-"Other","NK-like_CD8+ T_PD1+",1854
-"Other","NK_56low",1780
-"Other","CD8+ T_B-like",1731
-"Other","γδ1 T",1274
-"Other","γδ2_CTL",1182
-"Other","NK-like_CD8+ T_KLRG1+",1166
-"Other","NK-like_CD8+ T_CCR6+",1133
-"Other","CD8+ T_effector_prog",1030
-"Other","CD4+ T",788
-"Other","γδ2 T",682
-"Other","NK-like_CD8+ T_KIR3DL1+",558
+"Tscm_Candidate","CD8_Annotation","n_cells"
+"Tscm","Naïve CD8 (innate-like)",262
+"Tscm","Naïve CD8",52
+"Tscm","Naïve-like TRDV1+ γδ",9
+"Tscm","Naïve CD8 (post-ART)",3
+"Tscm","Transitional Tem CD8",2
+"Tscm","Effector CD8",1
+"Tscm","KIR+ innate-like CD8",1
+"Tscm","TRDV1+ γδ T cell",1
+"Tscm","Vγ9Vδ2 γδ T cell",1
+"Other","Naïve CD8",6954
+"Other","Effector CD8",4734
+"Other","Naïve CD8 (innate-like)",3664
+"Other","Terminal TEMRA CD8",3039
+"Other","TRDV1+ γδ T cell",2883
+"Other","Naïve CD8 (post-ART)",1622
+"Other","Transitional Tem CD8",1365
+"Other","KIR+ innate-like CD8",749
+"Other","Naïve-like TRDV1+ γδ",456
+"Other","Vγ9Vδ2 γδ T cell",271
+"Other","MAIT-like Trm",142

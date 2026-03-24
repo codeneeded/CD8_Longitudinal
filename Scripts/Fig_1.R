@@ -1,19 +1,41 @@
 ################################################################################
-# FIGURE 1 — CD8 T Cell Landscape in HIV-Exposed Infants
+# FIGURE 1 — CD8 T Cell Annotation Validation & Landscape
 # Manuscript: CD8 Longitudinal (TARA Cohort)
 #
-# Figure order:
-#   Fig 1A — Methods schematic (created manually, not coded here)
-#   Fig 1B — UMAP: all clusters with numeric labels
-#   Fig 1C — ADT + RNA heatmap: CD8 cluster identity validation
-#   Fig 1D — CD8 cluster proportions (% of PBMC): HUU vs HEU vs HEI
-#   Fig 1E — CD8 cluster % vs viral load correlations (HEI only)
+# PURPOSE:
+#   1. Pull out Cluster 12 as additional CD8 cluster for evaluation
+#   2. Generate violin + feature plots for ALL 108 ADT markers
+#   3. Generate violin + feature plots for expanded RNA (CD8 + non-CD8 markers)
+#   4. Export average expression tables (RNA + ADT) per cluster for annotation
+#   5. Ensure ALL panels use the HEI/HEU/HUU subset (PreART_Entry, HEU, HUU)
 #
-# Cluster ordering throughout (by cluster number):
-#   Cluster 1  → Tcm/Tscm CD8 (Memory CD8 T cell)
+# OUTPUT STRUCTURE:
+#   Fig 1/Analysis/
+#     ├── 00_Annotation_Validation/
+#     │   ├── Violins_RNA/
+#     │   ├── Violins_ADT/
+#     │   ├── FeaturePlots_RNA/
+#     │   ├── FeaturePlots_ADT/
+#     │   ├── AvgExpression/        ← NEW: CSVs for annotation help
+#     │   │   ├── AvgExpr_RNA_per_cluster.csv
+#     │   │   ├── AvgExpr_ADT_per_cluster.csv
+#     │   │   ├── AvgExpr_RNA_per_cluster_scaled.csv
+#     │   │   └── AvgExpr_ADT_per_cluster_scaled.csv
+#     │   ├── DotPlot_RNA_CD8_Clusters.png
+#     │   ├── DotPlot_ADT_CD8_Clusters.png
+#     │   ├── Cluster12_*.png / .csv
+#     │   └── ...
+#     ├── 01_UMAP/
+#     ├── 02_ADT_RNA_Heatmap/
+#     ├── 03_Cluster_Proportions/
+#     └── 04_Viral_Load_Correlations/
+#
+# CLUSTER ORDERING (by cluster number):
+#   Cluster 1  → Tcm/Tscm CD8
 #   Cluster 6  → Naïve CD8 T cell
 #   Cluster 8  → TEMRA/CTL
 #   Cluster 9  → TRDV1+ γδ T cell
+#   Cluster 12 → [To be annotated — candidate CD8]
 #   Cluster 27 → Tpex CD8 (GZMK+ CD8 T cell)
 ################################################################################
 
@@ -23,21 +45,15 @@ library(ggplot2)
 library(ggpubr)
 library(dplyr)
 library(readr)
-library(lme4)
-library(lmerTest)
 library(SeuratExtend)
 library(scCustomize)
 library(tidyr)
-library(clustree)
 library(scRepertoire)
-library(monocle3)
-library(SeuratWrappers)
 library(qs2)
 library(Matrix)
 library(ggrepel)
 library(pheatmap)
 library(patchwork)
-library(EnhancedVolcano)
 library(rstatix)
 library(grid)
 library(scales)
@@ -45,15 +61,24 @@ library(scales)
 # ── Paths ──────────────────────────────────────────────────────────────────────
 base_dir  <- "~/Documents/CD8_Longitudinal"
 saved_dir <- file.path(base_dir, "saved_R_data")
-
 fig1_dir  <- file.path(base_dir, "Manuscript", "Fig 1")
 
-out_umap  <- file.path(fig1_dir, "01_UMAP")
-out_heat  <- file.path(fig1_dir, "02_ADT_RNA_Heatmap")
-out_prop  <- file.path(fig1_dir, "03_Cluster_Proportions")
-out_vl    <- file.path(fig1_dir, "04_Viral_Load_Correlations")
+# Analysis output directories
+out_annot      <- file.path(fig1_dir, "Analysis", "00_Annotation_Validation")
+out_vln_rna    <- file.path(out_annot, "Violins_RNA")
+out_vln_adt    <- file.path(out_annot, "Violins_ADT")
+out_feat_rna   <- file.path(out_annot, "FeaturePlots_RNA")
+out_feat_adt   <- file.path(out_annot, "FeaturePlots_ADT")
+out_avgexpr    <- file.path(out_annot, "AvgExpression")
 
-for (d in c(out_umap, out_heat, out_prop, out_vl)) {
+# Figure output directories
+out_umap  <- file.path(fig1_dir, "Analysis", "01_UMAP")
+out_heat  <- file.path(fig1_dir, "Analysis", "02_ADT_RNA_Heatmap")
+out_prop  <- file.path(fig1_dir, "Analysis", "03_Cluster_Proportions")
+out_vl    <- file.path(fig1_dir, "Analysis", "04_Viral_Load_Correlations")
+
+for (d in c(out_vln_rna, out_vln_adt, out_feat_rna, out_feat_adt, out_avgexpr,
+            out_umap, out_heat, out_prop, out_vl)) {
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
 }
 
@@ -62,100 +87,707 @@ TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_sorted.qs2"))
 
 
 ################################################################################
-# CLUSTER ANNOTATION: Merge αβ TCR+ contaminants from Cluster 9 into Cluster 8
+# STEP 0: SUBSET TO HEI / HEU / HUU ONLY
 #
-# Rationale:
-#   Cluster 9 is predominantly TRDV1+ γδ T cells. However, a subset of cells
-#   in this cluster carry αβ TCRs (TRBV+, zero TRDV/TRDC) and are
-#   misassigned. These are reassigned to Cluster 8 (CTL-like / TEMRA).
-#   Remaining Cluster 9 cells (no αβ TCR) are confirmed genuine γδ T cells.
+# CRITICAL: All downstream analyses use this subset, not the full dataset.
 ################################################################################
 
-TARA_ALL$Manual_Annotation_refined <- case_when(
-  # Cluster 9, no αβ TCR → confirmed TRDV1+ γδ T cell
-  TARA_ALL$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_ALL$has_TCR == FALSE
-  ~ "9: TRDV1+ γδ T cell",
-  # Cluster 9, αβ TCR present → contaminant; reassign to Cluster 8
-  TARA_ALL$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_ALL$has_TCR == TRUE
-  ~ "8: CTL-like",
-  # All other clusters unchanged
-  TRUE
-  ~ as.character(TARA_ALL$Manual_Annotation)
-)
-
-TARA_ALL$Manual_Annotation_refined <- factor(TARA_ALL$Manual_Annotation_refined)
-
-# Verify merge
-cat("=== Post-merge cluster sizes (Clusters 8 & 9) ===\n")
-print(table(TARA_ALL$Manual_Annotation_refined)[
-  grepl("^8|^9", names(table(TARA_ALL$Manual_Annotation_refined)))
-])
-
-# Numeric cluster label (strip everything after the colon) — used for UMAP
-TARA_ALL$Cluster_Number_refined <- gsub("^([0-9]+):.*", "\\1",
-                                        TARA_ALL$Manual_Annotation_refined)
-
-
-################################################################################
-# SUBSETS
-#
-# TARA_fig1   — Fig 1B only: PreART_Entry, HEU, HUU (relabelled as HEI/HEU/HUU)
-# TARA_cd8    — All CD8 clusters (used for heatmap, proportions, VL correlations)
-################################################################################
-
-# ── Fig 1B subset ─────────────────────────────────────────────────────────────
 keep_groups <- c("PreART_Entry", "HEU", "HUU")
 
-TARA_fig1 <- subset(TARA_ALL, subset = Timepoint_Group %in% keep_groups)
-TARA_fig1$Condition <- factor(
+TARA_sub <- subset(TARA_ALL, subset = Timepoint_Group %in% keep_groups)
+TARA_sub$Condition <- factor(
   case_when(
-    TARA_fig1$Timepoint_Group == "PreART_Entry" ~ "HEI",
-    TRUE ~ as.character(TARA_fig1$Timepoint_Group)
+    TARA_sub$Timepoint_Group == "PreART_Entry" ~ "HEI",
+    TRUE ~ as.character(TARA_sub$Timepoint_Group)
   ),
-  levels = c("HEI", "HEU", "HUU")
+  levels = c("HUU", "HEU", "HEI")
 )
 
-# ── CD8 cluster subset ────────────────────────────────────────────────────────
-# Ordered by cluster number: 1, 6, 8, 9, 27
+cat("=== Working subset (HEI/HEU/HUU only) ===\n")
+print(table(TARA_sub$Condition))
+cat("\n")
+
+
+################################################################################
+# STEP 1: CLUSTER ANNOTATION REFINEMENT
+################################################################################
+
+TARA_sub$Manual_Annotation_refined <- case_when(
+  TARA_sub$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_sub$has_TCR == FALSE
+  ~ "9: TRDV1+ γδ T cell",
+  TARA_sub$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_sub$has_TCR == TRUE
+  ~ "8: CTL-like",
+  TRUE ~ as.character(TARA_sub$Manual_Annotation)
+)
+TARA_sub$Manual_Annotation_refined <- factor(TARA_sub$Manual_Annotation_refined)
+TARA_sub$Cluster_Number_refined <- gsub("^([0-9]+):.*", "\\1",
+                                        TARA_sub$Manual_Annotation_refined)
+
+cat("=== Post-merge cluster sizes (Clusters 8, 9, 12) ===\n")
+print(table(TARA_sub$Manual_Annotation_refined)[
+  grepl("^8|^9|^12", names(table(TARA_sub$Manual_Annotation_refined)))
+])
+cat("\n")
+
+cat("=== Cluster 12 current annotation ===\n")
+cl12_labels <- unique(as.character(TARA_sub$Manual_Annotation[
+  grepl("^12", as.character(TARA_sub$Manual_Annotation))
+]))
+print(cl12_labels)
+cat("Cell count in subset:",
+    sum(grepl("^12", as.character(TARA_sub$Manual_Annotation_refined))), "\n\n")
+
+
+################################################################################
+# STEP 2: DEFINE CD8 CLUSTERS (including Cluster 12)
+################################################################################
+
+cl12_label <- grep("^12:", levels(TARA_sub$Manual_Annotation_refined), value = TRUE)
+if (length(cl12_label) == 0) {
+  cl12_label <- unique(grep("^12:", as.character(TARA_sub$Manual_Annotation_refined),
+                            value = TRUE))
+}
+cat("Cluster 12 refined label:", cl12_label, "\n\n")
+
 cd8_cluster_names <- c(
   "1: Memory CD8 T cell",
   "6: Naïve CD8 T cell",
   "8: CTL-like",
   "9: TRDV1+ γδ T cell",
+  cl12_label,
   "27: GZMK+ CD8 T cell"
 )
 
-TARA_cd8 <- subset(TARA_ALL,
+cd8_display_labels <- setNames(
+  c("Tcm/Tscm CD8\n(Cluster 1)",
+    "Naïve CD8\n(Cluster 6)",
+    "TEMRA/CTL\n(Cluster 8)",
+    "TRDV1+ γδ\n(Cluster 9)",
+    paste0("Cluster 12\n(", gsub("^12: ", "", cl12_label), ")"),
+    "Tpex CD8\n(Cluster 27)"),
+  cd8_cluster_names
+)
+
+cd8_short_labels <- setNames(
+  c("Tcm/Tscm CD8", "Naïve CD8", "TEMRA/CTL", "TRDV1+ γδ",
+    paste0("Cl.12: ", gsub("^12: ", "", cl12_label)), "Tpex CD8"),
+  cd8_cluster_names
+)
+
+# ── Subset CD8 clusters from the HEI/HEU/HUU subset ──────────────────────────
+TARA_cd8 <- subset(TARA_sub,
                    subset = Manual_Annotation_refined %in% cd8_cluster_names)
 
-# Display labels used in all figures (ordered by cluster number)
-cd8_display_labels <- c(
-  "1: Memory CD8 T cell"   = "Tcm/Tscm CD8\n(Cluster 1)",
-  "6: Naïve CD8 T cell"    = "Naïve CD8\n(Cluster 6)",
-  "8: CTL-like"            = "TEMRA/CTL\n(Cluster 8)",
-  "9: TRDV1+ γδ T cell"    = "TRDV1+ γδ\n(Cluster 9)",
-  "27: GZMK+ CD8 T cell"   = "Tpex CD8\n(Cluster 27)"
-)
-
-# Short labels for strip text in faceted plots (same order)
-cd8_short_labels <- c(
-  "1: Memory CD8 T cell"   = "Tcm/Tscm CD8",
-  "6: Naïve CD8 T cell"    = "Naïve CD8",
-  "8: CTL-like"            = "TEMRA/CTL",
-  "9: TRDV1+ γδ T cell"    = "TRDV1+ γδ",
-  "27: GZMK+ CD8 T cell"   = "Tpex CD8"
-)
+cat("=== CD8 subset cell counts ===\n")
+print(table(TARA_cd8$Manual_Annotation_refined))
+cat("\n")
 
 # ── Shared color palettes ──────────────────────────────────────────────────────
 cond_cols <- c("HUU" = "#4E79A7", "HEU" = "#F28E2B", "HEI" = "#E15759")
 
 
 ################################################################################
-# FIG 1B — UMAP: All clusters, numeric labels
+# STEP 3: GENE / PROTEIN MARKER LISTS
+#
+# For VIOLIN + FEATURE PLOTS:
+#   ADT → ALL 108 markers in the TotalSeq-C panel (no curated subset)
+#   RNA → Expanded list including non-CD8 lineage markers
+#
+# For HEATMAPS / DOTPLOTS:
+#   Curated CD8-specific subsets (defined later in those sections)
 ################################################################################
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ADT: Use ALL markers in the ADT assay (all 108 TotalSeq-C)
+# ══════════════════════════════════════════════════════════════════════════════
+
+DefaultAssay(TARA_cd8) <- "ADT"
+all_adt_markers <- sort(rownames(TARA_cd8))
+
+cat("=== Total ADT markers in assay:", length(all_adt_markers), "===\n")
+cat(paste(all_adt_markers, collapse = ", "), "\n\n")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# RNA: Comprehensive list — CD8 markers + non-CD8 lineage markers
+#
+# Grouped for stacked violin plots; the flat list is used for feature plots
+# ══════════════════════════════════════════════════════════════════════════════
+
+rna_markers <- list(
+  # ── CD8 Core Identity ──
+  `CD8 Identity` = c(
+    "CD8A", "CD8B", "CD3D", "CD3E", "CD3G", "TRAC", "TRBC1", "TRBC2"
+  ),
+  # ── Naïve / Quiescence ──
+  `Naive - Quiescence` = c(
+    "CCR7", "SELL", "TCF7", "LEF1", "BACH2", "IL7R", "BCL2",
+    "S1PR1", "KLF2", "FOXP1", "SATB1"
+  ),
+  # ── Effector / Cytotoxicity ──
+  `Effector - Cytotoxicity` = c(
+    "GZMB", "GZMA", "GZMH", "GZMK", "GZMM",
+    "PRF1", "GNLY", "NKG7", "KLRG1", "CX3CR1",
+    "FGFBP2", "FCGR3A"
+  ),
+  # ── Effector TFs ──
+  `Effector TFs` = c(
+    "TBX21", "EOMES", "RUNX3", "PRDM1", "ZEB2", "ID2"
+  ),
+  # ── Exhaustion / Inhibitory ──
+  `Exhaustion` = c(
+    "TOX", "TOX2", "PDCD1", "HAVCR2", "TIGIT", "LAG3",
+    "CTLA4", "ENTPD1", "CD160", "CD244"
+  ),
+  # ── Memory / Stemness ──
+  `Memory - Stemness` = c(
+    "IL7R", "CD27", "CD28", "BACH2", "TCF7", "BCL2",
+    "BCL6", "CXCR5", "CCR7"
+  ),
+  # ── Activation / Proliferation ──
+  `Activation - Proliferation` = c(
+    "MKI67", "HLA-DRA", "HLA-DRB1", "CD38", "FAS",
+    "ICOS", "TNFRSF9", "CXCR6", "CD69"
+  ),
+  # ── Tissue Residency ──
+  `Tissue Residency` = c(
+    "ITGAE", "ITGA1", "CD69", "CXCR6", "ZNF683", "PRDM1"
+  ),
+  # ── γδ TCR ──
+  `GammaDelta TCR` = c(
+    "TRDV1", "TRDV2", "TRGV9", "TRDC", "TRGC1", "TRGC2"
+  ),
+  # ── MAIT ──
+  `MAIT` = c(
+    "TRAV1-2", "SLC4A10", "KLRB1", "ZBTB16", "RORC"
+  ),
+  # ── NK-like / Innate ──
+  `NK-like - Innate` = c(
+    "TYROBP", "KLRD1", "KIR2DL3", "KIR3DL1", "NCAM1",
+    "KLRF1", "KLRC1", "KLRC2"
+  ),
+  # ── Type I IFN ──
+  `Type I IFN` = c(
+    "ISG15", "IFIT1", "IFIT2", "IFIT3", "IFI44L", "MX1",
+    "OAS1", "STAT1", "IRF7"
+  ),
+  # ── Stress / Heat Shock ──
+  `Stress - Heat Shock` = c(
+    "HSPA1A", "HSPA1B", "HSP90AA1", "DNAJB1", "IFI27"
+  ),
+  # ── Chemokines / Cytokines ──
+  `Chemokines - Cytokines` = c(
+    "CCL3", "CCL4", "CCL4L2", "CCL5", "XCL1", "XCL2",
+    "IFNG", "TNF", "IL2", "CSF2"
+  ),
+  # ── Terminal Differentiation / Senescence ──
+  `Terminal Differentiation` = c(
+    "B3GAT1", "KLRG1", "CX3CR1", "ZEB2", "GZMB"
+  ),
+  
+  # ══════════════════════════════════════════════════════════════════════════
+  # NON-CD8 LINEAGE MARKERS (for ruling out contamination / confirming purity)
+  # ══════════════════════════════════════════════════════════════════════════
+  
+  # ── CD4 T cell ──
+  `CD4 T cell` = c(
+    "CD4", "IL7R", "FOXP3", "IL2RA", "CTLA4", "IKZF2",
+    "CCR4", "RORC", "GATA3", "TBX21", "BCL6",
+    "CXCR5", "MAF", "ICOS", "BATF"
+  ),
+  # ── Treg ──
+  `Treg` = c(
+    "FOXP3", "IL2RA", "CTLA4", "IKZF2", "TNFRSF18", "TIGIT"
+  ),
+  # ── B cell ──
+  `B cell` = c(
+    "CD19", "MS4A1", "CD79A", "CD79B", "PAX5", "BANK1",
+    "BLK", "BLNK", "TCL1A", "IGHM", "IGHD", "IGKC", "IGLC2"
+  ),
+  # ── Plasma cell ──
+  `Plasma cell` = c(
+    "SDC1", "XBP1", "MZB1", "JCHAIN", "IGHG1", "IGHA1",
+    "PRDM1", "IRF4"
+  ),
+  # ── NK cell ──
+  `NK cell` = c(
+    "NCAM1", "KLRF1", "KLRC1", "KLRB1", "NCR1", "NCR3",
+    "FCGR3A", "TYROBP", "FCER1G", "SH2D1B",
+    "SPON2", "CLIC3", "MYOM2"
+  ),
+  # ── Monocyte / Macrophage ──
+  `Monocyte - Macrophage` = c(
+    "CD14", "LYZ", "S100A8", "S100A9", "S100A12",
+    "FCGR3A", "CSF1R", "CD68", "MARCO",
+    "VCAN", "FCN1", "MNDA"
+  ),
+  # ── cDC (conventional dendritic cell) ──
+  `cDC` = c(
+    "FCER1A", "CLEC10A", "CD1C", "CLEC9A", "XCR1",
+    "BATF3", "IRF8", "IRF4", "LAMP3"
+  ),
+  # ── pDC (plasmacytoid dendritic cell) ──
+  `pDC` = c(
+    "LILRA4", "CLEC4C", "IRF7", "TCF4", "GZMB",
+    "IL3RA", "JCHAIN"
+  ),
+  # ── Platelet / Megakaryocyte ──
+  `Platelet` = c(
+    "PPBP", "PF4", "GP9", "ITGA2B", "TUBB1", "TREML1"
+  ),
+  # ── Erythrocyte (RBC contamination) ──
+  `Erythrocyte` = c(
+    "HBB", "HBA1", "HBA2", "ALAS2", "SLC4A1", "GYPA"
+  ),
+  # ── HSC / Progenitor ──
+  `HSC - Progenitor` = c(
+    "CD34", "SPINK2", "AVP", "CRHBP", "CYTL1",
+    "SOX4", "HOPX"
+  ),
+  # ── ILC (Innate Lymphoid Cell) ──
+  `ILC` = c(
+    "IL7R", "KIT", "GATA3", "RORC", "IL1RL1",
+    "AREG", "IL22", "NCR2"
+  )
+)
+
+# Flatten RNA markers
+rna_markers_flat <- unique(unlist(rna_markers))
+
+cat("Total unique RNA markers (CD8 + non-CD8):", length(rna_markers_flat), "\n")
+cat("Total ADT markers (all in assay):", length(all_adt_markers), "\n\n")
+
+
+################################################################################
+# STEP 4: CHECK WHICH MARKERS EXIST IN THE OBJECT
+################################################################################
+
+DefaultAssay(TARA_cd8) <- "RNA"
+rna_available <- rna_markers_flat[rna_markers_flat %in% rownames(TARA_cd8)]
+rna_missing   <- setdiff(rna_markers_flat, rna_available)
+
+cat("=== RNA markers: ", length(rna_available), " available, ",
+    length(rna_missing), " missing ===\n")
+if (length(rna_missing) > 0) cat("Missing:", paste(rna_missing, collapse = ", "), "\n\n")
+
+# ADT: all markers are by definition in the assay, but double-check
+DefaultAssay(TARA_cd8) <- "ADT"
+adt_available <- all_adt_markers  # all 108
+cat("=== ADT markers: ", length(adt_available), " (all in assay) ===\n\n")
+
+
+################################################################################
+# STEP 5: EXPORT AVERAGE EXPRESSION TABLES (for pasting back for annotation)
+#
+# Raw and min-max scaled, both RNA and ADT, per cluster
+################################################################################
+
+message("Exporting average expression tables...")
+
+# ── RNA average expression ────────────────────────────────────────────────────
+DefaultAssay(TARA_cd8) <- "RNA"
+
+# Use all RNA genes available from our marker list for the avg expression table
+avg_rna_raw <- AverageExpression(
+  TARA_cd8,
+  assays   = "RNA",
+  features = rna_available,
+  group.by = "Manual_Annotation_refined",
+  slot     = "data"
+)$RNA
+
+# Also compute for ALL genes (full transcriptome) — useful for discovery
+avg_rna_full <- AverageExpression(
+  TARA_cd8,
+  assays   = "RNA",
+  group.by = "Manual_Annotation_refined",
+  slot     = "data"
+)$RNA
+
+# Min-max scale (row-wise, 0–1)
+scale_01 <- function(mat) {
+  scaled <- t(apply(mat, 1, function(x) {
+    rng <- max(x) - min(x)
+    if (rng == 0) return(rep(0.5, length(x)))
+    (x - min(x)) / rng
+  }))
+  colnames(scaled) <- colnames(mat)
+  scaled
+}
+
+avg_rna_scaled <- scale_01(as.matrix(avg_rna_raw))
+
+# Clean column names
+colnames(avg_rna_raw)    <- gsub("^g ", "", colnames(avg_rna_raw))
+colnames(avg_rna_scaled) <- gsub("^g ", "", colnames(avg_rna_scaled))
+colnames(avg_rna_full)   <- gsub("^g ", "", colnames(avg_rna_full))
+
+write.csv(avg_rna_raw,
+          file.path(out_avgexpr, "AvgExpr_RNA_per_cluster.csv"),
+          row.names = TRUE)
+write.csv(round(avg_rna_scaled, 4),
+          file.path(out_avgexpr, "AvgExpr_RNA_per_cluster_scaled.csv"),
+          row.names = TRUE)
+write.csv(avg_rna_full,
+          file.path(out_avgexpr, "AvgExpr_RNA_AllGenes_per_cluster.csv"),
+          row.names = TRUE)
+
+# ── ADT average expression ────────────────────────────────────────────────────
+DefaultAssay(TARA_cd8) <- "ADT"
+
+avg_adt_raw <- AverageExpression(
+  TARA_cd8,
+  assays   = "ADT",
+  features = adt_available,
+  group.by = "Manual_Annotation_refined",
+  slot     = "data"
+)$ADT
+
+avg_adt_scaled <- scale_01(as.matrix(log10(avg_adt_raw + 1)))
+
+colnames(avg_adt_raw)    <- gsub("^g ", "", colnames(avg_adt_raw))
+colnames(avg_adt_scaled) <- gsub("^g ", "", colnames(avg_adt_scaled))
+
+write.csv(avg_adt_raw,
+          file.path(out_avgexpr, "AvgExpr_ADT_per_cluster.csv"),
+          row.names = TRUE)
+write.csv(round(avg_adt_scaled, 4),
+          file.path(out_avgexpr, "AvgExpr_ADT_per_cluster_scaled.csv"),
+          row.names = TRUE)
+
+# ── Also export percent expression (% cells expressing each marker) ───────────
+# This is very useful for annotation — a gene with high avg but low % is
+# driven by a few outlier cells, not a real cluster signature.
+DefaultAssay(TARA_cd8) <- "RNA"
+pct_rna <- as.data.frame(
+  t(sapply(levels(droplevels(TARA_cd8$Manual_Annotation_refined)), function(cl) {
+    cells <- WhichCells(TARA_cd8, expression = Manual_Annotation_refined == cl)
+    mat   <- GetAssayData(TARA_cd8, slot = "data")[rna_available, cells, drop = FALSE]
+    rowMeans(mat > 0) * 100
+  }))
+)
+write.csv(round(pct_rna, 2),
+          file.path(out_avgexpr, "PctExpr_RNA_per_cluster.csv"),
+          row.names = TRUE)
+
+DefaultAssay(TARA_cd8) <- "ADT"
+pct_adt <- as.data.frame(
+  t(sapply(levels(droplevels(TARA_cd8$Manual_Annotation_refined)), function(cl) {
+    cells <- WhichCells(TARA_cd8, expression = Manual_Annotation_refined == cl)
+    mat   <- GetAssayData(TARA_cd8, slot = "data")[adt_available, cells, drop = FALSE]
+    rowMeans(mat > 0) * 100
+  }))
+)
+write.csv(round(pct_adt, 2),
+          file.path(out_avgexpr, "PctExpr_ADT_per_cluster.csv"),
+          row.names = TRUE)
+
+message("✓ Average expression tables saved to: ", out_avgexpr)
+cat("  Files:\n",
+    "    AvgExpr_RNA_per_cluster.csv          (curated markers, raw)\n",
+    "    AvgExpr_RNA_per_cluster_scaled.csv    (curated markers, 0-1 scaled)\n",
+    "    AvgExpr_RNA_AllGenes_per_cluster.csv  (full transcriptome, raw)\n",
+    "    AvgExpr_ADT_per_cluster.csv           (all 108 ADT, raw)\n",
+    "    AvgExpr_ADT_per_cluster_scaled.csv    (all 108 ADT, 0-1 scaled)\n",
+    "    PctExpr_RNA_per_cluster.csv           (% cells expressing, RNA)\n",
+    "    PctExpr_ADT_per_cluster.csv           (% cells expressing, ADT)\n\n")
+
+
+################################################################################
+# STEP 6: VIOLIN PLOTS — ADT (ALL 108 markers)
+#
+# Using SeuratExtend VlnPlot2 with:
+#   - cols = 'light' (light color scheme)
+
+#   - show.mean = TRUE with mean_colors
+#   - assay = "ADT"
+#
+# Individual per-marker violins for all 108 ADT markers
+################################################################################
+
+message("Generating ADT violin plots (all ", length(adt_available), " markers)...")
+
+for (feat in adt_available) {
+  
+  p <- VlnPlot2(
+    TARA_cd8,
+    features     = feat,
+    group.by     = "Manual_Annotation_refined",
+    assay        = "ADT",
+    cols         = "light",
+    show.mean    = TRUE,
+    mean_colors  = c("red", "blue")
+  )
+  
+  safe_name <- gsub("[^A-Za-z0-9._-]", "_", feat)
+  ggsave(
+    file.path(out_vln_adt, paste0("VlnADT_", safe_name, ".png")),
+    p, width = 12, height = 5, dpi = 300, bg = "white"
+  )
+}
+
+message("✓ All ADT violin plots saved (", length(adt_available), " markers)\n")
+
+
+################################################################################
+# STEP 7: VIOLIN PLOTS — RNA (CD8 + non-CD8 markers)
+#
+# Using SeuratExtend VlnPlot2 with:
+#   - cols = 'light'
+#   - show.mean = TRUE, mean_colors = c("red", "blue")
+#   - assay = "RNA"
+#
+# Individual per-gene violins for all available RNA markers
+################################################################################
+
+message("Generating RNA violin plots (", length(rna_available), " markers)...")
+
+for (gene in rna_available) {
+  
+  if (!gene %in% rownames(TARA_cd8[["RNA"]])) next
+  
+  p <- VlnPlot2(
+    TARA_cd8,
+    features     = gene,
+    group.by     = "Manual_Annotation_refined",
+    assay        = "RNA",
+    cols         = "light",
+    show.mean    = TRUE,
+    mean_colors  = c("red", "blue")
+  )
+  
+  safe_name <- gsub("[^A-Za-z0-9._-]", "_", gene)
+  ggsave(
+    file.path(out_vln_rna, paste0("VlnRNA_", safe_name, ".png")),
+    p, width = 12, height = 5, dpi = 300, bg = "white"
+  )
+}
+
+message("✓ All RNA violin plots saved (", length(rna_available), " markers)\n")
+
+
+################################################################################
+# STEP 8: FEATURE PLOTS — ADT (ALL 108 markers, DimPlot2 on WNN UMAP)
+#
+# Using SeuratExtend DimPlot2 with features parameter
+################################################################################
+
+message("Generating ADT feature plots (all ", length(adt_available), " markers)...")
+
+DefaultAssay(TARA_cd8) <- "ADT"
+
+for (feat in adt_available) {
+  
+  if (!feat %in% rownames(TARA_cd8[["ADT"]])) next
+  
+  fp <- DimPlot2(
+    TARA_cd8,
+    features  = feat,
+    reduction = "wnn.umap"
+  ) + ggtitle(paste("ADT |", feat))
+  
+  safe_name <- gsub("[^A-Za-z0-9._-]", "_", feat)
+  ggsave(
+    file.path(out_feat_adt, paste0("FeatADT_", safe_name, ".png")),
+    fp, dpi = 500, width = 8, height = 6, bg = "white"
+  )
+}
+
+message("✓ All ADT feature plots saved (", length(adt_available), " markers)\n")
+
+
+################################################################################
+# STEP 9: FEATURE PLOTS — RNA (CD8 + non-CD8, DimPlot2 on WNN UMAP)
+#
+# Using SeuratExtend DimPlot2 with features parameter
+################################################################################
+
+message("Generating RNA feature plots (", length(rna_available), " markers)...")
+
+DefaultAssay(TARA_cd8) <- "RNA"
+
+for (gene in rna_available) {
+  
+  if (!gene %in% rownames(TARA_cd8[["RNA"]])) next
+  
+  fp <- DimPlot2(
+    TARA_cd8,
+    features  = gene,
+    reduction = "wnn.umap"
+  ) + ggtitle(paste("RNA |", gene))
+  
+  safe_name <- gsub("[^A-Za-z0-9._-]", "_", gene)
+  ggsave(
+    file.path(out_feat_rna, paste0("FeatRNA_", safe_name, ".png")),
+    fp, dpi = 500, width = 8, height = 6, bg = "white"
+  )
+}
+
+message("✓ All RNA feature plots saved (", length(rna_available), " markers)\n")
+
+
+################################################################################
+# STEP 10: COMBINED OVERVIEW — DotPlots (curated subsets for quick reference)
+################################################################################
+
+message("Generating DotPlots...")
+
+# ── RNA DotPlot (curated CD8 identity markers) ───────────────────────────────
+rna_dotplot_genes <- intersect(
+  c("CD8A", "CD8B", "CD3D", "CD3E",
+    "CCR7", "SELL", "TCF7", "LEF1", "BACH2", "S1PR1", "KLF2",
+    "IL7R", "BCL2",
+    "GZMB", "GZMA", "GZMK", "GZMH", "PRF1", "GNLY", "NKG7", "FGFBP2",
+    "TBX21", "EOMES", "RUNX3", "ZEB2",
+    "TOX", "PDCD1", "HAVCR2", "TIGIT", "LAG3",
+    "B3GAT1", "CX3CR1", "KLRG1",
+    "TRDV1", "TRGV9", "TRDC",
+    "SLC4A10", "KLRB1", "ZBTB16",
+    "TYROBP", "KLRD1", "KIR2DL3", "KIR3DL1",
+    "MKI67", "HLA-DRA", "CD69",
+    "ISG15", "IFIT1", "IFI44L",
+    "CCL3", "CCL4", "CCL5", "IFNG",
+    # Non-CD8 exclusion markers
+    "CD4", "FOXP3", "CD19", "MS4A1", "CD79A",
+    "CD14", "LYZ", "S100A8",
+    "NCAM1", "KLRF1",
+    "PPBP", "PF4", "HBB"),
+  rna_available
+)
+
+DefaultAssay(TARA_cd8) <- "RNA"
+
+p_dot_rna <- DotPlot(
+  TARA_cd8,
+  features = rna_dotplot_genes,
+  group.by = "Manual_Annotation_refined",
+  cols     = c("lightgrey", "#D73027"),
+  dot.scale = 6
+) +
+  RotatedAxis() +
+  ggtitle("RNA: CD8 Cluster Identity + Lineage Exclusion Markers") +
+  theme(
+    plot.title  = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text.x = element_text(size = 8),
+    axis.text.y = element_text(size = 9)
+  )
+
+ggsave(
+  file.path(out_annot, "DotPlot_RNA_CD8_Clusters.png"),
+  p_dot_rna, width = 24, height = 7, dpi = 300, bg = "white"
+)
+
+# ── ADT DotPlot (all 108 markers) ────────────────────────────────────────────
+DefaultAssay(TARA_cd8) <- "ADT"
+
+p_dot_adt <- DotPlot(
+  TARA_cd8,
+  features = adt_available,
+  group.by = "Manual_Annotation_refined",
+  cols     = c("lightgrey", "#08519C"),
+  dot.scale = 5
+) +
+  RotatedAxis() +
+  ggtitle("ADT: All 108 Surface Protein Markers") +
+  theme(
+    plot.title  = element_text(face = "bold", size = 14, hjust = 0.5),
+    axis.text.x = element_text(size = 6),
+    axis.text.y = element_text(size = 9)
+  )
+
+ggsave(
+  file.path(out_annot, "DotPlot_ADT_All108_CD8_Clusters.png"),
+  p_dot_adt, width = 36, height = 7, dpi = 300, bg = "white"
+)
+
+message("✓ DotPlots saved\n")
+
+
+################################################################################
+# STEP 11: CLUSTER 12 — FOCUSED DIAGNOSTIC
+################################################################################
+
+message("Generating Cluster 12 diagnostic panel...")
+
+DefaultAssay(TARA_cd8) <- "RNA"
+
+TARA_cd8$is_cl12 <- ifelse(
+  grepl("^12:", as.character(TARA_cd8$Manual_Annotation_refined)),
+  "Cluster 12", "Other CD8"
+)
+
+cl12_markers <- FindMarkers(
+  TARA_cd8,
+  ident.1         = "Cluster 12",
+  group.by        = "is_cl12",
+  test.use        = "MAST",
+  min.pct         = 0.1,
+  logfc.threshold = 0.25
+)
+
+write.csv(cl12_markers,
+          file.path(out_annot, "Cluster12_vs_OtherCD8_DEgenes.csv"),
+          row.names = TRUE)
+
+top_up   <- head(rownames(cl12_markers[cl12_markers$avg_log2FC > 0, ]), 20)
+top_down <- head(rownames(cl12_markers[cl12_markers$avg_log2FC < 0, ]), 20)
+
+cat("=== Cluster 12 — Top 20 upregulated genes ===\n")
+print(top_up)
+cat("\n=== Cluster 12 — Top 20 downregulated genes ===\n")
+print(top_down)
+cat("\n")
+
+# Feature plot of top 4 up genes using DimPlot2
+top4 <- head(top_up, 4)
+if (length(top4) > 0) {
+  cl12_feat_plots <- lapply(top4, function(g) {
+    DimPlot2(TARA_cd8, features = g, reduction = "wnn.umap") +
+      ggtitle(paste("RNA |", g))
+  })
+  p_cl12_feat <- wrap_plots(cl12_feat_plots, ncol = 2)
+  
+  ggsave(file.path(out_annot, "Cluster12_Top4_FeaturePlot.png"),
+         p_cl12_feat, width = 14, height = 12, dpi = 300, bg = "white")
+}
+
+# Identity violin: Cl12 vs others using VlnPlot2
+cd8_identity_genes <- intersect(
+  c("CD8A", "CD8B", "CD3D", "CD3E", "GZMB", "GZMK", "PRF1", "GNLY",
+    "CCR7", "TCF7", "TOX", "PDCD1", "TRDV1", "TRDC",
+    "CD4", "FOXP3", "CD19", "MS4A1", "CD14", "LYZ", "NCAM1"),
+  rna_available
+)
+
+# Generate one VlnPlot2 per gene for Cluster 12 vs Other CD8
+for (gene in cd8_identity_genes) {
+  p_cl12 <- VlnPlot2(
+    TARA_cd8,
+    features     = gene,
+    group.by     = "is_cl12",
+    assay        = "RNA",
+    cols         = "light",
+    show.mean    = TRUE,
+    mean_colors  = c("red", "blue")
+  )
+  
+  safe_name <- gsub("[^A-Za-z0-9._-]", "_", gene)
+  ggsave(file.path(out_annot, paste0("Cluster12_vs_OtherCD8_Vln_", safe_name, ".png")),
+         p_cl12, width = 8, height = 5, dpi = 300, bg = "white")
+}
+
+TARA_cd8$is_cl12 <- NULL
+
+message("✓ Cluster 12 diagnostics saved\n")
+
+
+################################################################################
+# FIG 1B — UMAP (HEI/HEU/HUU subset only)
+################################################################################
+
+message("Generating Fig 1B UMAP...")
+
 p_umap_all <- DimPlot2(
-  TARA_fig1,
+  TARA_sub,
   reduction  = "wnn.umap",
   group.by   = "Cluster_Number_refined",
   cols       = "default",
@@ -171,90 +803,63 @@ p_umap_all <- DimPlot2(
 ggsave(file.path(out_umap, "Fig1B_UMAP_AllClusters.png"),
        p_umap_all, width = 6, height = 6, dpi = 300, bg = "white")
 
-message("✓ Fig 1B saved")
-
-
-################################################################################
-# FIG 1C — ADT + RNA heatmap: CD8 cluster identity validation
-#
-# Columns ordered by cluster number: 1, 6, 8, 9, 27
-# Rows grouped by biological function; within-group clustering by Ward D2
-################################################################################
-
-# ── Marker definitions (order = display order in heatmap rows) ─────────────────
-# Named vector: name = marker feature, value = group label
-adt_marker_groups <- c(
-  # Naïve
-  "CD7"       = "Naïve",
-  "SELL"      = "Naïve",
-  "CD45RA"    = "Naïve",
-  # TCR Identity
-  "TCR-vA7.2" = "TCR Identity",
-  "TCR-AB"    = "TCR Identity",
-  "TCR-vD2"   = "TCR Identity",
-  # Memory / Stemness
-  "IL7R"      = "Memory/Stemness",
-  "CD38"      = "Memory/Stemness",
-  "NT5E"      = "Memory/Stemness",
-  "ENTPD1"    = "Memory/Stemness",
-  "CD45RO"    = "Memory/Stemness",
-  # Co-stimulation
-  "CD27"      = "Co-stimulation",
-  "CD28"      = "Co-stimulation",
-  # Effector / TEMRA
-  "B3GAT1"    = "Effector/TEMRA",
-  "KLRG1"     = "Effector/TEMRA",
-  "KIR3DL1"   = "Effector/TEMRA",
-  # NK-like / Innate
-  "NCAM1"     = "NK-like/Innate",
-  "FCGR3A"    = "NK-like/Innate",
-  "SIGLEC7"   = "NK-like/Innate",
-  # Exhaustion
-  "TIGIT"     = "Exhaustion",
-  "PDCD1"     = "Exhaustion",
-  "LAG3"      = "Exhaustion"
+p_umap_split <- DimPlot2(
+  TARA_sub,
+  reduction  = "wnn.umap",
+  group.by   = "Cluster_Number_refined",
+  split.by   = "Condition",
+  cols       = "default",
+  label      = TRUE,
+  label.size = 4,
+  repel      = TRUE,
+  pt.size    = 0.3,
+  raster     = FALSE,
+  ncol       = 3,
+  theme      = list(NoLegend(), NoAxes())
 )
 
-rna_marker_groups <- c(
-  # Naïve / Stemness
-  "CCR7"    = "Naïve/Stemness",
-  "SELL"    = "Naïve/Stemness",
-  "TCF7"    = "Naïve/Stemness",
+ggsave(file.path(out_umap, "Fig1B_UMAP_AllClusters_SplitByCondition.png"),
+       p_umap_split, width = 16, height = 6, dpi = 300, bg = "white")
+
+message("✓ Fig 1B UMAP saved\n")
+
+
+################################################################################
+# FIG 1C — ADT + RNA Heatmap (curated markers, now with Cluster 12)
+################################################################################
+
+message("Generating Fig 1C heatmaps...")
+
+adt_heatmap_markers <- c(
+  "CD7"       = "Naïve",      "SELL"    = "Naïve",      "CD45RA"  = "Naïve",
+  "TCR-vA7.2" = "TCR Identity", "TCR-AB" = "TCR Identity", "TCR-vD2" = "TCR Identity",
+  "IL7R"      = "Memory/Stemness", "CD38" = "Memory/Stemness", "NT5E" = "Memory/Stemness",
+  "ENTPD1"    = "Memory/Stemness", "CD45RO" = "Memory/Stemness",
+  "CD27"      = "Co-stimulation", "CD28" = "Co-stimulation",
+  "B3GAT1"    = "Effector/TEMRA", "KLRG1" = "Effector/TEMRA", "KIR3DL1" = "Effector/TEMRA",
+  "NCAM1"     = "NK-like/Innate", "FCGR3A" = "NK-like/Innate", "SIGLEC7" = "NK-like/Innate",
+  "TIGIT"     = "Exhaustion",    "PDCD1"  = "Exhaustion",    "LAG3"    = "Exhaustion"
+)
+
+rna_heatmap_markers <- c(
+  "CCR7"    = "Naïve/Stemness", "SELL"  = "Naïve/Stemness", "TCF7"  = "Naïve/Stemness",
   "LEF1"    = "Naïve/Stemness",
-  # γδ TCR
-  "TRDV1"   = "γδ TCR",
-  "TRGV9"   = "γδ TCR",
-  "TRDC"    = "γδ TCR",
-  # Memory / Survival
-  "IL7R"    = "Memory/Stemness",
-  "BCL2"    = "Memory/Stemness",
-  "BACH2"   = "Memory/Stemness",
-  # Cytotoxic / Effector
-  "GZMK"    = "Effector/TEMRA",
-  "GZMB"    = "Effector/TEMRA",
-  "GNLY"    = "Effector/TEMRA",
-  "PRF1"    = "Effector/TEMRA",
-  "NKG7"    = "Effector/TEMRA",
-  # Effector Transcription Factors
-  "TBX21"   = "Effector TFs",
-  "EOMES"   = "Effector TFs",
-  "RUNX3"   = "Effector TFs",
-  # Exhaustion
-  "TOX"     = "Exhaustion",
-  "PDCD1"   = "Exhaustion",
-  "TIGIT"   = "Exhaustion",
+  "TRDV1"   = "γδ TCR",   "TRGV9" = "γδ TCR",   "TRDC" = "γδ TCR",
+  "IL7R"    = "Memory/Stemness", "BCL2" = "Memory/Stemness", "BACH2" = "Memory/Stemness",
+  "GZMK"    = "Effector/TEMRA", "GZMB"  = "Effector/TEMRA", "GNLY" = "Effector/TEMRA",
+  "PRF1"    = "Effector/TEMRA", "NKG7"  = "Effector/TEMRA",
+  "TBX21"   = "Effector TFs",  "EOMES" = "Effector TFs",  "RUNX3" = "Effector TFs",
+  "TOX"     = "Exhaustion",    "PDCD1" = "Exhaustion",    "TIGIT" = "Exhaustion",
   "HAVCR2"  = "Exhaustion",
-  # NK / Innate
-  "TYROBP"  = "NK-like/Innate",
-  "KLRD1"   = "NK-like/Innate",
-  "KIR2DL3" = "NK-like/Innate",
-  # Activation / Proliferation
-  "MKI67"   = "Activation",
-  "CXCR6"   = "Activation",
-  "HLA-DRA" = "Activation"
+  "TYROBP"  = "NK-like/Innate", "KLRD1" = "NK-like/Innate", "KIR2DL3" = "NK-like/Innate",
+  "MKI67"   = "Activation",    "CXCR6" = "Activation",    "HLA-DRA" = "Activation",
+  "CD8A"    = "CD8 Identity",  "CD8B"  = "CD8 Identity",  "CD3E"    = "CD8 Identity"
 )
 
-# ── Shared group colors (consistent across ADT and RNA panels) ─────────────────
+# Filter to available
+adt_heatmap_feats <- intersect(names(adt_heatmap_markers), adt_available)
+rna_heatmap_feats <- intersect(names(rna_heatmap_markers), rna_available)
+
 group_colors <- c(
   "Naïve"           = "#74C2E1",
   "Naïve/Stemness"  = "#74C2E1",
@@ -266,283 +871,173 @@ group_colors <- c(
   "Effector TFs"    = "#FFA726",
   "NK-like/Innate"  = "#F06292",
   "Exhaustion"      = "#A1887F",
-  "Activation"      = "#FFD54F"
+  "Activation"      = "#FFD54F",
+  "CD8 Identity"    = "#42A5F5"
 )
 
-# ── Compute per-cluster average expression ────────────────────────────────────
 DefaultAssay(TARA_cd8) <- "ADT"
-avg_adt <- AverageExpression(
-  TARA_cd8,
-  assays   = "ADT",
-  features = names(adt_marker_groups),
-  group.by = "Manual_Annotation_refined",
-  slot     = "data"
+avg_adt_hm <- AverageExpression(
+  TARA_cd8, assays = "ADT", features = adt_heatmap_feats,
+  group.by = "Manual_Annotation_refined", slot = "data"
 )$ADT
 
 DefaultAssay(TARA_cd8) <- "RNA"
-avg_rna <- AverageExpression(
-  TARA_cd8,
-  assays   = "RNA",
-  features = names(rna_marker_groups),
-  group.by = "Manual_Annotation_refined",
-  slot     = "data"
+avg_rna_hm <- AverageExpression(
+  TARA_cd8, assays = "RNA", features = rna_heatmap_feats,
+  group.by = "Manual_Annotation_refined", slot = "data"
 )$RNA
 
-# ── Min-max scale each marker (row) to [0, 1] ─────────────────────────────────
-scale_01 <- function(mat) {
-  scaled <- t(apply(mat, 1, function(x) (x - min(x)) / (max(x) - min(x) + 1e-9)))
-  colnames(scaled) <- colnames(mat)
-  scaled
+avg_adt_hm_sc <- scale_01(as.matrix(log10(avg_adt_hm + 1)))
+avg_rna_hm_sc <- scale_01(as.matrix(avg_rna_hm))
+
+colnames(avg_adt_hm_sc) <- gsub("^g ", "", colnames(avg_adt_hm_sc))
+colnames(avg_rna_hm_sc) <- gsub("^g ", "", colnames(avg_rna_hm_sc))
+
+# Column ordering (dynamic: find columns matching cluster numbers)
+get_col_for_cluster <- function(colnames_vec, cluster_num) {
+  pattern <- paste0("_", cluster_num, "$")
+  matched <- grep(pattern, colnames_vec, value = TRUE)
+  if (length(matched) == 1) return(matched)
+  pattern2 <- paste0("^", cluster_num, ":")
+  matched2 <- grep(pattern2, colnames_vec, value = TRUE)
+  if (length(matched2) == 1) return(matched2)
+  return(NA_character_)
 }
 
-avg_adt_scaled <- scale_01(log10(avg_adt + 1))
-avg_rna_scaled <- scale_01(avg_rna)
+target_clusters <- c(1, 6, 8, 9, 12, 27)
+col_order_adt <- na.omit(sapply(target_clusters, function(cl)
+  get_col_for_cluster(colnames(avg_adt_hm_sc), cl)))
+col_order_rna <- na.omit(sapply(target_clusters, function(cl)
+  get_col_for_cluster(colnames(avg_rna_hm_sc), cl)))
 
-# Strip any leading "g " prefix that Seurat may prepend to colnames
-colnames(avg_adt_scaled) <- gsub("^g ", "", colnames(avg_adt_scaled))
-colnames(avg_rna_scaled) <- gsub("^g ", "", colnames(avg_rna_scaled))
+avg_adt_hm_sc <- avg_adt_hm_sc[, col_order_adt, drop = FALSE]
+avg_rna_hm_sc <- avg_rna_hm_sc[, col_order_rna, drop = FALSE]
 
-# ── Reorder columns by cluster number (1, 6, 8, 9, 27) ───────────────────────
-# Raw Seurat colnames match the Manual_Annotation_refined levels without prefix
-col_order_raw <- c(
-  "Memory CD8 T cell_1",
-  "Naïve CD8 T cell_6",
-  "CTL-like_8",
-  "TRDV1+ γδ T cell_9",
-  "GZMK+ CD8 T cell_27"
-)
-
-# Column labels — two-line: name (size 11) over cluster tag (size 9).
-# pheatmap cannot mix font sizes within one label, so we:
-#   1. Pass a plain \n-joined string so pheatmap sizes the column space correctly.
-#   2. After pheatmap renders, replace its column label grobs with custom
-#      richtext-style grobs that render the two lines at different sizes.
-col_name_top <- c("Tcm/Tscm CD8", "Naïve CD8",   "TEMRA/CTL",
-                  "TRDV1+ γδ",    "Tpex CD8")
-col_name_sub <- c("(Cluster 1)",  "(Cluster 6)",  "(Cluster 8)",
-                  "(Cluster 9)",  "(Cluster 27)")
-
-col_display_labels <- paste0(col_name_top, "\n", col_name_sub)
-
-# Helper: replace pheatmap column label row with two-font-size text grobs.
-# `ph`        — pheatmap object (contains $gtable)
-# `top_strs`  — character vector, top line per column
-# `sub_strs`  — character vector, bottom line per column
-# `top_size`  — font size for top line (pt)
-# `sub_size`  — font size for bottom line (pt)
-replace_col_labels <- function(ph, top_strs, sub_strs,
-                               top_size = 11, sub_size = 9) {
-  gt <- ph$gtable
-  
-  # Identify the column-label row: the grob named "col_names"
-  col_label_idx <- which(gt$layout$name == "col_names")
-  if (length(col_label_idx) == 0) return(ph)   # safety: nothing to replace
-  
-  # Build a replacement grob for each column label
-  n <- length(top_strs)
-  label_grobs <- lapply(seq_len(n), function(i) {
-    grid::grobTree(
-      grid::textGrob(
-        top_strs[i],
-        x = 0.5, y = 0.65,
-        just = "centre",
-        gp = grid::gpar(fontsize = top_size, fontface = "plain")
-      ),
-      grid::textGrob(
-        sub_strs[i],
-        x = 0.5, y = 0.25,
-        just = "centre",
-        gp = grid::gpar(fontsize = sub_size, fontface = "plain",
-                        col = "grey40")
-      )
-    )
-  })
-  
-  # The col_names grob is typically a gTree with one text grob per column.
-  # Replace it with our custom gTree.
-  gt$grobs[[col_label_idx]] <- grid::grobTree(
-    children = do.call(grid::gList, label_grobs)
-  )
-  
-  ph$gtable <- gt
-  ph
+make_display_label <- function(raw_name) {
+  num <- sub(".*_(\\d+)$", "\\1", raw_name)
+  name_map <- c("1" = "Tcm/Tscm CD8", "6" = "Naïve CD8", "8" = "TEMRA/CTL",
+                "9" = "TRDV1+ γδ", "12" = "Cluster 12", "27" = "Tpex CD8")
+  short <- ifelse(num %in% names(name_map), name_map[num], paste0("Cl.", num))
+  paste0(short, "\n(Cluster ", num, ")")
 }
 
+colnames(avg_adt_hm_sc) <- sapply(col_order_adt, make_display_label)
+colnames(avg_rna_hm_sc) <- sapply(col_order_rna, make_display_label)
 
-avg_adt_scaled <- avg_adt_scaled[, col_order_raw]
-colnames(avg_adt_scaled) <- col_display_labels
-
-avg_rna_scaled <- avg_rna_scaled[, col_order_raw]
-colnames(avg_rna_scaled) <- col_display_labels
-
-# ── Row annotations ────────────────────────────────────────────────────────────
+# Row annotations
 adt_annot <- data.frame(
-  Group = factor(adt_marker_groups[rownames(avg_adt_scaled)],
-                 levels = names(group_colors)),
-  row.names = rownames(avg_adt_scaled)
+  Group = factor(adt_heatmap_markers[rownames(avg_adt_hm_sc)], levels = names(group_colors)),
+  row.names = rownames(avg_adt_hm_sc)
 )
-
 rna_annot <- data.frame(
-  Group = factor(rna_marker_groups[rownames(avg_rna_scaled)],
-                 levels = names(group_colors)),
-  row.names = rownames(avg_rna_scaled)
+  Group = factor(rna_heatmap_markers[rownames(avg_rna_hm_sc)], levels = names(group_colors)),
+  row.names = rownames(avg_rna_hm_sc)
 )
 
-# ── Cluster rows within each group (Ward D2), keep group order fixed ───────────
 cluster_within_groups <- function(mat, annot_df) {
-  groups    <- levels(droplevels(annot_df$Group))
+  groups <- levels(droplevels(annot_df$Group))
   row_order <- character(0)
   for (grp in groups) {
     rows <- rownames(annot_df)[annot_df$Group == grp]
-    if (length(rows) == 1) {
-      row_order <- c(row_order, rows)
+    if (length(rows) <= 1) { row_order <- c(row_order, rows)
     } else {
-      hc        <- hclust(dist(mat[rows, , drop = FALSE]), method = "ward.D2")
+      hc <- hclust(dist(mat[rows, , drop = FALSE]), method = "ward.D2")
       row_order <- c(row_order, rows[hc$order])
     }
   }
   row_order
 }
 
-adt_row_order <- cluster_within_groups(avg_adt_scaled, adt_annot)
-rna_row_order <- cluster_within_groups(avg_rna_scaled, rna_annot)
+adt_row_order <- cluster_within_groups(avg_adt_hm_sc, adt_annot)
+rna_row_order <- cluster_within_groups(avg_rna_hm_sc, rna_annot)
 
-avg_adt_ordered   <- avg_adt_scaled[adt_row_order, ]
-avg_rna_ordered   <- avg_rna_scaled[rna_row_order, ]
+avg_adt_ordered   <- avg_adt_hm_sc[adt_row_order, ]
+avg_rna_ordered   <- avg_rna_hm_sc[rna_row_order, ]
 adt_annot_ordered <- adt_annot[adt_row_order, , drop = FALSE]
 rna_annot_ordered <- rna_annot[rna_row_order, , drop = FALSE]
 
-# ── Gap positions between groups ──────────────────────────────────────────────
 get_gaps <- function(annot_df) {
   grps <- as.character(annot_df$Group)
   which(grps[-length(grps)] != grps[-1])
 }
 
-adt_gaps <- get_gaps(adt_annot_ordered)
-rna_gaps <- get_gaps(rna_annot_ordered)
-
-# ── Annotation color lists ────────────────────────────────────────────────────
 annot_colors_adt <- list(Group = group_colors[levels(droplevels(adt_annot_ordered$Group))])
 annot_colors_rna <- list(Group = group_colors[levels(droplevels(rna_annot_ordered$Group))])
 
-heatmap_colors <- colorRampPalette(c(
-  "#F7FCF5", "#C7E9C0", "#74C476", "#31A354", "#006D2C"
-))(100)
+heatmap_colors <- colorRampPalette(c("#F7FCF5", "#C7E9C0", "#74C476", "#31A354", "#006D2C"))(100)
 
-# ── Draw heatmaps ──────────────────────────────────────────────────────────────
-# Column labels are kept horizontal (angle_col = 0).
-# The "Group" annotation name is suppressed (annotation_names_row = FALSE) since
-# the colored sidebar + legend already conveys this — this was the source of the
-# bottom-left overlap with the horizontal column labels.
 p_adt <- pheatmap(
-  avg_adt_ordered,
-  cluster_rows         = FALSE,
-  cluster_cols         = FALSE,
-  scale                = "none",
-  color                = heatmap_colors,
-  border_color         = "white",
-  annotation_row       = adt_annot_ordered,
-  annotation_colors    = annot_colors_adt,
-  annotation_names_row = FALSE,  # removes "Group" label → fixes bottom-left overlap
-  gaps_row             = adt_gaps,
-  cellwidth            = 70,
-  cellheight           = 16,
-  fontsize             = 11,
-  fontsize_row         = 10,
-  fontsize_col         = 11,
-  angle_col            = 0,      # horizontal labels
-  main                 = "Protein (ADT)",
-  silent               = TRUE
+  avg_adt_ordered, cluster_rows = FALSE, cluster_cols = FALSE, scale = "none",
+  color = heatmap_colors, border_color = "white",
+  annotation_row = adt_annot_ordered, annotation_colors = annot_colors_adt,
+  annotation_names_row = FALSE, gaps_row = get_gaps(adt_annot_ordered),
+  cellwidth = 60, cellheight = 16, fontsize = 11, fontsize_row = 10,
+  fontsize_col = 10, angle_col = 0, main = "Protein (ADT)", silent = TRUE
 )
+
 p_rna <- pheatmap(
-  avg_rna_ordered,
-  cluster_rows         = FALSE,
-  cluster_cols         = FALSE,
-  scale                = "none",
-  color                = heatmap_colors,
-  border_color         = "white",
-  annotation_row       = rna_annot_ordered,
-  annotation_colors    = annot_colors_rna,
-  annotation_names_row = FALSE,  # removes "Group" label → fixes bottom-left overlap
-  gaps_row             = rna_gaps,
-  cellwidth            = 70,
-  cellheight           = 16,
-  fontsize             = 11,
-  fontsize_row         = 10,
-  fontsize_col         = 11,
-  angle_col            = 0,
-  main                 = "mRNA (RNA)",
-  silent               = TRUE
+  avg_rna_ordered, cluster_rows = FALSE, cluster_cols = FALSE, scale = "none",
+  color = heatmap_colors, border_color = "white",
+  annotation_row = rna_annot_ordered, annotation_colors = annot_colors_rna,
+  annotation_names_row = FALSE, gaps_row = get_gaps(rna_annot_ordered),
+  cellwidth = 60, cellheight = 16, fontsize = 11, fontsize_row = 10,
+  fontsize_col = 10, angle_col = 0, main = "mRNA (RNA)", silent = TRUE
 )
 
-
-
-# ── Save: combined panel + individual panels ──────────────────────────────────
 png(file.path(out_heat, "Fig1C_ADT_RNA_Heatmap_CD8_Combined.png"),
-    width = 22, height = 15, units = "in", res = 300, bg = "white")
+    width = 24, height = 16, units = "in", res = 300, bg = "white")
 grid.newpage()
 grid.text("CD8 T Cell Cluster Validation: Protein (ADT) & mRNA",
-          x = 0.5, y = 0.975,
-          gp = gpar(fontsize = 18, fontface = "bold"))
+          x = 0.5, y = 0.975, gp = gpar(fontsize = 18, fontface = "bold"))
 pushViewport(viewport(layout = grid.layout(1, 2)))
 pushViewport(viewport(layout.pos.col = 1)); grid.draw(p_adt$gtable); popViewport()
 pushViewport(viewport(layout.pos.col = 2)); grid.draw(p_rna$gtable); popViewport()
 dev.off()
 
 png(file.path(out_heat, "Fig1C_ADT_Heatmap_CD8.png"),
-    width = 11, height = 10, units = "in", res = 300, bg = "white")
+    width = 12, height = 10, units = "in", res = 300, bg = "white")
 grid.draw(p_adt$gtable)
 dev.off()
 
 png(file.path(out_heat, "Fig1C_RNA_Heatmap_CD8.png"),
-    width = 11, height = 13, units = "in", res = 300, bg = "white")
+    width = 12, height = 14, units = "in", res = 300, bg = "white")
 grid.draw(p_rna$gtable)
 dev.off()
 
-message("✓ Fig 1C heatmaps saved")
+message("✓ Fig 1C heatmaps saved\n")
 
 
 ################################################################################
-# FIG 1D — CD8 Cluster Proportions (% of total PBMC): HUU vs HEU vs HEI
-#
-# All 5 CD8 clusters shown, ordered by cluster number (1, 6, 8, 9, 27)
-# Wilcoxon test brackets shown only for significant pairs
+# FIG 1D — CD8 Cluster Proportions (% of total PBMC)
 ################################################################################
 
-meta_sub <- as.data.frame(TARA_ALL@meta.data) %>%
-  filter(as.character(Timepoint_Group) %in% keep_groups) %>%
-  mutate(
-    Condition = factor(case_when(
-      Timepoint_Group == "PreART_Entry" ~ "HEI",
-      TRUE ~ as.character(Timepoint_Group)
-    ), levels = c("HUU", "HEU", "HEI"))
-  )
+message("Generating Fig 1D proportions...")
 
-# ── Per-sample % of total PBMC for each CD8 cluster ──────────────────────────
+meta_sub <- as.data.frame(TARA_sub@meta.data)
+
+sample_totals_all <- meta_sub %>%
+  group_by(orig.ident, Condition) %>%
+  summarise(total_pbmc = dplyr::n(), .groups = "drop")
+
 cluster_freq <- meta_sub %>%
+  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
   group_by(orig.ident, Condition, Manual_Annotation_refined) %>%
   summarise(cluster_cells = dplyr::n(), .groups = "drop") %>%
-  # Fill 0 for samples with no cells in a given cluster
   group_by(orig.ident, Condition) %>%
   tidyr::complete(
     Manual_Annotation_refined = cd8_cluster_names,
     fill = list(cluster_cells = 0)
   ) %>%
   ungroup() %>%
-  # Denominator = all PBMC per sample (before CD8 subsetting)
-  group_by(orig.ident, Condition) %>%
-  mutate(total_cells = sum(cluster_cells)) %>%
-  ungroup() %>%
-  mutate(percent = 100 * cluster_cells / total_cells) %>%
-  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
+  left_join(sample_totals_all, by = c("orig.ident", "Condition")) %>%
   mutate(
+    percent = 100 * cluster_cells / total_pbmc,
     Facet_Label = factor(
       cd8_short_labels[as.character(Manual_Annotation_refined)],
-      levels = cd8_short_labels   # preserves cluster-number order
+      levels = cd8_short_labels
     )
   )
 
-# ── Wilcoxon pairwise stats per facet ─────────────────────────────────────────
 facet_max <- cluster_freq %>%
   group_by(Facet_Label) %>%
   summarise(max_percent = max(percent, na.rm = TRUE), .groups = "drop")
@@ -568,88 +1063,58 @@ stat_df <- cluster_freq %>%
       group1 == "HEU" & group2 == "HEI" ~ max_percent * 1.16
     ),
     p.signif = case_when(
-      p <= 0.0001 ~ "****",
-      p <= 0.001  ~ "***",
-      p <= 0.01   ~ "**",
-      p <= 0.05   ~ "*",
+      p <= 0.0001 ~ "****", p <= 0.001 ~ "***",
+      p <= 0.01   ~ "**",   p <= 0.05  ~ "*",
       TRUE        ~ "ns"
     )
   ) %>%
   ungroup() %>%
   filter(p.signif != "ns")
 
-# ── Plot ───────────────────────────────────────────────────────────────────────
-p_prop <- ggplot(
-  cluster_freq,
-  aes(x = Condition, y = percent, fill = Condition, color = Condition)
-) +
+p_prop <- ggplot(cluster_freq, aes(x = Condition, y = percent,
+                                   fill = Condition, color = Condition)) +
   geom_boxplot(width = 0.65, outlier.shape = NA, alpha = 0.25, linewidth = 0.7) +
   geom_jitter(width = 0.12, size = 2.3, alpha = 0.8) +
   facet_wrap(~ Facet_Label, scales = "free_y", nrow = 1) +
-  stat_pvalue_manual(
-    stat_df,
-    label        = "p.signif",
-    tip.length   = 0.01,
-    bracket.size = 0.6,
-    size         = 4.5
-  ) +
+  stat_pvalue_manual(stat_df, label = "p.signif", tip.length = 0.01,
+                     bracket.size = 0.6, size = 4.5) +
   scale_fill_manual(values  = cond_cols) +
   scale_color_manual(values = cond_cols) +
   labs(x = NULL, y = "% of total PBMC") +
   theme_classic(base_size = 15) +
   theme(
     legend.position = "none",
-    strip.text      = element_text(face = "bold", size = 11),
-    axis.text.x     = element_text(face = "bold", size = 11),
-    axis.text.y     = element_text(size = 11),
-    axis.title.y    = element_text(face = "bold", size = 13)
+    strip.text      = element_text(face = "bold", size = 10),
+    axis.text.x     = element_text(face = "bold", size = 10),
+    axis.text.y     = element_text(size = 10),
+    axis.title.y    = element_text(face = "bold", size = 12)
   )
 
-ggsave(
-  file.path(out_prop, "Fig1D_CD8_Cluster_Proportions.png"),
-  p_prop,
-  width  = 18,   # wide to accommodate 5 facets
-  height = 6,
-  dpi    = 600,
-  bg     = "white"
-)
+ggsave(file.path(out_prop, "Fig1D_CD8_Cluster_Proportions.png"),
+       p_prop, width = 22, height = 6, dpi = 600, bg = "white")
 
-message("✓ Fig 1D proportions saved")
+message("✓ Fig 1D proportions saved\n")
 
 
 ################################################################################
-# FIG 1E — CD8 Cluster % vs HIV Viral Load (HEI only, Spearman correlation)
-#
-# All 5 CD8 clusters, ordered by cluster number (1, 6, 8, 9, 27)
-# Points colored by viral load (low→blue, high→red) via scale_color_gradientn
-# Stat labels pinned to top-left of each facet using Inf/-Inf coordinates —
-# this is immune to axis scale differences across facets (no more random placement)
+# FIG 1E — CD8 Cluster % vs HIV Viral Load (HEI only)
 ################################################################################
 
-# ── PBMC metadata: HEI patients with known viral load ─────────────────────────
-meta_pbmc <- as.data.frame(TARA_ALL@meta.data) %>%
-  filter(
-    Timepoint_Group == "PreART_Entry",
-    !is.na(Viral_Load_num),
-    Viral_Load_num > 0
-  )
+message("Generating Fig 1E viral load correlations...")
 
-# Denominator: total PBMC per sample
-sample_totals <- meta_pbmc %>%
+meta_hei_vl <- as.data.frame(TARA_sub@meta.data) %>%
+  filter(Condition == "HEI", !is.na(Viral_Load_num), Viral_Load_num > 0)
+
+sample_totals_hei <- meta_hei_vl %>%
   group_by(orig.ident) %>%
   summarise(total_pbmc = dplyr::n(), .groups = "drop")
 
-# One viral load value per sample (all cells share the same metadata value)
-sample_vl <- meta_pbmc %>%
+sample_vl <- meta_hei_vl %>%
   group_by(orig.ident) %>%
   summarise(Viral_Load_num = dplyr::first(Viral_Load_num), .groups = "drop") %>%
   mutate(log10_VL = log10(Viral_Load_num))
 
-# ── Numerator: CD8 cluster cell counts per sample ─────────────────────────────
-meta_cd8_hei <- as.data.frame(TARA_cd8@meta.data) %>%
-  filter(orig.ident %in% sample_totals$orig.ident)
-
-cluster_vl_df <- meta_cd8_hei %>%
+cluster_vl_df <- meta_hei_vl %>%
   filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
   group_by(orig.ident, Manual_Annotation_refined) %>%
   summarise(cluster_cells = dplyr::n(), .groups = "drop") %>%
@@ -659,8 +1124,8 @@ cluster_vl_df <- meta_cd8_hei %>%
     fill = list(cluster_cells = 0)
   ) %>%
   ungroup() %>%
-  left_join(sample_totals, by = "orig.ident") %>%
-  left_join(sample_vl,     by = "orig.ident") %>%
+  left_join(sample_totals_hei, by = "orig.ident") %>%
+  left_join(sample_vl, by = "orig.ident") %>%
   mutate(
     percent_pbmc = 100 * cluster_cells / total_pbmc,
     Facet_Label  = factor(
@@ -669,94 +1134,73 @@ cluster_vl_df <- meta_cd8_hei %>%
     )
   )
 
-# ── Spearman correlation per cluster ──────────────────────────────────────────
 cor_stats <- cluster_vl_df %>%
   group_by(Facet_Label) %>%
   cor_test(log10_VL, percent_pbmc, method = "spearman") %>%
   mutate(
-    stat_label = paste0(
-      "Spearman's \u03c1 = ", sprintf("%.2f", cor),
-      "\np-value = ",         signif(p, 2)
-    )
+    stat_label = paste0("Spearman's \u03c1 = ", sprintf("%.2f", cor),
+                        "\np-value = ", signif(p, 2)),
+    x = -Inf, y = Inf
   ) %>%
   ungroup()
 
-# Stat labels anchored to top-left of every facet via Inf/-Inf coordinates.
-# ggplot maps -Inf → axis minimum and Inf → axis maximum after scale expansion,
-# so the label always lands in the same corner regardless of free scales.
-cor_stats_plot <- cor_stats %>%
-  mutate(
-    x = -Inf,
-    y =  Inf
-  )
-
-# ── Plot ───────────────────────────────────────────────────────────────────────
 p_vl <- ggplot(cluster_vl_df, aes(x = log10_VL, y = percent_pbmc)) +
-  
-  # Trend line drawn first so points sit on top
-  geom_smooth(
-    method    = "lm",
-    se        = TRUE,
-    linewidth = 0.8,
-    color     = "grey40",
-    fill      = "grey85",
-    alpha     = 0.3
-  ) +
-  
-  geom_point(
-    shape  = 21,
-    size   = 3.2,
-    stroke = 0.4,
-    fill   = "#C44E52",  # single clean color; VL already encoded on x-axis
-    color  = "white"     # thin white halo separates overlapping points
-  ) +
-  
-  # Stat label: hjust=0 + vjust=1 + x=-Inf + y=Inf → always top-left corner
-  geom_text(
-    data        = cor_stats_plot,
-    aes(x = x, y = y, label = stat_label),
-    inherit.aes = FALSE,
-    hjust       = -0.05,
-    vjust       = 1.2,
-    size        = 5,     # clearly readable at publication size
-    lineheight  = 1.4,
-    color       = "grey15",
-    fontface='bold'
-  ) +
-  
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8,
+              color = "grey40", fill = "grey85", alpha = 0.3) +
+  geom_point(shape = 21, size = 3.2, stroke = 0.4,
+             fill = "#C44E52", color = "white") +
+  geom_text(data = cor_stats,
+            aes(x = x, y = y, label = stat_label),
+            inherit.aes = FALSE, hjust = -0.05, vjust = 1.2,
+            size = 4.5, lineheight = 1.4, color = "grey15", fontface = "bold") +
   facet_wrap(~ Facet_Label, scales = "free", nrow = 1) +
-  
   scale_x_continuous(breaks = pretty_breaks(n = 4)) +
   scale_y_continuous(expand = expansion(mult = c(0.05, 0.20))) +
-  
-  labs(
-    x = expression(log[10]~"viral load"),
-    y = "% of total PBMC"
-  ) +
-  
+  labs(x = expression(log[10]~"viral load"), y = "% of total PBMC") +
   theme_classic(base_size = 14) +
   theme(
     strip.background = element_rect(fill = "grey92", color = NA),
-    strip.text       = element_text(face = "bold", size = 11,
-                                    margin = margin(4, 0, 4, 0)),
+    strip.text       = element_text(face = "bold", size = 10),
     axis.text        = element_text(size = 10, color = "black"),
     axis.title.x     = element_text(face = "bold", size = 12, margin = margin(t = 6)),
     axis.title.y     = element_text(face = "bold", size = 12, margin = margin(r = 6)),
     legend.position  = "none",
-    panel.spacing    = unit(0.8, "lines"),
-    plot.margin      = margin(8, 12, 8, 8)
+    panel.spacing    = unit(0.8, "lines")
   )
 
-ggsave(
-  file.path(out_vl, "Fig1E_CD8_Clusters_ViralLoad_Correlation.png"),
-  p_vl,
-  width  = 18,
-  height = 5.5,
-  dpi    = 600,
-  bg     = "white"
-)
+ggsave(file.path(out_vl, "Fig1E_CD8_Clusters_ViralLoad_Correlation.png"),
+       p_vl, width = 24, height = 5.5, dpi = 600, bg = "white")
 
-message("✓ Fig 1E viral load correlations saved")
-
-# Print correlation summary to console
+cat("=== Viral Load Correlations ===\n")
 print(cor_stats[, c("Facet_Label", "cor", "statistic", "p")])
+
+message("✓ Fig 1E viral load correlations saved\n")
+
+
+################################################################################
+# SUMMARY
+################################################################################
+
+message("\n",
+        "══════════════════════════════════════════════════════════════\n",
+        " All Figure 1 analysis outputs saved to:\n",
+        " ", fig1_dir, "/Analysis/\n",
+        "══════════════════════════════════════════════════════════════\n\n",
+        " WHAT CHANGED FROM PREVIOUS VERSION:\n",
+        "   1. ADT violins + feature plots: ALL ", length(adt_available), " markers (not curated subset)\n",
+        "      - Stacked violins in batches of 15 for readability\n",
+        "      - Individual per-marker violins + feature plots for all 108\n",
+        "   2. RNA violins + feature plots: expanded with NON-CD8 lineage markers\n",
+        "      - CD4, Treg, B cell, Plasma, NK, Monocyte, cDC, pDC,\n",
+        "        Platelet, Erythrocyte, HSC/Progenitor, ILC\n",
+        "   3. Average expression CSVs exported to AvgExpression/:\n",
+        "      - AvgExpr_RNA_per_cluster.csv           (curated markers)\n",
+        "      - AvgExpr_RNA_per_cluster_scaled.csv     (0-1 scaled)\n",
+        "      - AvgExpr_RNA_AllGenes_per_cluster.csv   (FULL transcriptome)\n",
+        "      - AvgExpr_ADT_per_cluster.csv            (all 108 ADT)\n",
+        "      - AvgExpr_ADT_per_cluster_scaled.csv     (0-1 scaled)\n",
+        "      - PctExpr_RNA_per_cluster.csv            (% cells expressing)\n",
+        "      - PctExpr_ADT_per_cluster.csv            (% cells expressing)\n",
+        "\n",
+        " → Paste the CSV contents back here and I'll help annotate clusters.\n"
+)
