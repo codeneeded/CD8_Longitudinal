@@ -1,0 +1,34 @@
+"Timepoint_Group","CD8_Annotation","n","pct"
+"PreART_Entry","Naïve CD8",4252,36.5763440860215
+"PreART_Entry","Naïve CD8 (innate-like)",3606,31.0193548387097
+"PreART_Entry","Naïve CD8 (post-ART)",375,3.2258064516129
+"PreART_Entry","Transitional Tem CD8",304,2.61505376344086
+"PreART_Entry","Effector CD8",1358,11.6817204301075
+"PreART_Entry","Terminal TEMRA CD8",989,8.50752688172043
+"PreART_Entry","KIR+ innate-like CD8",71,0.610752688172043
+"PreART_Entry","MAIT-like Trm",37,0.318279569892473
+"PreART_Entry","TRDV1+ γδ T cell",328,2.82150537634409
+"PreART_Entry","Naïve-like TRDV1+ γδ",167,1.43655913978495
+"PreART_Entry","Vγ9Vδ2 γδ T cell",138,1.18709677419355
+"PostART_Suppressed","Naïve CD8",1890,20.934869295525
+"PostART_Suppressed","Naïve CD8 (innate-like)",115,1.27381479840496
+"PostART_Suppressed","Naïve CD8 (post-ART)",814,9.01639344262295
+"PostART_Suppressed","Transitional Tem CD8",804,8.90562693841382
+"PostART_Suppressed","Effector CD8",2067,22.8954364200266
+"PostART_Suppressed","Terminal TEMRA CD8",1311,14.5214887018166
+"PostART_Suppressed","KIR+ innate-like CD8",527,5.837394771821
+"PostART_Suppressed","MAIT-like Trm",73,0.808595480726628
+"PostART_Suppressed","TRDV1+ γδ T cell",1170,12.9596809924679
+"PostART_Suppressed","Naïve-like TRDV1+ γδ",205,2.27071333628711
+"PostART_Suppressed","Vγ9Vδ2 γδ T cell",52,0.575985821887461
+"PostART_Unsuppressed","Naïve CD8",864,15.545160129543
+"PostART_Unsuppressed","Naïve CD8 (innate-like)",205,3.68837711406981
+"PostART_Unsuppressed","Naïve CD8 (post-ART)",436,7.84454839870457
+"PostART_Unsuppressed","Transitional Tem CD8",259,4.65994962216625
+"PostART_Unsuppressed","Effector CD8",1310,23.5696293630802
+"PostART_Unsuppressed","Terminal TEMRA CD8",739,13.2961496941346
+"PostART_Unsuppressed","KIR+ innate-like CD8",152,2.73479668945664
+"PostART_Unsuppressed","MAIT-like Trm",32,0.575746671464556
+"PostART_Unsuppressed","TRDV1+ γδ T cell",1386,24.9370277078086
+"PostART_Unsuppressed","Naïve-like TRDV1+ γδ",93,1.67326376394386
+"PostART_Unsuppressed","Vγ9Vδ2 γδ T cell",82,1.47535084562792
