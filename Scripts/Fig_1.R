@@ -10,33 +10,27 @@
 #   5. Ensure ALL panels use the HEI/HEU/HUU subset (PreART_Entry, HEU, HUU)
 #
 # OUTPUT STRUCTURE:
-#   Fig 1/Analysis/
-#     ├── 00_Annotation_Validation/
+#   Fig 1/
+#     ├── 00_Annotation_Validation/        ← Supporting figures
 #     │   ├── Violins_RNA/
 #     │   ├── Violins_ADT/
 #     │   ├── FeaturePlots_RNA/
 #     │   ├── FeaturePlots_ADT/
-#     │   ├── AvgExpression/        ← NEW: CSVs for annotation help
-#     │   │   ├── AvgExpr_RNA_per_cluster.csv
-#     │   │   ├── AvgExpr_ADT_per_cluster.csv
-#     │   │   ├── AvgExpr_RNA_per_cluster_scaled.csv
-#     │   │   └── AvgExpr_ADT_per_cluster_scaled.csv
-#     │   ├── DotPlot_RNA_CD8_Clusters.png
-#     │   ├── DotPlot_ADT_CD8_Clusters.png
-#     │   ├── Cluster12_*.png / .csv
-#     │   └── ...
-#     ├── 01_UMAP/
+#     │   ├── AvgExpression/
+#     │   ├── DotPlot_*.png
+#     │   └── Cluster12a_*.png / .csv
+#     ├── 01_UMAP/                         ← Manuscript panels
 #     ├── 02_ADT_RNA_Heatmap/
 #     ├── 03_Cluster_Proportions/
 #     └── 04_Viral_Load_Correlations/
 #
 # CLUSTER ORDERING (by cluster number):
-#   Cluster 1  → Tcm/Tscm CD8
-#   Cluster 6  → Naïve CD8 T cell
-#   Cluster 8  → TEMRA/CTL
-#   Cluster 9  → TRDV1+ γδ T cell
-#   Cluster 12 → [To be annotated — candidate CD8]
-#   Cluster 27 → Tpex CD8 (GZMK+ CD8 T cell)
+#   Cluster 1  → Tcm CD8
+#   Cluster 6  → Naïve CD8
+#   Cluster 8  → TEMRA/CTL CD8
+#   Cluster 9  → γδ T cell
+#   Cluster 12 → Mixed → split into 12a (CD8) / 12b (CD4)
+#   Cluster 27 → Tex CD8
 ################################################################################
 
 # ── Libraries ──────────────────────────────────────────────────────────────────
@@ -63,19 +57,19 @@ base_dir  <- "~/Documents/CD8_Longitudinal"
 saved_dir <- file.path(base_dir, "saved_R_data")
 fig1_dir  <- file.path(base_dir, "Manuscript", "Fig 1")
 
-# Analysis output directories
-out_annot      <- file.path(fig1_dir, "Analysis", "00_Annotation_Validation")
+# Non-manuscript supporting figures (annotation validation)
+out_annot      <- file.path(fig1_dir, "00_Annotation_Validation")
 out_vln_rna    <- file.path(out_annot, "Violins_RNA")
 out_vln_adt    <- file.path(out_annot, "Violins_ADT")
 out_feat_rna   <- file.path(out_annot, "FeaturePlots_RNA")
 out_feat_adt   <- file.path(out_annot, "FeaturePlots_ADT")
 out_avgexpr    <- file.path(out_annot, "AvgExpression")
 
-# Figure output directories
-out_umap  <- file.path(fig1_dir, "Analysis", "01_UMAP")
-out_heat  <- file.path(fig1_dir, "Analysis", "02_ADT_RNA_Heatmap")
-out_prop  <- file.path(fig1_dir, "Analysis", "03_Cluster_Proportions")
-out_vl    <- file.path(fig1_dir, "Analysis", "04_Viral_Load_Correlations")
+# Manuscript figure panel directories (directly under Fig 1/)
+out_umap  <- file.path(fig1_dir, "01_UMAP")
+out_heat  <- file.path(fig1_dir, "02_ADT_RNA_Heatmap")
+out_prop  <- file.path(fig1_dir, "03_Cluster_Proportions")
+out_vl    <- file.path(fig1_dir, "04_Viral_Load_Correlations")
 
 for (d in c(out_vln_rna, out_vln_adt, out_feat_rna, out_feat_adt, out_avgexpr,
             out_umap, out_heat, out_prop, out_vl)) {
@@ -110,67 +104,118 @@ cat("\n")
 
 ################################################################################
 # STEP 1: CLUSTER ANNOTATION REFINEMENT
+#
+# Final annotations:
+#   Cluster 1  → Tcm CD8
+#   Cluster 6  → Naïve CD8
+#   Cluster 8  → TEMRA/CTL CD8
+#   Cluster 9  → γδ T cell
+#   Cluster 12 → Mixed CD4/CD8 → split by CD8A expression into:
+#                  12a: CD8 (CD8A+) — to be further annotated
+#                  12b: CD4 (CD8A−) — excluded from CD8 analyses
+#   Cluster 27 → Tex CD8
 ################################################################################
 
+# ── Diagnostic: check what cluster 12 looks like in raw annotations ───────────
+cat("=== All unique annotations containing '12' ===\n")
+all_annot <- as.character(TARA_sub$Manual_Annotation)
+cl12_raw <- unique(all_annot[grepl("12", all_annot)])
+cat("  Manual_Annotation matches:", if (length(cl12_raw) > 0) paste(cl12_raw, collapse = "; ") else "NONE", "\n")
+cat("  Cell count:", sum(grepl("12", all_annot)), "\n\n")
+
 TARA_sub$Manual_Annotation_refined <- case_when(
-  TARA_sub$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_sub$has_TCR == FALSE
-  ~ "9: TRDV1+ γδ T cell",
+  # Cluster 9: αβ TCR+ contaminants → merge into Cluster 8
   TARA_sub$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_sub$has_TCR == TRUE
-  ~ "8: CTL-like",
+  ~ "8: TEMRA/CTL CD8",
+  # Cluster 9: confirmed γδ
+  TARA_sub$Manual_Annotation == "9: TRDV1+ CTL-like" & TARA_sub$has_TCR == FALSE
+  ~ "9: γδ T cell",
+  # Cluster 1 (exact: "1: ..." not "10: ..." or "12: ...")
+  grepl("^1: ", as.character(TARA_sub$Manual_Annotation))
+  ~ "1: Tcm CD8",
+  # Cluster 6
+  grepl("^6: ", as.character(TARA_sub$Manual_Annotation))
+  ~ "6: Naïve CD8",
+  # Cluster 8 (original, before merge)
+  grepl("^8: ", as.character(TARA_sub$Manual_Annotation))
+  ~ "8: TEMRA/CTL CD8",
+  # Cluster 27
+  grepl("^27: ", as.character(TARA_sub$Manual_Annotation))
+  ~ "27: Tex CD8",
+  # Cluster 12: leave as-is for now (will split below)
+  grepl("^12: ", as.character(TARA_sub$Manual_Annotation))
+  ~ "12: Mixed CD4/CD8",
+  # All other clusters unchanged
   TRUE ~ as.character(TARA_sub$Manual_Annotation)
 )
+
+# ── Split Cluster 12 by CD8A expression ───────────────────────────────────────
+# Cells in Cluster 12 with CD8A > 0 are classified as CD8; rest as CD4
+DefaultAssay(TARA_sub) <- "RNA"
+cd8a_expr <- GetAssayData(TARA_sub, slot = "data")["CD8A", ]
+
+# Diagnostic: check CD8A in cluster 12
+is_cl12 <- TARA_sub$Manual_Annotation_refined == "12: Mixed CD4/CD8"
+cat("=== CD8A expression in Cluster 12 ===\n")
+cat("  Cells in '12: Mixed CD4/CD8':", sum(is_cl12), "\n")
+cat("  CD8A > 0:", sum(cd8a_expr[is_cl12] > 0, na.rm = TRUE), "\n")
+cat("  CD8A == 0:", sum(cd8a_expr[is_cl12] == 0, na.rm = TRUE), "\n")
+cat("  CD8A is NA:", sum(is.na(cd8a_expr[is_cl12])), "\n")
+cat("  CD8A summary:\n")
+print(summary(cd8a_expr[is_cl12]))
+cat("\n")
+
+# Split: CD8A > 0 → 12a, otherwise → 12b (covers 0 and NA)
+TARA_sub$Manual_Annotation_refined[is_cl12 & cd8a_expr > 0] <- "12a: CD8"
+TARA_sub$Manual_Annotation_refined[is_cl12 & (cd8a_expr <= 0 | is.na(cd8a_expr))] <- "12b: CD4"
+
 TARA_sub$Manual_Annotation_refined <- factor(TARA_sub$Manual_Annotation_refined)
-TARA_sub$Cluster_Number_refined <- gsub("^([0-9]+):.*", "\\1",
+TARA_sub$Cluster_Number_refined <- gsub("^([0-9]+[ab]?):.*", "\\1",
                                         TARA_sub$Manual_Annotation_refined)
 
-cat("=== Post-merge cluster sizes (Clusters 8, 9, 12) ===\n")
+cat("=== Post-refinement cluster sizes (CD8-relevant clusters) ===\n")
 print(table(TARA_sub$Manual_Annotation_refined)[
-  grepl("^8|^9|^12", names(table(TARA_sub$Manual_Annotation_refined)))
+  grepl("^1:|^6:|^8:|^9:|^12|^27:", names(table(TARA_sub$Manual_Annotation_refined)))
 ])
 cat("\n")
 
-cat("=== Cluster 12 current annotation ===\n")
-cl12_labels <- unique(as.character(TARA_sub$Manual_Annotation[
-  grepl("^12", as.character(TARA_sub$Manual_Annotation))
-]))
-print(cl12_labels)
-cat("Cell count in subset:",
-    sum(grepl("^12", as.character(TARA_sub$Manual_Annotation_refined))), "\n\n")
+cat("=== Cluster 12 split results ===\n")
+n_12a <- sum(TARA_sub$Manual_Annotation_refined == "12a: CD8")
+n_12b <- sum(TARA_sub$Manual_Annotation_refined == "12b: CD4")
+cat("  12a (CD8A+):", n_12a, "cells\n")
+cat("  12b (CD4):  ", n_12b, "cells\n")
 
-
-################################################################################
-# STEP 2: DEFINE CD8 CLUSTERS (including Cluster 12)
-################################################################################
-
-cl12_label <- grep("^12:", levels(TARA_sub$Manual_Annotation_refined), value = TRUE)
-if (length(cl12_label) == 0) {
-  cl12_label <- unique(grep("^12:", as.character(TARA_sub$Manual_Annotation_refined),
-                            value = TRUE))
+if (n_12a == 0 & n_12b == 0) {
+  cat("\n  ⚠ WARNING: No cells assigned to 12a or 12b!\n")
+  cat("  This means grepl('^12: ', Manual_Annotation) didn't match any cells.\n")
+  cat("  Check your Manual_Annotation column — cluster 12's label may not start with '12: '\n")
+  cat("  Unique annotations that contain '12':\n")
+  print(unique(grep("12", as.character(TARA_sub$Manual_Annotation), value = TRUE)))
+  cat("  Unique refined annotations that contain '12':\n")
+  print(unique(grep("12", as.character(TARA_sub$Manual_Annotation_refined), value = TRUE)))
+  cat("\n  You may need to adjust the grepl pattern in Step 1 to match your data.\n\n")
 }
-cat("Cluster 12 refined label:", cl12_label, "\n\n")
+cat("\n")
+
+
+################################################################################
+# STEP 2: DEFINE CD8 CLUSTERS
+#
+# Cluster 12a (CD8A+) is included; 12b (CD4) is excluded from CD8 analyses.
+# 12a will be further characterized by the violin/feature/avgexpr outputs.
+################################################################################
 
 cd8_cluster_names <- c(
-  "1: Memory CD8 T cell",
-  "6: Naïve CD8 T cell",
-  "8: CTL-like",
-  "9: TRDV1+ γδ T cell",
-  cl12_label,
-  "27: GZMK+ CD8 T cell"
-)
-
-cd8_display_labels <- setNames(
-  c("Tcm/Tscm CD8\n(Cluster 1)",
-    "Naïve CD8\n(Cluster 6)",
-    "TEMRA/CTL\n(Cluster 8)",
-    "TRDV1+ γδ\n(Cluster 9)",
-    paste0("Cluster 12\n(", gsub("^12: ", "", cl12_label), ")"),
-    "Tpex CD8\n(Cluster 27)"),
-  cd8_cluster_names
+  "1: Tcm CD8",
+  "6: Naïve CD8",
+  "8: TEMRA/CTL CD8",
+  "9: γδ T cell",
+  "12a: CD8",
+  "27: Tex CD8"
 )
 
 cd8_short_labels <- setNames(
-  c("Tcm/Tscm CD8", "Naïve CD8", "TEMRA/CTL", "TRDV1+ γδ",
-    paste0("Cl.12: ", gsub("^12: ", "", cl12_label)), "Tpex CD8"),
+  c("Tcm CD8", "Naïve CD8", "TEMRA/CTL", "γδ T cell", "Cl.12a CD8", "Tex CD8"),
   cd8_cluster_names
 )
 
@@ -178,9 +223,22 @@ cd8_short_labels <- setNames(
 TARA_cd8 <- subset(TARA_sub,
                    subset = Manual_Annotation_refined %in% cd8_cluster_names)
 
+# Drop unused factor levels so VlnPlot2 only shows the 6 CD8 clusters
+TARA_cd8$Manual_Annotation_refined <- droplevels(TARA_cd8$Manual_Annotation_refined)
+
+# Reorder factor levels to match cd8_cluster_names order
+TARA_cd8$Manual_Annotation_refined <- factor(
+  TARA_cd8$Manual_Annotation_refined,
+  levels = cd8_cluster_names[cd8_cluster_names %in% levels(TARA_cd8$Manual_Annotation_refined)]
+)
+
 cat("=== CD8 subset cell counts ===\n")
 print(table(TARA_cd8$Manual_Annotation_refined))
 cat("\n")
+
+# Verify 12a is present
+stopifnot("12a: CD8 not found in TARA_cd8 — check Cluster 12 split logic" =
+            "12a: CD8" %in% levels(TARA_cd8$Manual_Annotation_refined))
 
 # ── Shared color palettes ──────────────────────────────────────────────────────
 cond_cols <- c("HUU" = "#4E79A7", "HEU" = "#F28E2B", "HEI" = "#E15759")
@@ -703,67 +761,90 @@ message("✓ DotPlots saved\n")
 
 
 ################################################################################
-# STEP 11: CLUSTER 12 — FOCUSED DIAGNOSTIC
+# STEP 11: CLUSTER 12a (CD8A+) — ANNOTATION DIAGNOSTIC
+#
+# Cluster 12 was a mixed CD4/CD8 population. After splitting by CD8A,
+# 12a contains the CD8+ cells. This section characterizes 12a to determine
+# its identity (e.g., Tem, effector, activated, etc.)
 ################################################################################
 
-message("Generating Cluster 12 diagnostic panel...")
+message("Generating Cluster 12a annotation diagnostics...")
 
 DefaultAssay(TARA_cd8) <- "RNA"
 
-TARA_cd8$is_cl12 <- ifelse(
-  grepl("^12:", as.character(TARA_cd8$Manual_Annotation_refined)),
-  "Cluster 12", "Other CD8"
+# ── DE: Cluster 12a vs all other CD8 clusters ─────────────────────────────────
+TARA_cd8$is_cl12a <- ifelse(
+  TARA_cd8$Manual_Annotation_refined == "12a: CD8",
+  "Cluster 12a", "Other CD8"
 )
 
-cl12_markers <- FindMarkers(
+cl12a_markers <- FindMarkers(
   TARA_cd8,
-  ident.1         = "Cluster 12",
-  group.by        = "is_cl12",
+  ident.1         = "Cluster 12a",
+  group.by        = "is_cl12a",
   test.use        = "MAST",
   min.pct         = 0.1,
   logfc.threshold = 0.25
 )
 
-write.csv(cl12_markers,
-          file.path(out_annot, "Cluster12_vs_OtherCD8_DEgenes.csv"),
+write.csv(cl12a_markers,
+          file.path(out_annot, "Cluster12a_vs_OtherCD8_DEgenes.csv"),
           row.names = TRUE)
 
-top_up   <- head(rownames(cl12_markers[cl12_markers$avg_log2FC > 0, ]), 20)
-top_down <- head(rownames(cl12_markers[cl12_markers$avg_log2FC < 0, ]), 20)
+top_up   <- head(rownames(cl12a_markers[cl12a_markers$avg_log2FC > 0, ]), 30)
+top_down <- head(rownames(cl12a_markers[cl12a_markers$avg_log2FC < 0, ]), 30)
 
-cat("=== Cluster 12 — Top 20 upregulated genes ===\n")
+cat("=== Cluster 12a (CD8A+) — Top 30 upregulated genes ===\n")
 print(top_up)
-cat("\n=== Cluster 12 — Top 20 downregulated genes ===\n")
+cat("\n=== Cluster 12a (CD8A+) — Top 30 downregulated genes ===\n")
 print(top_down)
 cat("\n")
 
-# Feature plot of top 4 up genes using DimPlot2
-top4 <- head(top_up, 4)
-if (length(top4) > 0) {
-  cl12_feat_plots <- lapply(top4, function(g) {
+# ── Feature plots: top 6 upregulated genes ────────────────────────────────────
+top6 <- head(top_up, 6)
+if (length(top6) > 0) {
+  cl12a_feat_plots <- lapply(top6, function(g) {
     DimPlot2(TARA_cd8, features = g, reduction = "wnn.umap") +
       ggtitle(paste("RNA |", g))
   })
-  p_cl12_feat <- wrap_plots(cl12_feat_plots, ncol = 2)
+  p_cl12a_feat <- wrap_plots(cl12a_feat_plots, ncol = 3)
   
-  ggsave(file.path(out_annot, "Cluster12_Top4_FeaturePlot.png"),
-         p_cl12_feat, width = 14, height = 12, dpi = 300, bg = "white")
+  ggsave(file.path(out_annot, "Cluster12a_Top6_FeaturePlot.png"),
+         p_cl12a_feat, width = 20, height = 12, dpi = 300, bg = "white")
 }
 
-# Identity violin: Cl12 vs others using VlnPlot2
-cd8_identity_genes <- intersect(
-  c("CD8A", "CD8B", "CD3D", "CD3E", "GZMB", "GZMK", "PRF1", "GNLY",
-    "CCR7", "TCF7", "TOX", "PDCD1", "TRDV1", "TRDC",
-    "CD4", "FOXP3", "CD19", "MS4A1", "CD14", "LYZ", "NCAM1"),
+# ── Violin plots: key genes for CD8 subtype discrimination ────────────────────
+cl12a_annotation_genes <- intersect(
+  c(# Core identity
+    "CD8A", "CD8B", "CD3D", "CD3E", "CD4",
+    # Naïve
+    "CCR7", "SELL", "TCF7", "LEF1", "BACH2", "S1PR1",
+    # Memory
+    "IL7R", "BCL2",
+    # Effector / cytotoxic
+    "GZMB", "GZMA", "GZMK", "GZMH", "PRF1", "GNLY", "NKG7",
+    # Effector TFs
+    "TBX21", "EOMES", "RUNX3", "ZEB2",
+    # Exhaustion
+    "TOX", "PDCD1", "HAVCR2", "TIGIT", "LAG3",
+    # Activation
+    "MKI67", "HLA-DRA", "CD38", "FAS", "CD69",
+    # Chemokines
+    "CCL3", "CCL4", "CCL5", "IFNG",
+    # Terminal diff
+    "B3GAT1", "CX3CR1", "KLRG1",
+    # IFN
+    "ISG15", "IFIT1",
+    # γδ exclusion
+    "TRDV1", "TRDC"),
   rna_available
 )
 
-# Generate one VlnPlot2 per gene for Cluster 12 vs Other CD8
-for (gene in cd8_identity_genes) {
-  p_cl12 <- VlnPlot2(
+for (gene in cl12a_annotation_genes) {
+  p_cl12a <- VlnPlot2(
     TARA_cd8,
     features     = gene,
-    group.by     = "is_cl12",
+    group.by     = "Manual_Annotation_refined",
     assay        = "RNA",
     cols         = "light",
     show.mean    = TRUE,
@@ -771,13 +852,50 @@ for (gene in cd8_identity_genes) {
   )
   
   safe_name <- gsub("[^A-Za-z0-9._-]", "_", gene)
-  ggsave(file.path(out_annot, paste0("Cluster12_vs_OtherCD8_Vln_", safe_name, ".png")),
-         p_cl12, width = 8, height = 5, dpi = 300, bg = "white")
+  ggsave(file.path(out_annot, paste0("Cluster12a_Vln_", safe_name, ".png")),
+         p_cl12a, width = 12, height = 5, dpi = 300, bg = "white")
 }
 
-TARA_cd8$is_cl12 <- NULL
+# ── Also run DE: 12a vs each individual CD8 cluster (pairwise) ────────────────
+# This helps see what makes 12a distinct from each specific population
+other_cd8_clusters <- setdiff(cd8_cluster_names, "12a: CD8")
 
-message("✓ Cluster 12 diagnostics saved\n")
+for (ref_cl in other_cd8_clusters) {
+  
+  # Subset to just 12a + reference cluster
+  pair_cells <- WhichCells(TARA_cd8, expression =
+                             Manual_Annotation_refined %in% c("12a: CD8", ref_cl))
+  TARA_pair <- subset(TARA_cd8, cells = pair_cells)
+  
+  de_pair <- tryCatch({
+    FindMarkers(
+      TARA_pair,
+      ident.1         = "12a: CD8",
+      group.by        = "Manual_Annotation_refined",
+      test.use        = "MAST",
+      min.pct         = 0.1,
+      logfc.threshold = 0.25
+    )
+  }, error = function(e) {
+    message("  ⚠ DE failed for 12a vs ", ref_cl, ": ", e$message)
+    NULL
+  })
+  
+  if (!is.null(de_pair)) {
+    ref_safe <- gsub("[^A-Za-z0-9._-]", "_", ref_cl)
+    write.csv(de_pair,
+              file.path(out_annot, paste0("Cluster12a_vs_", ref_safe, "_DEgenes.csv")),
+              row.names = TRUE)
+    
+    cat("=== 12a vs", ref_cl, ": top 10 UP ===\n")
+    print(head(rownames(de_pair[de_pair$avg_log2FC > 0, ]), 10))
+    cat("\n")
+  }
+}
+
+TARA_cd8$is_cl12a <- NULL
+
+message("✓ Cluster 12a diagnostics saved\n")
 
 
 ################################################################################
@@ -893,18 +1011,26 @@ avg_rna_hm_sc <- scale_01(as.matrix(avg_rna_hm))
 colnames(avg_adt_hm_sc) <- gsub("^g ", "", colnames(avg_adt_hm_sc))
 colnames(avg_rna_hm_sc) <- gsub("^g ", "", colnames(avg_rna_hm_sc))
 
-# Column ordering (dynamic: find columns matching cluster numbers)
-get_col_for_cluster <- function(colnames_vec, cluster_num) {
-  pattern <- paste0("_", cluster_num, "$")
+# Column ordering (dynamic: find columns matching cluster labels)
+# Seurat AverageExpression column names are derived from factor levels,
+# so they'll contain the annotation string. We match by the cluster prefix.
+get_col_for_cluster <- function(colnames_vec, cluster_prefix) {
+  # Try matching "_<prefix>$" pattern (e.g., "_12a$" or "_1$")
+  pattern <- paste0("_", cluster_prefix, "$")
   matched <- grep(pattern, colnames_vec, value = TRUE)
   if (length(matched) == 1) return(matched)
-  pattern2 <- paste0("^", cluster_num, ":")
+  # Try matching "^<prefix>:" pattern
+  pattern2 <- paste0("^", cluster_prefix, ":")
   matched2 <- grep(pattern2, colnames_vec, value = TRUE)
   if (length(matched2) == 1) return(matched2)
+  # Try partial match anywhere
+  pattern3 <- cluster_prefix
+  matched3 <- grep(pattern3, colnames_vec, value = TRUE, fixed = TRUE)
+  if (length(matched3) == 1) return(matched3)
   return(NA_character_)
 }
 
-target_clusters <- c(1, 6, 8, 9, 12, 27)
+target_clusters <- c("1", "6", "8", "9", "12a", "27")
 col_order_adt <- na.omit(sapply(target_clusters, function(cl)
   get_col_for_cluster(colnames(avg_adt_hm_sc), cl)))
 col_order_rna <- na.omit(sapply(target_clusters, function(cl)
@@ -914,9 +1040,11 @@ avg_adt_hm_sc <- avg_adt_hm_sc[, col_order_adt, drop = FALSE]
 avg_rna_hm_sc <- avg_rna_hm_sc[, col_order_rna, drop = FALSE]
 
 make_display_label <- function(raw_name) {
-  num <- sub(".*_(\\d+)$", "\\1", raw_name)
-  name_map <- c("1" = "Tcm/Tscm CD8", "6" = "Naïve CD8", "8" = "TEMRA/CTL",
-                "9" = "TRDV1+ γδ", "12" = "Cluster 12", "27" = "Tpex CD8")
+  # Extract cluster ID: everything after the last underscore, or before the colon
+  num <- sub(".*_([0-9a-z]+)$", "\\1", raw_name)
+  if (num == raw_name) num <- sub("^([0-9a-z]+):.*", "\\1", raw_name)
+  name_map <- c("1" = "Tcm CD8", "6" = "Naïve CD8", "8" = "TEMRA/CTL",
+                "9" = "γδ T cell", "12a" = "Cl.12a CD8", "27" = "Tex CD8")
   short <- ifelse(num %in% names(name_map), name_map[num], paste0("Cl.", num))
   paste0(short, "\n(Cluster ", num, ")")
 }
@@ -1204,3 +1332,4 @@ message("\n",
         "\n",
         " → Paste the CSV contents back here and I'll help annotate clusters.\n"
 )
+
