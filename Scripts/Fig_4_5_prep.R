@@ -1,5 +1,5 @@
 ################################################################################
-# FIGURE 3 PREP: CD8 T Cell Sub-clustering, Annotation & All Analyses
+# FIGURE 4-5 PREP: CD8 T Cell Sub-clustering, Annotation & All Analyses
 #   — TARA Cohort, HEI only
 #
 # Workflow:
@@ -24,6 +24,15 @@
 # Input:  TARA_ALL_sorted_refined.qs2
 # Output: analysis/ with numbered subfolders + saved objects
 # Figures: Figure3_Plots.R
+#
+# ANNOTATION UPDATE (v2):
+#   Naïve CD8 (innate-like)  → Naïve CD8 2
+#   Naïve CD8 (post-ART)     → Naïve CD8 3
+#   Effector CD8              → TEM CD8
+#   Terminal TEMRA CD8        → TEMRA CD8
+#   TRDV1+ γδ T cell          → γδ1 T cell
+#   Naïve-like TRDV1+ γδ      → Naïve γδ1 T cell
+#   Vγ9Vδ2 γδ T cell          → γδ2 T cell
 ################################################################################
 
 # ── Libraries ─────────────────────────────────────────────────────────────────
@@ -48,7 +57,7 @@ library(SeuratWrappers)
 # ── Paths ─────────────────────────────────────────────────────────────────────
 base_dir    <- "~/Documents/CD8_Longitudinal"
 saved_dir   <- file.path(base_dir, "saved_R_data")
-out_dir     <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Manuscript/Fig 3/"
+out_dir     <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Manuscript/Fig 4-5/"
 analysis_dir <- file.path(out_dir, "analysis")
 
 # Numbered analysis subfolders — clean organization
@@ -129,10 +138,6 @@ ggsave(file.path(dir_01_integration, "Diagnostic_CD8_ADT_distribution.png"),
 cat("Diagnostic plot saved. Check the distribution and adjust threshold below.\n")
 
 # ── Rescue: tight multi-gate ──────────────────────────────────────────────────
-# CD8A high + CD3D positive (confirms T cell) + exclude CD4/CD14/CD19 positive
-# DSB-normalized: >1 generally positive, >2 confidently positive
-# ← EDIT THRESHOLDS after inspecting diagnostic plot
-
 cd8a_threshold <- 2.0   # stringent CD8A positivity
 cd3d_threshold <- 1.0   # must be a T cell
 cd4_max        <- 1.0   # exclude CD4+ T cells
@@ -350,14 +355,11 @@ for (col in grep("^wsnn_res\\.", colnames(TARA_cd8@meta.data), value = TRUE)) {
 }
 
 # ── Clustree: explore resolution stability ───────────────────────────────────
-# Standard clustree — arrows show cell flow between resolutions
 p_clustree <- clustree(TARA_cd8, prefix = "wsnn_res.")
 
 ggsave(file.path(dir_02_clustering, "CD8_clustree.png"),
        plot = p_clustree, width = 15, height = 9, dpi = 300, bg = "white")
 
-# Stability-colored clustree — nodes colored by SC3 stability index
-# Dark/warm = stable cluster, light/cool = unstable (being reshuffled)
 p_clustree_stab <- clustree(TARA_cd8, prefix = "wsnn_res.",
                             node_colour = "sc3_stability")
 
@@ -365,15 +367,8 @@ ggsave(file.path(dir_02_clustering, "CD8_clustree_stability.png"),
        plot = p_clustree_stab, width = 15, height = 9, dpi = 300, bg = "white")
 
 cat("Clustree saved (standard + stability-colored).\n")
-cat("\nHow to read clustree:\n")
-cat("  - Solid arrows = cells move together (good, clean split)\n")
-cat("  - Faint/crossing arrows = cells reshuffling (over-clustering)\n")
-cat("  - Pick the last resolution before arrows start criss-crossing\n")
-cat("  - Check stability plot: dark nodes = stable clusters\n")
-cat("  - For CD8 T cells, expect ~6-10 meaningful sub-populations\n\n")
 
 # ── Pick resolution ──────────────────────────────────────────────────────────
-# ← EDIT THIS after inspecting clustree
 chosen_res <- 0.4
 TARA_cd8$seurat_clusters <- TARA_cd8[[paste0("wsnn_res.", chosen_res)]][, 1]
 Idents(TARA_cd8) <- "seurat_clusters"
@@ -409,8 +404,6 @@ cat("CHECKPOINT: Integrated object saved as TARA_cd8_HEI_integrated.qs2\n")
 ################################################################################
 
 # ── Key markers for CD8 sub-population identification ────────────────────────
-# These will help you annotate and will later form the heatmap
-
 annotation_markers_rna <- c(
   # Naïve / Stem-like
   "CCR7", "SELL", "TCF7", "LEF1", "IL7R",
@@ -471,7 +464,6 @@ avg_adt <- AverageExpression(
 )$ADT
 
 # ── Quick heatmap for exploration (not final figure) ─────────────────────────
-# Scale rows to [0,1]
 scale_01 <- function(mat) {
   t(apply(mat, 1, function(x) (x - min(x)) / (max(x) - min(x) + 1e-9)))
 }
@@ -479,11 +471,9 @@ scale_01 <- function(mat) {
 avg_rna_scaled <- scale_01(avg_rna)
 avg_adt_scaled <- scale_01(log10(avg_adt + 1))
 
-# Strip "g " prefix that Seurat prepends to column names
 colnames(avg_rna_scaled) <- gsub("^g\\s*", "", colnames(avg_rna_scaled))
 colnames(avg_adt_scaled) <- gsub("^g\\s*", "", colnames(avg_adt_scaled))
 
-# Sort columns numerically
 col_order <- as.character(sort(as.numeric(colnames(avg_rna_scaled))))
 avg_rna_scaled <- avg_rna_scaled[, col_order]
 avg_adt_scaled <- avg_adt_scaled[, col_order]
@@ -492,7 +482,6 @@ heatmap_colors <- colorRampPalette(c(
   "#F7FCF5", "#C7E9C0", "#74C476", "#31A354", "#006D2C"
 ))(100)
 
-# RNA exploration heatmap
 png(file.path(dir_02_clustering, "CD8_AvgExpression_RNA_exploration.png"),
     width = 14, height = 16, units = "in", res = 300, bg = "white")
 pheatmap(
@@ -508,7 +497,6 @@ pheatmap(
 )
 dev.off()
 
-# ADT exploration heatmap
 png(file.path(dir_02_clustering, "CD8_AvgExpression_ADT_exploration.png"),
     width = 14, height = 12, units = "in", res = 300, bg = "white")
 pheatmap(
@@ -524,7 +512,6 @@ pheatmap(
 )
 dev.off()
 
-# ── Print average expression table for manual inspection ─────────────────────
 cat("\n=== RNA Average Expression (top markers per cluster) ===\n")
 print(round(avg_rna_scaled, 2))
 
@@ -533,13 +520,8 @@ print(round(avg_adt_scaled, 2))
 
 ################################################################################
 # 4. ANNOTATION: Inspect clusters, then annotate
-#    IMPORTANT: With HEI-only data, cluster numbers and identities WILL CHANGE
-#    from the previous all-condition analysis. You MUST re-inspect before
-#    annotating. Run up to here, then use the exploration heatmaps + the
-#    diagnostic code below to decide annotations.
 ################################################################################
 
-# ── Diagnostic: Timepoint_Group per cluster ──────────────────────────────────
 cat("\n=== Timepoint_Group distribution per cluster ===\n")
 print(round(prop.table(table(TARA_cd8$seurat_clusters, TARA_cd8$Timepoint_Group), margin = 1), 3))
 
@@ -550,7 +532,6 @@ cat("\n=== has_TCR per cluster ===\n")
 print(round(prop.table(table(TARA_cd8$seurat_clusters, TARA_cd8$has_TCR), margin = 1), 3))
 
 # ── Export avg expression CSVs for annotation ────────────────────────────────
-# ALL ADT
 DefaultAssay(TARA_cd8) <- "ADT"
 avg_adt_explore <- AverageExpression(TARA_cd8, assays = "ADT",
                                      features = rownames(TARA_cd8[["ADT"]]),
@@ -559,7 +540,6 @@ colnames(avg_adt_explore) <- gsub("^g\\s*", "", colnames(avg_adt_explore))
 write.csv(round(avg_adt_explore, 3),
           file.path(dir_02_clustering, "CD8_HEI_avg_ADT_ALL_by_cluster.csv"))
 
-# Expanded RNA markers
 DefaultAssay(TARA_cd8) <- "RNA"
 rna_markers_expanded <- c(
   "CCR7", "SELL", "TCF7", "LEF1", "IL7R", "FOXP1", "KLF2", "S1PR1",
@@ -591,6 +571,7 @@ cat("\nExploration CSVs saved. Upload these for annotation help.\n")
 
 ################################################################################
 # 4. ANNOTATION: HEI-only CD8, Resolution 0.4 (13 clusters: X0–X12)
+#    UPDATED ANNOTATIONS (v2)
 ################################################################################
 
 # ── Step 1: Remove contaminants ──────────────────────────────────────────────
@@ -599,18 +580,18 @@ TARA_cd8 <- subset(TARA_cd8, seurat_clusters %in% clusters_to_remove, invert = T
 cat("Removed clusters:", paste(clusters_to_remove, collapse = ", "), "\n")
 cat("Remaining cells:", ncol(TARA_cd8), "\n")
 
-# ── Step 2: Initial annotation ───────────────────────────────────────────────
+# ── Step 2: Initial annotation (UPDATED v2) ─────────────────────────────────
 cd8_annotations <- c(
   "0"  = "Naïve CD8",
-  "1"  = "Effector CD8",
-  "2"  = "Naïve CD8 (innate-like)",
-  "3"  = "TRDV1+ γδ T cell",
-  "4"  = "Terminal TEMRA CD8",
-  "5"  = "Naïve CD8 (post-ART)",
+  "1"  = "TEM CD8",
+  "2"  = "Naïve CD8 2",
+  "3"  = "γδ1 T cell",
+  "4"  = "TEMRA CD8",
+  "5"  = "Naïve CD8 3",
   "6"  = "Transitional Tem CD8",
-  "7"  = "Naïve-like TRDV1+ γδ",       # will be split
+  "7"  = "Naïve γδ1 T cell",          # will be split
   "8"  = "KIR+ innate-like CD8",
-  "9"  = "Vγ9Vδ2 γδ T cell",
+  "9"  = "γδ2 T cell",
   "10" = "MAIT-like Trm"
 )
 
@@ -623,12 +604,12 @@ TARA_cd8 <- AddMetaData(TARA_cd8, metadata = annot_vec, col.name = "CD8_Annotati
 
 # ── Step 3: TCR-based splits ─────────────────────────────────────────────────
 
-# X3 (TRDV1+ γδ): move 20% αβ TCR contaminants → Effector CD8
+# X3 (γδ1 T cell): move αβ TCR contaminants → TEM CD8
 c3_ab <- TARA_cd8$seurat_clusters == "3" & TARA_cd8$has_TCR == TRUE
-cat("\nX3 clean: moving", sum(c3_ab), "αβ TCR contaminants to Effector CD8\n")
-TARA_cd8$CD8_Annotation[c3_ab] <- "Effector CD8"
+cat("\nX3 clean: moving", sum(c3_ab), "αβ TCR contaminants to TEM CD8\n")
+TARA_cd8$CD8_Annotation[c3_ab] <- "TEM CD8"
 
-# X7 (Naïve-like TRDV1+ γδ): 60% αβ TCR → Naïve CD8, rest stays γδ
+# X7 (Naïve γδ1 T cell): αβ TCR cells → Naïve CD8, rest stays γδ
 c7_ab <- TARA_cd8$seurat_clusters == "7" & TARA_cd8$has_TCR == TRUE
 cat("X7 split: moving", sum(c7_ab), "αβ TCR cells to Naïve CD8\n")
 TARA_cd8$CD8_Annotation[c7_ab] <- "Naïve CD8"
@@ -646,13 +627,12 @@ print(round(prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$has_TCR), margin 
 cat("\n=== Timepoint_Group per annotation ===\n")
 print(round(prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group), margin = 1), 3))
 
-# ── Canonical cluster order (biological progression) ─────────────────────────
-# Used by heatmap, clonal expansion plots, and downstream analyses
+# ── Canonical cluster order (biological progression) — UPDATED ───────────────
 col_order_cd8 <- c(
-  "Naïve CD8", "Naïve CD8 (innate-like)", "Naïve CD8 (post-ART)",
-  "Transitional Tem CD8", "Effector CD8", "Terminal TEMRA CD8",
+  "Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+  "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
   "KIR+ innate-like CD8", "MAIT-like Trm",
-  "TRDV1+ γδ T cell", "Naïve-like TRDV1+ γδ", "Vγ9Vδ2 γδ T cell"
+  "γδ1 T cell", "Naïve γδ1 T cell", "γδ2 T cell"
 )
 
 ################################################################################
@@ -662,19 +642,9 @@ qs_save(TARA_cd8, file.path(saved_dir, "TARA_cd8_HEI_annotated.qs2"))
 cat("Annotated HEI CD8 object saved.\n")
 
 ################################################################################
-# SECTIONS 6-7 (FIGURE PLOTS) MOVED TO Figure3_Plots.R
-# Continue below with downstream analyses
-################################################################################
-
-################################################################################
 # 8. DOWNSTREAM ANALYSES — organized into numbered subfolders
 ################################################################################
 
-# Directories already created at top of script:
-# dir_03_dge, dir_04_dpe, dir_05_proportions, dir_06_clonal,
-# dir_07_trajectory, dir_08_expansion, dir_09_viralload, dir_10_modules
-
-# Alias for backward compatibility in this section
 dge_dir   <- dir_03_dge
 dpe_dir   <- dir_04_dpe
 prop_dir  <- dir_05_proportions
@@ -689,17 +659,18 @@ art_colors <- c(
 
 colorblind_vector <- hcl.colors(n = 7, palette = "plasma", fixup = TRUE)
 
-effector_clusters <- c("Effector CD8", "Terminal TEMRA CD8", "Transitional Tem CD8")
+# UPDATED: effector cluster names
+effector_clusters <- c("TEM CD8", "TEMRA CD8", "Transitional Tem CD8")
 
 ################################################################################
-# 8A. DGE/DPE: Pairwise naïve cluster comparisons
+# 8A. DGE/DPE: Pairwise naïve cluster comparisons (UPDATED names)
 ################################################################################
 cat("\n=== Running DGE/DPE (MAST) for naïve cluster comparisons ===\n")
 
 Idents(TARA_cd8) <- "CD8_Annotation"
 
-# Naïve clusters to compare
-naive_clusters <- c("Naïve CD8", "Naïve CD8 (innate-like)", "Naïve CD8 (post-ART)")
+# UPDATED naïve cluster names
+naive_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3")
 
 naive_pairs <- combn(naive_clusters, 2, simplify = FALSE)
 for (pair in naive_pairs) {
@@ -708,14 +679,12 @@ for (pair in naive_pairs) {
   cat("  DGE:", pair[1], "vs", pair[2], "...\n")
   
   tryCatch({
-    # RNA DGE
     DefaultAssay(TARA_cd8) <- "RNA"
     dge <- FindMarkers(TARA_cd8, ident.1 = pair[1], ident.2 = pair[2],
                        test.use = "MAST", logfc.threshold = 0.25,
                        min.pct = 0.1, verbose = FALSE)
     write.csv(dge, file.path(dge_dir, paste0("DGE_MAST_RNA_", safe_name, ".csv")))
     
-    # ADT DPE
     DefaultAssay(TARA_cd8) <- "ADT"
     dpe <- FindMarkers(TARA_cd8, ident.1 = pair[1], ident.2 = pair[2],
                        test.use = "MAST", logfc.threshold = 0.1,
@@ -724,22 +693,22 @@ for (pair in naive_pairs) {
   }, error = function(e) cat("    ERROR:", e$message, "\n"))
 }
 
-# ── Effector vs Terminal TEMRA ───────────────────────────────────────────────
-cat("  DGE: Effector CD8 vs Terminal TEMRA CD8...\n")
+# ── TEM CD8 vs TEMRA CD8 (UPDATED names) ────────────────────────────────────
+cat("  DGE: TEM CD8 vs TEMRA CD8...\n")
 tryCatch({
   DefaultAssay(TARA_cd8) <- "RNA"
-  dge_eff <- FindMarkers(TARA_cd8, ident.1 = "Effector CD8",
-                         ident.2 = "Terminal TEMRA CD8",
+  dge_eff <- FindMarkers(TARA_cd8, ident.1 = "TEM CD8",
+                         ident.2 = "TEMRA CD8",
                          test.use = "MAST", logfc.threshold = 0.25,
                          min.pct = 0.1, verbose = FALSE)
-  write.csv(dge_eff, file.path(dge_dir, "DGE_MAST_RNA_EffectorCD8_vs_TerminalTEMRA.csv"))
+  write.csv(dge_eff, file.path(dge_dir, "DGE_MAST_RNA_TEMCD8_vs_TEMRACD8.csv"))
   
   DefaultAssay(TARA_cd8) <- "ADT"
-  dpe_eff <- FindMarkers(TARA_cd8, ident.1 = "Effector CD8",
-                         ident.2 = "Terminal TEMRA CD8",
+  dpe_eff <- FindMarkers(TARA_cd8, ident.1 = "TEM CD8",
+                         ident.2 = "TEMRA CD8",
                          test.use = "MAST", logfc.threshold = 0.1,
                          min.pct = 0.05, verbose = FALSE)
-  write.csv(dpe_eff, file.path(dpe_dir, "DPE_MAST_ADT_EffectorCD8_vs_TerminalTEMRA.csv"))
+  write.csv(dpe_eff, file.path(dpe_dir, "DPE_MAST_ADT_TEMCD8_vs_TEMRACD8.csv"))
 }, error = function(e) cat("    ERROR:", e$message, "\n"))
 
 cat("  Pairwise DGE/DPE saved.\n")
@@ -796,15 +765,13 @@ run_expand_dge <- function(obj, cluster_name, label, dge_dir, dpe_dir) {
 cat("  All expanding clones...\n")
 run_expand_dge(TARA_cd8, NULL, "AllClusters", dge_dir, dpe_dir)
 
-# Within Effector CD8
-cat("  Within Effector CD8...\n")
-run_expand_dge(TARA_cd8, "Effector CD8", "EffectorCD8", dge_dir, dpe_dir)
+# UPDATED cluster names
+cat("  Within TEM CD8...\n")
+run_expand_dge(TARA_cd8, "TEM CD8", "TEMCD8", dge_dir, dpe_dir)
 
-# Within Terminal TEMRA CD8
-cat("  Within Terminal TEMRA CD8...\n")
-run_expand_dge(TARA_cd8, "Terminal TEMRA CD8", "TerminalTEMRA", dge_dir, dpe_dir)
+cat("  Within TEMRA CD8...\n")
+run_expand_dge(TARA_cd8, "TEMRA CD8", "TEMRACD8", dge_dir, dpe_dir)
 
-# Within Transitional Tem CD8
 cat("  Within Transitional Tem CD8...\n")
 run_expand_dge(TARA_cd8, "Transitional Tem CD8", "TransitionalTem", dge_dir, dpe_dir)
 
@@ -815,7 +782,6 @@ cat("  Expanding clone DGE/DPE saved.\n")
 ################################################################################
 cat("\n=== Computing cluster proportions ===\n")
 
-# ── By Timepoint_Group ───────────────────────────────────────────────────────
 prop_tp <- as.data.frame(prop.table(
   table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group), margin = 2
 ))
@@ -871,7 +837,6 @@ p_prop_pid <- ggplot(prop_pid, aes(x = PID, y = Proportion, fill = Cluster)) +
 ggsave(file.path(prop_dir, "ClusterProportions_by_Patient.png"),
        plot = p_prop_pid, width = 12, height = 8, dpi = 300, bg = "white")
 
-# ── Raw count tables ─────────────────────────────────────────────────────────
 write.csv(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group),
           file.path(prop_dir, "ClusterCounts_by_TimepointGroup.csv"))
 write.csv(table(TARA_cd8$CD8_Annotation, TARA_cd8$PID),
@@ -886,13 +851,11 @@ cat("\n=== Plotting clonal expansion ===\n")
 
 colorblind_vector <- hcl.colors(n = 7, palette = "plasma", fixup = TRUE)
 
-# Named color vector — ensures correct mapping regardless of factor order
 clone_size_levels <- c("Single (0 < X <= 1)", "Small (1 < X <= 5)",
                        "Medium (5 < X <= 20)", "Large (20 < X <= 100)",
                        "Hyperexpanded (100 < X <= 500)")
 clone_size_colors <- setNames(c(colorblind_vector[c(1, 3, 4, 5, 7)]), clone_size_levels)
 
-# ── UMAP colored by cloneSize ────────────────────────────────────────────────
 p_clone_umap <- DimPlot_scCustom(
   TARA_cd8,
   group.by   = "cloneSize",
@@ -909,7 +872,6 @@ p_clone_umap <- DimPlot_scCustom(
 ggsave(file.path(clone_dir, "CD8_UMAP_cloneSize.png"),
        plot = p_clone_umap, width = 10, height = 8, dpi = 300, bg = "white")
 
-# ── UMAP split by Timepoint_Group ────────────────────────────────────────────
 p_clone_split <- DimPlot_scCustom(
   TARA_cd8,
   group.by     = "cloneSize",
@@ -927,7 +889,6 @@ p_clone_split <- DimPlot_scCustom(
 ggsave(file.path(clone_dir, "CD8_UMAP_cloneSize_byTimepointGroup.png"),
        plot = p_clone_split, width = 18, height = 6, dpi = 300, bg = "white")
 
-# ── Hyperexpanded cells highlighted ──────────────────────────────────────────
 hyper_label <- ifelse(
   !is.na(TARA_cd8$cloneSize) & TARA_cd8$cloneSize == "Hyperexpanded (100 < X <= 500)",
   "Hyperexpanded", "Other"
@@ -967,7 +928,7 @@ clone_size_order <- c("Single (0 < X <= 1)", "Small (1 < X <= 5)",
 clone_colors <- setNames(c(colorblind_vector[c(1, 3, 4, 5, 7)]), clone_size_order)
 clone_meta$cloneSize <- factor(clone_meta$cloneSize, levels = clone_size_order)
 
-# Order clusters by biological progression
+# UPDATED cluster order
 clone_meta$CD8_Annotation <- factor(clone_meta$CD8_Annotation, levels = col_order_cd8)
 
 p_clone_bar <- ggplot(clone_meta, aes(x = CD8_Annotation, y = n, fill = cloneSize)) +
@@ -987,7 +948,6 @@ p_clone_bar <- ggplot(clone_meta, aes(x = CD8_Annotation, y = n, fill = cloneSiz
 ggsave(file.path(clone_dir, "CD8_CloneSize_per_cluster.png"),
        plot = p_clone_bar, width = 14, height = 8, dpi = 300, bg = "white")
 
-# ── CloneSize by Timepoint_Group per cluster ─────────────────────────────────
 clone_tp_meta <- TARA_cd8@meta.data %>%
   filter(!is.na(cloneSize)) %>%
   group_by(CD8_Annotation, Timepoint_Group, cloneSize) %>%
@@ -996,7 +956,6 @@ clone_tp_meta <- TARA_cd8@meta.data %>%
 write.csv(clone_tp_meta, file.path(clone_dir, "CD8_CloneSize_per_cluster_per_timepoint.csv"),
           row.names = FALSE)
 
-# Export summary
 write.csv(clone_meta, file.path(clone_dir, "CD8_CloneSize_per_cluster.csv"),
           row.names = FALSE)
 
@@ -1013,10 +972,9 @@ library(slingshot)
 
 traj_dir <- dir_07_trajectory
 
-
-# ── Subset to αβ CD8 clusters (exclude γδ, MAIT — different lineage) ────────
-ab_clusters <- c("Naïve CD8", "Naïve CD8 (innate-like)", "Naïve CD8 (post-ART)",
-                 "Transitional Tem CD8", "Effector CD8", "Terminal TEMRA CD8",
+# ── Subset to αβ CD8 clusters (exclude γδ, MAIT — different lineage) — UPDATED
+ab_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+                 "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
                  "KIR+ innate-like CD8")
 traj_cells <- subset(TARA_cd8, CD8_Annotation %in% ab_clusters)
 cat("  Trajectory cells:", ncol(traj_cells), "\n")
@@ -1027,7 +985,6 @@ umap_coords <- Embeddings(traj_cells, reduction = "wnn.umap")
 cluster_labels <- traj_cells$CD8_Annotation
 
 # ── Run Slingshot ────────────────────────────────────────────────────────────
-# Start from Naïve CD8, allow branching
 cat("  Running Slingshot (start = Naïve CD8)...\n")
 sling <- slingshot(
   data       = umap_coords,
@@ -1036,18 +993,15 @@ sling <- slingshot(
   stretch    = 0
 )
 
-# Extract pseudotime (use the first/primary lineage)
 pseudotime_mat <- slingPseudotime(sling)
 cat("  Lineages found:", ncol(pseudotime_mat), "\n")
 for (i in seq_len(ncol(pseudotime_mat))) {
   cat("    Lineage", i, ":", paste(slingLineages(sling)[[i]], collapse = " → "), "\n")
 }
 
-# Use minimum pseudotime across lineages (overall differentiation progress)
 pt_min <- apply(pseudotime_mat, 1, min, na.rm = TRUE)
 pt_min[is.infinite(pt_min)] <- NA
 
-# Add to metadata
 pt_vec <- pt_min
 names(pt_vec) <- colnames(traj_cells)
 traj_cells <- AddMetaData(traj_cells, metadata = pt_vec, col.name = "pseudotime")
@@ -1061,7 +1015,6 @@ umap_df <- data.frame(
   Timepoint   = traj_cells$Timepoint_Group
 )
 
-# Extract slingshot curves for overlay
 curves_list <- slingCurves(sling)
 curve_dfs <- lapply(seq_along(curves_list), function(i) {
   crv <- curves_list[[i]]$s[curves_list[[i]]$ord, ]
@@ -1150,7 +1103,7 @@ ggsave(file.path(traj_dir, "Trajectory_pseudotime_byCluster.png"),
 
 # ── PLOT 5: Pseudotime by ART status within effector clusters only ───────────
 pt_eff_df <- pt_cluster_df %>%
-  filter(Cluster %in% c("Effector CD8", "Terminal TEMRA CD8", "Transitional Tem CD8"))
+  filter(Cluster %in% effector_clusters)
 
 p_pt_art_eff <- ggplot(pt_eff_df, aes(x = Timepoint, y = pseudotime, fill = Timepoint)) +
   geom_boxplot(width = 0.6, outlier.size = 0.3, alpha = 0.7) +
@@ -1185,12 +1138,6 @@ p_pt_art_eff <- ggplot(pt_eff_df, aes(x = Timepoint, y = pseudotime, fill = Time
 ggsave(file.path(traj_dir, "Trajectory_pseudotime_ART_effectorClusters.png"),
        plot = p_pt_art_eff, width = 12, height = 6, dpi = 300, bg = "white")
 
-# ── PLOT 6: Module scores along pseudotime ───────────────────────────────────
-# NOTE: This requires expand_eff with module scores, which is computed in 8H.
-# Skipped here — the Monocle3 section (8E cont.) generates equivalent plots
-# after module scores are available.
-cat("  (Slingshot module score × pseudotime plot deferred to Monocle3 section)\n")
-
 # ── Export pseudotime metadata ───────────────────────────────────────────────
 write.csv(
   data.frame(
@@ -1218,32 +1165,23 @@ library(SeuratWrappers)
 
 monocle_dir <- file.path(dir_07_trajectory, "monocle3")
 
-
-# ── Convert Seurat → Monocle3 CDS ───────────────────────────────────────────
 DefaultAssay(traj_cells) <- "RNA"
 cds <- as.cell_data_set(traj_cells)
 
-# Transfer WNN UMAP into Monocle3's reducedDims
 reducedDims(cds)[["UMAP"]] <- Embeddings(traj_cells, "wnn.umap")
 
-# ── Cluster and learn graph ──────────────────────────────────────────────────
-# Use Monocle3's own clustering (or pass existing)
 cds <- cluster_cells(cds, reduction_method = "UMAP")
 cds <- learn_graph(cds, use_partition = FALSE, close_loop = FALSE)
 
 # ── Order cells: root at naïve cluster ───────────────────────────────────────
-# Find cells in the Naïve CD8 cluster to use as root
 naive_cells_ids <- colnames(traj_cells)[traj_cells$CD8_Annotation == "Naïve CD8"]
 
-# Helper: get the principal graph node closest to a set of cells
 get_earliest_principal_node <- function(cds, cells) {
   cell_ids <- which(colnames(cds) %in% cells)
   closest_vertex <- cds@principal_graph_aux[["UMAP"]]$pr_graph_cell_proj_closest_vertex
   closest_vertex_ids <- closest_vertex[cell_ids, 1]
-  # Get the most common vertex among naïve cells
   vertex_counts <- table(closest_vertex_ids)
   most_common_vertex <- names(which.max(vertex_counts))
-  # Convert to the principal graph node name (Y_N format)
   graph_nodes <- igraph::V(principal_graph(cds)[["UMAP"]])$name
   root_node <- graph_nodes[as.numeric(most_common_vertex)]
   root_node
@@ -1255,13 +1193,12 @@ cds <- order_cells(cds, root_pr_nodes = root_node)
 
 cat("  Monocle3 pseudotime computed. Root node:", root_node, "\n")
 
-# ── Add Monocle3 pseudotime back to Seurat object ───────────────────────────
 m3_pt <- pseudotime(cds)
 m3_pt_vec <- m3_pt[colnames(traj_cells)]
 names(m3_pt_vec) <- colnames(traj_cells)
 traj_cells <- AddMetaData(traj_cells, metadata = m3_pt_vec, col.name = "monocle3_pseudotime")
 
-# ── PLOT M1: Monocle3 trajectory on UMAP ─────────────────────────────────────
+# ── Monocle3 plots ───────────────────────────────────────────────────────────
 p_m3_traj <- plot_cells(
   cds,
   color_cells_by     = "pseudotime",
@@ -1281,7 +1218,6 @@ p_m3_traj <- plot_cells(
 ggsave(file.path(monocle_dir, "Monocle3_UMAP_pseudotime.png"),
        plot = p_m3_traj, width = 10, height = 8, dpi = 300, bg = "white")
 
-# ── PLOT M2: Monocle3 colored by CD8 annotation ─────────────────────────────
 p_m3_clust <- plot_cells(
   cds,
   color_cells_by     = "CD8_Annotation",
@@ -1300,7 +1236,6 @@ p_m3_clust <- plot_cells(
 ggsave(file.path(monocle_dir, "Monocle3_UMAP_clusters.png"),
        plot = p_m3_clust, width = 12, height = 8, dpi = 300, bg = "white")
 
-# ── PLOT M3: Monocle3 colored by ART status ──────────────────────────────────
 colData(cds)$Timepoint_Group <- traj_cells$Timepoint_Group
 
 p_m3_art <- plot_cells(
@@ -1321,7 +1256,6 @@ p_m3_art <- plot_cells(
 ggsave(file.path(monocle_dir, "Monocle3_UMAP_ART_status.png"),
        plot = p_m3_art, width = 10, height = 8, dpi = 300, bg = "white")
 
-# ── PLOT M4: Monocle3 pseudotime density by ART status ──────────────────────
 m3_pt_df <- data.frame(
   pseudotime = traj_cells$monocle3_pseudotime,
   Timepoint  = traj_cells$Timepoint_Group
@@ -1342,14 +1276,14 @@ p_m3_density <- ggplot(m3_pt_df, aes(x = pseudotime, fill = Timepoint)) +
 ggsave(file.path(monocle_dir, "Monocle3_pseudotime_density_byART.png"),
        plot = p_m3_density, width = 10, height = 5, dpi = 300, bg = "white")
 
-# ── PLOT M5: Monocle3 pseudotime by ART status within effector clusters ──────
+# UPDATED effector cluster names
 m3_eff_df <- data.frame(
   pseudotime = traj_cells$monocle3_pseudotime,
   Cluster    = traj_cells$CD8_Annotation,
   Timepoint  = traj_cells$Timepoint_Group
 ) %>%
   filter(!is.na(pseudotime) & is.finite(pseudotime)) %>%
-  filter(Cluster %in% c("Effector CD8", "Terminal TEMRA CD8", "Transitional Tem CD8"))
+  filter(Cluster %in% effector_clusters)
 
 p_m3_eff <- ggplot(m3_eff_df, aes(x = Timepoint, y = pseudotime, fill = Timepoint)) +
   geom_boxplot(width = 0.6, outlier.size = 0.3, alpha = 0.7) +
@@ -1384,7 +1318,7 @@ p_m3_eff <- ggplot(m3_eff_df, aes(x = Timepoint, y = pseudotime, fill = Timepoin
 ggsave(file.path(monocle_dir, "Monocle3_pseudotime_ART_effectorClusters.png"),
        plot = p_m3_eff, width = 12, height = 6, dpi = 300, bg = "white")
 
-# ── graph_test: find genes that vary along the trajectory ────────────────────
+# ── graph_test ───────────────────────────────────────────────────────────────
 cat("  Running Monocle3 graph_test (Moran's I)...\n")
 tryCatch({
   graph_test_res <- graph_test(cds, neighbor_graph = "principal_graph", cores = 4)
@@ -1399,17 +1333,15 @@ tryCatch({
   print(head(graph_test_sig[, print_cols, drop = FALSE], 20))
 }, error = function(e) cat("    graph_test error:", e$message, "\n"))
 
-# ── Genes along pseudotime: ggplot2 with loess (reliable, no Monocle2/3 issues)
+# ── Genes along pseudotime panels ────────────────────────────────────────────
 cat("  Generating gene expression along pseudotime panels...\n")
 
-# Define key genes to plot
 exhaustion_plot_genes <- c("TOX", "PDCD1", "HAVCR2", "LAG3", "TIGIT", "CTLA4", "ENTPD1")
 stemness_plot_genes   <- c("TCF7", "SELL", "CCR7", "LEF1", "BACH2", "BCL2", "IL7R", "S1PR1", "KLF2")
 cytotoxic_plot_genes  <- c("GZMB", "GNLY", "PRF1", "NKG7", "GZMA", "FGFBP2")
 terminal_plot_genes   <- c("ZEB2", "PRDM1", "TBX21", "CX3CR1", "ID2")
 stress_plot_genes     <- c("HSPA1A", "HSPA1B", "IFIT1", "ISG15", "CCL3", "CCL4L2")
 
-# Filter to genes present
 all_genes_avail <- rownames(traj_cells[["RNA"]])
 filter_present <- function(genes) genes[genes %in% all_genes_avail]
 
@@ -1419,10 +1351,9 @@ cytotoxic_present  <- filter_present(cytotoxic_plot_genes)
 terminal_present   <- filter_present(terminal_plot_genes)
 stress_present     <- filter_present(stress_plot_genes)
 
-# ── Helper: build gene × pseudotime plot with per-ART-status loess splines ───
+# ── Helper: gene × pseudotime plot ──────────────────────────────────────────
 plot_genes_along_pt <- function(obj, genes, ncol_plot = 4, title_text = "",
                                 filename, width, height) {
-  # Extract expression
   DefaultAssay(obj) <- "RNA"
   expr_mat <- GetAssayData(obj, assay = "RNA", layer = "data")[genes, , drop = FALSE]
   
@@ -1460,10 +1391,9 @@ plot_genes_along_pt <- function(obj, genes, ncol_plot = 4, title_text = "",
   cat("    Saved:", basename(filename), "(", length(genes), "genes )\n")
 }
 
-# ── Top variable genes from graph_test ─────────────────────────────────────
+# Top variable genes from graph_test
 if (exists("graph_test_sig") && nrow(graph_test_sig) > 0) {
-  top_variable <- graph_test_sig %>%
-    arrange(q_value) %>% head(16)
+  top_variable <- graph_test_sig %>% arrange(q_value) %>% head(16)
   top_variable <- if ("gene_short_name" %in% colnames(top_variable)) top_variable$gene_short_name else rownames(top_variable)
   top_variable <- filter_present(top_variable)
   
@@ -1475,7 +1405,6 @@ if (exists("graph_test_sig") && nrow(graph_test_sig) > 0) {
   }
 }
 
-# ── Exhaustion genes ───────────────────────────────────────────────────────
 if (length(exhaustion_present) >= 2) {
   plot_genes_along_pt(traj_cells, exhaustion_present, ncol_plot = 4,
                       title_text = "Exhaustion genes along pseudotime",
@@ -1483,7 +1412,6 @@ if (length(exhaustion_present) >= 2) {
                       width = 16, height = ceiling(length(exhaustion_present) / 4) * 3.5)
 }
 
-# ── Stemness genes ─────────────────────────────────────────────────────────
 if (length(stemness_present) >= 2) {
   plot_genes_along_pt(traj_cells, stemness_present, ncol_plot = 4,
                       title_text = "Stemness genes along pseudotime",
@@ -1491,7 +1419,6 @@ if (length(stemness_present) >= 2) {
                       width = 16, height = ceiling(length(stemness_present) / 4) * 3.5)
 }
 
-# ── Cytotoxicity genes ─────────────────────────────────────────────────────
 if (length(cytotoxic_present) >= 2) {
   plot_genes_along_pt(traj_cells, cytotoxic_present, ncol_plot = 3,
                       title_text = "Cytotoxicity genes along pseudotime",
@@ -1499,7 +1426,6 @@ if (length(cytotoxic_present) >= 2) {
                       width = 12, height = ceiling(length(cytotoxic_present) / 3) * 3.5)
 }
 
-# ── Terminal differentiation genes ─────────────────────────────────────────
 if (length(terminal_present) >= 2) {
   plot_genes_along_pt(traj_cells, terminal_present, ncol_plot = 3,
                       title_text = "Terminal differentiation genes along pseudotime",
@@ -1507,7 +1433,6 @@ if (length(terminal_present) >= 2) {
                       width = 12, height = ceiling(length(terminal_present) / 3) * 3.5)
 }
 
-# ── Stress/IFN + chemokine genes ──────────────────────────────────────────
 if (length(stress_present) >= 2) {
   plot_genes_along_pt(traj_cells, stress_present, ncol_plot = 3,
                       title_text = "Stress / IFN / chemokine genes along pseudotime",
@@ -1515,7 +1440,6 @@ if (length(stress_present) >= 2) {
                       width = 12, height = ceiling(length(stress_present) / 3) * 3.5)
 }
 
-# ── Combined key narrative genes ───────────────────────────────────────────
 narrative_genes <- c(
   "TOX", "PDCD1", "HAVCR2", "TIGIT",
   "TCF7", "BACH2", "SELL", "IL7R",
@@ -1538,7 +1462,6 @@ if (exists("graph_test_sig") && nrow(graph_test_sig) > 0) {
   top_umap_genes <- filter_present(top_umap_genes)
   
   if (length(top_umap_genes) >= 4) {
-    # Add gene_short_name if needed for plot_cells
     if (!"gene_short_name" %in% colnames(rowData(cds))) {
       rowData(cds)$gene_short_name <- rownames(rowData(cds))
     }
@@ -1559,20 +1482,15 @@ if (exists("graph_test_sig") && nrow(graph_test_sig) > 0) {
 
 cat("  Gene expression along pseudotime panels done.\n")
 
-# ── PLOT M6: ALL module scores along Monocle3 pseudotime, colored by ART ─────
-# NOTE: expand_eff and module scores are computed in section 8H (runs last).
-# This block is skipped on first pass. The equivalent plots are generated
-# at the end of 8H after module scores exist.
+# ── Module scores along Monocle3 pseudotime (deferred — requires 8H) ────────
 if (exists("expand_eff")) {
   cat("  Plotting module scores along Monocle3 pseudotime...\n")
   
-  # Get Monocle3 pseudotime for expanding effector cells
   common_cells_m3 <- intersect(colnames(traj_cells), colnames(expand_eff))
   available_modules <- score_cols_clean[score_cols_clean %in% colnames(expand_eff@meta.data)]
   
   if (length(common_cells_m3) > 100 & length(available_modules) > 0) {
     
-    # Build data frame with pseudotime + all module scores
     m3_module_df <- data.frame(
       pseudotime = traj_cells$monocle3_pseudotime[match(common_cells_m3, colnames(traj_cells))],
       Timepoint  = expand_eff@meta.data[common_cells_m3, "Timepoint_Group"],
@@ -1587,7 +1505,6 @@ if (exists("expand_eff")) {
     
     cat("    Cells with pseudotime + module scores:", nrow(m3_module_df), "\n")
     
-    # ── Combined: Exhaustion + Stemness (key narrative pair) ─────────────────
     m3_exh_stem <- m3_module_df %>%
       select(pseudotime, Timepoint, Exhaustion, Stemness) %>%
       tidyr::pivot_longer(cols = c(Exhaustion, Stemness),
@@ -1613,7 +1530,6 @@ if (exists("expand_eff")) {
     ggsave(file.path(monocle_dir, "Monocle3_ExhaustionStemness_along_pseudotime.png"),
            plot = p_m3_exh_stem, width = 14, height = 6, dpi = 300, bg = "white")
     
-    # ── All 7 modules along pseudotime ─────────────────────────────────────────
     m3_all_mods <- m3_module_df %>%
       select(pseudotime, Timepoint, all_of(available_modules)) %>%
       tidyr::pivot_longer(cols = all_of(available_modules),
@@ -1643,7 +1559,6 @@ if (exists("expand_eff")) {
     ggsave(file.path(monocle_dir, "Monocle3_AllModules_along_pseudotime.png"),
            plot = p_m3_all_mods, width = 12, height = 16, dpi = 300, bg = "white")
     
-    # ── Individual module plots along pseudotime ───────────────────────────────
     for (mod in available_modules) {
       m3_mod_sub <- m3_module_df %>%
         select(pseudotime, Timepoint, Score = !!sym(mod))
@@ -1667,9 +1582,9 @@ if (exists("expand_eff")) {
              plot = p_m3_ind, width = 10, height = 6, dpi = 300, bg = "white")
     }
     
-    # ── Faceted by cluster: Exhaustion along pseudotime per effector cluster ───
+    # Faceted by cluster: Exhaustion along pseudotime per effector cluster
     m3_exh_cluster <- m3_module_df %>%
-      filter(Cluster %in% c("Effector CD8", "Terminal TEMRA CD8", "Transitional Tem CD8")) %>%
+      filter(Cluster %in% effector_clusters) %>%
       select(pseudotime, Timepoint, Cluster, Exhaustion)
     
     p_m3_exh_cl <- ggplot(m3_exh_cluster, aes(x = pseudotime, y = Exhaustion, color = Timepoint)) +
@@ -1725,32 +1640,24 @@ cat("\n=== Clonal expansion vs exhaustion control analysis ===\n")
 
 expansion_dir <- dir_08_expansion
 
-# ── Ensure PID exists on TARA_cd8 ────────────────────────────────────────────
 if (!"PID" %in% colnames(TARA_cd8@meta.data)) {
   pid_vec <- sub("_.*$", "", TARA_cd8$orig.ident)
   names(pid_vec) <- colnames(TARA_cd8)
   TARA_cd8 <- AddMetaData(TARA_cd8, metadata = pid_vec, col.name = "PID")
 }
 
-effector_clusters <- c("Effector CD8", "Terminal TEMRA CD8", "Transitional Tem CD8")
-
 # ── PLOT G1: Expanding cells per sample, by ART status × cluster ──────────────
-# Normalize by sample to avoid confounding from unequal sample counts
-
-# First get total cells per sample (from full TARA_cd8, not just expanding)
 total_per_sample <- TARA_cd8@meta.data %>%
   filter(CD8_Annotation %in% effector_clusters) %>%
   group_by(orig.ident, PID, Timepoint_Group, CD8_Annotation) %>%
   summarise(total_cells = n(), .groups = "drop")
 
-# Expanding cells per sample (from TARA_cd8, not expand_eff)
 expand_per_sample <- TARA_cd8@meta.data %>%
   filter(CD8_Annotation %in% effector_clusters &
            !is.na(cloneSize) & cloneSize != "Single (0 < X <= 1)") %>%
   group_by(orig.ident, PID, Timepoint_Group, CD8_Annotation) %>%
   summarise(n_expanding = n(), .groups = "drop")
 
-# Merge: samples with 0 expanding cells get 0
 sample_expansion <- total_per_sample %>%
   left_join(expand_per_sample, by = c("orig.ident", "PID", "Timepoint_Group", "CD8_Annotation")) %>%
   mutate(
@@ -1762,7 +1669,6 @@ sample_expansion$Timepoint_Group <- factor(sample_expansion$Timepoint_Group,
                                            levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
 sample_expansion$CD8_Annotation <- factor(sample_expansion$CD8_Annotation, levels = effector_clusters)
 
-# G1a: Number of expanding cells per sample
 p_g1a <- ggplot(sample_expansion, aes(x = Timepoint_Group, y = n_expanding, fill = Timepoint_Group)) +
   geom_boxplot(width = 0.5, outlier.size = 0.5, alpha = 0.7) +
   geom_jitter(width = 0.15, size = 1.5, alpha = 0.6) +
@@ -1793,7 +1699,6 @@ p_g1a <- ggplot(sample_expansion, aes(x = Timepoint_Group, y = n_expanding, fill
 ggsave(file.path(expansion_dir, "G1a_ExpandingCells_perSample_byART.png"),
        plot = p_g1a, width = 14, height = 6, dpi = 300, bg = "white")
 
-# G1b: Percentage of cells that are expanding (per sample)
 p_g1b <- ggplot(sample_expansion, aes(x = Timepoint_Group, y = pct_expanding, fill = Timepoint_Group)) +
   geom_boxplot(width = 0.5, outlier.size = 0.5, alpha = 0.7) +
   geom_jitter(width = 0.15, size = 1.5, alpha = 0.6) +
@@ -1824,11 +1729,10 @@ p_g1b <- ggplot(sample_expansion, aes(x = Timepoint_Group, y = pct_expanding, fi
 ggsave(file.path(expansion_dir, "G1b_PctExpanding_perSample_byART.png"),
        plot = p_g1b, width = 14, height = 6, dpi = 300, bg = "white")
 
-# Export the per-sample table
 write.csv(sample_expansion, file.path(expansion_dir, "PerSample_expansion_counts.csv"),
           row.names = FALSE)
 
-# ── PLOT G2: Clone size distribution per ART status (within effector) ────────
+# ── PLOT G2: Clone size distribution per ART status ──────────────────────────
 clone_art_df <- TARA_cd8@meta.data %>%
   filter(CD8_Annotation %in% effector_clusters &
            !is.na(cloneSize) & cloneSize != "Single (0 < X <= 1)") %>%
@@ -1876,27 +1780,23 @@ p_g2 <- ggplot(clone_art_summary,
 ggsave(file.path(expansion_dir, "G2_CloneSizeDistribution_byART_byCluster.png"),
        plot = p_g2, width = 14, height = 6, dpi = 300, bg = "white")
 
-# ── G3 (Exhaustion by clone size) and G3b (Stemness by clone size) ───────────
-# These require module scores — deferred to section 8H where expand_eff exists.
 cat("  G3/G3b (exhaustion/stemness by clone size) deferred to section 8H.\n")
-
 cat("  Expansion plots saved to:", expansion_dir, "\n")
 
 ################################################################################
-# 8G. VIRAL LOAD CORRELATION: per-sample module scores vs viral load
+# 8G. VIRAL LOAD CORRELATION — deferred to 8H
 ################################################################################
 cat("\n=== Viral load correlation analysis ===\n")
 cat("  NOTE: Viral load correlations require module scores.\n")
 cat("  Deferred to section 8H where module scores are computed.\n")
 
-# 8H. MODULE SCORES (run last — edit modules without rerunning above): Functional signatures in expanding clones by ART status
+################################################################################
+# 8H. MODULE SCORES: Functional signatures in expanding clones by ART status
 ################################################################################
 cat("\n=== Computing module scores for expanding clones ===\n")
 
 module_dir <- dir_10_modules
 
-
-# ── Define gene modules ──────────────────────────────────────────────────────
 module_gene_lists <- list(
   Exhaustion = c("TOX", "PDCD1", "HAVCR2", "LAG3", "TIGIT", "CTLA4", "ENTPD1"),
   Stemness   = c("TCF7", "SELL", "CCR7", "LEF1", "BACH2", "BCL2", "IL7R", "S1PR1", "KLF2"),
@@ -1907,9 +1807,7 @@ module_gene_lists <- list(
   Terminal_Differentiation = c("ZEB2", "PRDM1", "TBX21", "CX3CR1", "S1PR5", "ID2")
 )
 
-# ── Subset: expanding clones from effector clusters, all 3 ART timepoints ────
-effector_clusters <- c("Effector CD8", "Terminal TEMRA CD8", "Transitional Tem CD8")
-
+# UPDATED effector cluster names
 expand_eff <- subset(TARA_cd8,
                      CD8_Annotation %in% effector_clusters &
                        !is.na(cloneSize) & cloneSize != "Single (0 < X <= 1)"
@@ -1919,12 +1817,10 @@ cat("  Expanding effector cells:", ncol(expand_eff), "\n")
 cat("  Timepoint breakdown:\n")
 print(table(expand_eff$CD8_Annotation, expand_eff$Timepoint_Group))
 
-# ── Compute AddModuleScore for each module ───────────────────────────────────
 DefaultAssay(expand_eff) <- "RNA"
 
 for (mod_name in names(module_gene_lists)) {
   genes <- module_gene_lists[[mod_name]]
-  # Filter to genes present in the object
   genes_present <- genes[genes %in% rownames(expand_eff[["RNA"]])]
   
   if (length(genes_present) < 2) {
@@ -1941,7 +1837,6 @@ for (mod_name in names(module_gene_lists)) {
   )
 }
 
-# ── Rename module score columns (AddModuleScore appends "1") ─────────────────
 score_cols <- paste0(names(module_gene_lists), "1")
 score_cols_clean <- names(module_gene_lists)
 for (i in seq_along(score_cols)) {
@@ -1959,12 +1854,10 @@ plot_data <- expand_eff@meta.data %>%
     values_to = "Score"
   )
 
-# Order timepoints and clusters
 plot_data$Timepoint_Group <- factor(plot_data$Timepoint_Group,
                                     levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
 plot_data$CD8_Annotation <- factor(plot_data$CD8_Annotation, levels = effector_clusters)
 
-# Cleaner module labels for display
 module_labels <- c(
   "Exhaustion"               = "Exhaustion",
   "Stemness"                 = "Stemness / naïve",
@@ -1977,14 +1870,12 @@ module_labels <- c(
 plot_data$Module_Label <- module_labels[plot_data$Module]
 plot_data$Module_Label <- factor(plot_data$Module_Label, levels = module_labels)
 
-# ── ART status colors ────────────────────────────────────────────────────────
 art_colors <- c(
-  "PreART_Entry"           = "#4A90D9",   # blue
-  "PostART_Suppressed"     = "#52B788",   # green
-  "PostART_Unsuppressed"   = "#E76F51"    # red-orange
+  "PreART_Entry"           = "#4A90D9",
+  "PostART_Suppressed"     = "#52B788",
+  "PostART_Unsuppressed"   = "#E76F51"
 )
 
-# ── Panel F: Dot plot with mean ± 95% CI — module scores × ART status × cluster
 if (!requireNamespace("ggpubr", quietly = TRUE)) install.packages("ggpubr", repos = "https://cloud.r-project.org")
 if (!requireNamespace("ggridges", quietly = TRUE)) install.packages("ggridges", repos = "https://cloud.r-project.org")
 if (!requireNamespace("ggrepel", quietly = TRUE)) install.packages("ggrepel", repos = "https://cloud.r-project.org")
@@ -1992,7 +1883,6 @@ library(ggpubr)
 library(ggridges)
 library(ggrepel)
 
-# Define comparison pairs
 comparisons_list <- list(
   c("PreART_Entry", "PostART_Suppressed"),
   c("PostART_Suppressed", "PostART_Unsuppressed"),
@@ -2000,11 +1890,10 @@ comparisons_list <- list(
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
-# VISUALIZATION 1: LOG2FC BAR PLOTS — 3 separate comparisons + exhaustion focus
+# VISUALIZATION 1: COHEN'S D BAR PLOTS
 # ══════════════════════════════════════════════════════════════════════════════
 cat("  Drawing Cohen's d bar plots...\n")
 
-# ── Wilcoxon stats for all 3 comparisons ─────────────────────────────────────
 stat_results_fc <- list()
 for (mod in score_cols_clean[score_cols_clean %in% colnames(expand_eff@meta.data)]) {
   for (cl in effector_clusters) {
@@ -2036,7 +1925,6 @@ for (mod in score_cols_clean[score_cols_clean %in% colnames(expand_eff@meta.data
 
 stat_fc <- do.call(rbind, stat_results_fc)
 
-# BH-adjust WITHIN each comparison (not globally across all 63 tests)
 stat_fc <- stat_fc %>%
   group_by(Comparison) %>%
   mutate(p_adj = p.adjust(p_value, method = "BH")) %>%
@@ -2048,7 +1936,6 @@ stat_fc$star <- ifelse(stat_fc$p_adj < 0.001, "***",
 
 write.csv(stat_fc, file.path(module_dir, "ModuleScore_Wilcoxon_all_comparisons.csv"), row.names = FALSE)
 
-# Diagnostic: print all results so you can verify
 cat("\n=== All module score Wilcoxon results ===\n")
 print(stat_fc %>% arrange(Comparison, Module, CD8_Annotation) %>%
         mutate(p_value = formatC(p_value, format = "e", digits = 2),
@@ -2056,11 +1943,8 @@ print(stat_fc %>% arrange(Comparison, Module, CD8_Annotation) %>%
       n = 100)
 
 # ── Helper: build FC data for a given comparison ─────────────────────────────
-# Uses Cohen's d as effect size (standardized mean difference)
-# Positive d = numerator group higher, negative = denominator group higher
 build_fc <- function(plot_data_raw, num_tp, denom_tp, comp_label, stat_fc_df,
                      module_labels, effector_clusters) {
-  # Compute Cohen's d per module × cluster
   fc <- plot_data_raw %>%
     filter(Timepoint_Group %in% c(num_tp, denom_tp)) %>%
     group_by(Module, Module_Label, CD8_Annotation) %>%
@@ -2083,7 +1967,6 @@ build_fc <- function(plot_data_raw, num_tp, denom_tp, comp_label, stat_fc_df,
   
   fc$Comparison <- comp_label
   
-  # Merge stars
   stars <- stat_fc_df %>%
     filter(Comparison == comp_label) %>%
     select(Module, CD8_Annotation, star)
@@ -2138,137 +2021,88 @@ plot_fc_bars <- function(fc_df, title_text, fill_colors) {
     )
 }
 
-# ── Plot 1: Suppressed vs Unsuppressed ───────────────────────────────────────
 p_fc1 <- plot_fc_bars(fc_sup_unsup,
                       "Suppressed vs Unsuppressed — expanding clones",
                       c("\u2191 Suppressed" = "#52B788", "\u2191 Unsuppressed" = "#E76F51"))
 
-ggsave(file.path(module_dir, "Fig3F_DiffMean_Sup_vs_Unsup.png"),
+ggsave(file.path(module_dir, "Fig4E_DiffMean_Sup_vs_Unsup.png"),
        plot = p_fc1, width = 14, height = 7, dpi = 300, bg = "white")
 
-# ── Plot 2: Pre-ART vs Unsuppressed ─────────────────────────────────────────
 p_fc2 <- plot_fc_bars(fc_pre_unsup,
                       "Pre-ART vs Unsuppressed — expanding clones",
                       c("\u2191 PreART_Entry" = "#4A90D9", "\u2191 Unsuppressed" = "#E76F51"))
 
-ggsave(file.path(module_dir, "Fig3F_DiffMean_PreART_vs_Unsup.png"),
+ggsave(file.path(module_dir, "Fig4E_DiffMean_PreART_vs_Unsup.png"),
        plot = p_fc2, width = 14, height = 7, dpi = 300, bg = "white")
 
-# ── Plot 3: Suppressed vs Pre-ART ───────────────────────────────────────────
 p_fc3 <- plot_fc_bars(fc_sup_pre,
                       "Suppressed vs Pre-ART — expanding clones",
                       c("\u2191 Suppressed" = "#52B788", "\u2191 PreART_Entry" = "#4A90D9"))
 
-ggsave(file.path(module_dir, "Fig3F_DiffMean_Sup_vs_PreART.png"),
+ggsave(file.path(module_dir, "Fig4E_DiffMean_Sup_vs_PreART.png"),
        plot = p_fc3, width = 14, height = 7, dpi = 300, bg = "white")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# VISUALIZATION 1B: EXHAUSTION MODULE — all 3 comparisons on one plot
+# VISUALIZATION 1B: EXHAUSTION + STEMNESS — all 3 comparisons
 # ══════════════════════════════════════════════════════════════════════════════
-cat("  Drawing exhaustion focus plot...\n")
+cat("  Drawing exhaustion + stemness focus plots...\n")
 
-# Combine all 3 comparisons for exhaustion module only
-exh_fc <- bind_rows(
-  fc_sup_unsup %>% filter(Module == "Exhaustion"),
-  fc_pre_unsup %>% filter(Module == "Exhaustion"),
-  fc_sup_pre   %>% filter(Module == "Exhaustion")
-)
-
-exh_fc$Comparison <- factor(exh_fc$Comparison,
-                            levels = c("Suppressed vs Unsuppressed", "Pre-ART vs Unsuppressed", "Suppressed vs Pre-ART"))
-
-# Use comparison as the y-axis, facet by cluster
 comp_colors <- c(
   "Suppressed vs Unsuppressed" = "#52B788",
   "Pre-ART vs Unsuppressed"    = "#4A90D9",
   "Suppressed vs Pre-ART"      = "#9C6FD6"
 )
 
-exh_fc$star_x <- ifelse(exh_fc$cohens_d > 0,
-                        exh_fc$cohens_d + max(abs(exh_fc$cohens_d)) * 0.08,
-                        exh_fc$cohens_d - max(abs(exh_fc$cohens_d)) * 0.08)
-exh_fc$star_hjust <- ifelse(exh_fc$cohens_d > 0, 0, 1)
-
-p_exh <- ggplot(exh_fc, aes(x = cohens_d, y = Comparison, fill = Comparison)) +
-  geom_col(width = 0.55, alpha = 0.85) +
-  geom_vline(xintercept = 0, linewidth = 0.5, color = "grey30") +
-  geom_text(aes(x = star_x, label = star, hjust = star_hjust),
-            size = 5, color = "black", vjust = 0.4) +
-  facet_wrap(~ CD8_Annotation, nrow = 1) +
-  scale_fill_manual(values = comp_colors, name = NULL) +
-  scale_y_discrete(limits = rev(levels(exh_fc$Comparison))) +
-  coord_cartesian(clip = "off") +
-  labs(
-    x     = "Cohen's d (exhaustion module)",
-    y     = NULL,
-    title = "Exhaustion module — all pairwise comparisons"
-  ) +
-  theme_cowplot(font_size = 12) +
-  theme(
-    strip.text        = element_text(size = 11, face = "bold"),
-    strip.background  = element_rect(fill = "grey95", color = NA),
-    axis.text.y       = element_text(size = 10),
-    legend.position   = "none",
-    plot.background   = element_rect(fill = "white", color = NA),
-    panel.background  = element_rect(fill = "white", color = NA)
+for (focus_mod in c("Exhaustion", "Stemness")) {
+  focus_fc <- bind_rows(
+    fc_sup_unsup %>% filter(Module == focus_mod),
+    fc_pre_unsup %>% filter(Module == focus_mod),
+    fc_sup_pre   %>% filter(Module == focus_mod)
   )
+  focus_fc$Comparison <- factor(focus_fc$Comparison,
+                                levels = c("Suppressed vs Unsuppressed", "Pre-ART vs Unsuppressed", "Suppressed vs Pre-ART"))
+  focus_fc$star_x <- ifelse(focus_fc$cohens_d > 0,
+                            focus_fc$cohens_d + max(abs(focus_fc$cohens_d)) * 0.08,
+                            focus_fc$cohens_d - max(abs(focus_fc$cohens_d)) * 0.08)
+  focus_fc$star_hjust <- ifelse(focus_fc$cohens_d > 0, 0, 1)
+  
+  p_focus <- ggplot(focus_fc, aes(x = cohens_d, y = Comparison, fill = Comparison)) +
+    geom_col(width = 0.55, alpha = 0.85) +
+    geom_vline(xintercept = 0, linewidth = 0.5, color = "grey30") +
+    geom_text(aes(x = star_x, label = star, hjust = star_hjust),
+              size = 5, color = "black", vjust = 0.4) +
+    facet_wrap(~ CD8_Annotation, nrow = 1) +
+    scale_fill_manual(values = comp_colors, name = NULL) +
+    scale_y_discrete(limits = rev(levels(focus_fc$Comparison))) +
+    coord_cartesian(clip = "off") +
+    labs(
+      x     = paste0("Cohen's d (", tolower(focus_mod), " module)"),
+      y     = NULL,
+      title = paste0(focus_mod, " module — all pairwise comparisons")
+    ) +
+    theme_cowplot(font_size = 12) +
+    theme(
+      strip.text        = element_text(size = 11, face = "bold"),
+      strip.background  = element_rect(fill = "grey95", color = NA),
+      axis.text.y       = element_text(size = 10),
+      legend.position   = "none",
+      plot.background   = element_rect(fill = "white", color = NA),
+      panel.background  = element_rect(fill = "white", color = NA)
+    )
+  
+  ggsave(file.path(module_dir, paste0("Fig4E_", focus_mod, "_AllComparisons.png")),
+         plot = p_focus, width = 14, height = 5, dpi = 300, bg = "white")
+}
 
-ggsave(file.path(module_dir, "Fig3F_Exhaustion_AllComparisons.png"),
-       plot = p_exh, width = 14, height = 5, dpi = 300, bg = "white")
-
-# ── Also do the same for Stemness module ─────────────────────────────────────
-stem_fc <- bind_rows(
-  fc_sup_unsup %>% filter(Module == "Stemness"),
-  fc_pre_unsup %>% filter(Module == "Stemness"),
-  fc_sup_pre   %>% filter(Module == "Stemness")
-)
-stem_fc$Comparison <- factor(stem_fc$Comparison,
-                             levels = c("Suppressed vs Unsuppressed", "Pre-ART vs Unsuppressed", "Suppressed vs Pre-ART"))
-stem_fc$star_x <- ifelse(stem_fc$cohens_d > 0,
-                         stem_fc$cohens_d + max(abs(stem_fc$cohens_d)) * 0.08,
-                         stem_fc$cohens_d - max(abs(stem_fc$cohens_d)) * 0.08)
-stem_fc$star_hjust <- ifelse(stem_fc$cohens_d > 0, 0, 1)
-
-p_stem <- ggplot(stem_fc, aes(x = cohens_d, y = Comparison, fill = Comparison)) +
-  geom_col(width = 0.55, alpha = 0.85) +
-  geom_vline(xintercept = 0, linewidth = 0.5, color = "grey30") +
-  geom_text(aes(x = star_x, label = star, hjust = star_hjust),
-            size = 5, color = "black", vjust = 0.4) +
-  facet_wrap(~ CD8_Annotation, nrow = 1) +
-  scale_fill_manual(values = comp_colors, name = NULL) +
-  scale_y_discrete(limits = rev(levels(stem_fc$Comparison))) +
-  coord_cartesian(clip = "off") +
-  labs(
-    x     = "Cohen's d (stemness module)",
-    y     = NULL,
-    title = "Stemness module — all pairwise comparisons"
-  ) +
-  theme_cowplot(font_size = 12) +
-  theme(
-    strip.text        = element_text(size = 11, face = "bold"),
-    strip.background  = element_rect(fill = "grey95", color = NA),
-    axis.text.y       = element_text(size = 10),
-    legend.position   = "none",
-    plot.background   = element_rect(fill = "white", color = NA),
-    panel.background  = element_rect(fill = "white", color = NA)
-  )
-
-ggsave(file.path(module_dir, "Fig3F_Stemness_AllComparisons.png"),
-       plot = p_stem, width = 14, height = 5, dpi = 300, bg = "white")
-
-cat("  All log2FC bar plots saved.\n")
+cat("  All Cohen's d bar plots saved.\n")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# VISUALIZATION 2: VOLCANO PLOTS — per cluster, highlighting key gene sets
+# VISUALIZATION 2: VOLCANO PLOTS
 # ══════════════════════════════════════════════════════════════════════════════
 cat("  Drawing volcano plots...\n")
 
 volcano_dir <- file.path(dir_10_modules, "volcanos")
 
-
-# Gene sets to highlight — curated to support the manuscript narrative
-# Story: Suppressed = stemness + cytotoxicity retained
-#        Unsuppressed = exhaustion + stress + chemokines + terminal diff
 exhaustion_genes   <- c("TOX", "PDCD1", "HAVCR2", "LAG3", "TIGIT", "CTLA4", "ENTPD1")
 stemness_genes     <- c("TCF7", "SELL", "CCR7", "LEF1", "BACH2", "BCL2", "IL7R", "S1PR1", "KLF2")
 cytotoxic_genes    <- c("GZMB", "GNLY", "PRF1", "NKG7", "GZMA", "GZMH", "FGFBP2")
@@ -2278,11 +2112,23 @@ chemokine_genes    <- c("CCL3", "CCL3L3", "CCL4", "CCL4L2", "CCL5")
 terminal_genes     <- c("ZEB2", "PRDM1", "TBX21", "CX3CR1", "S1PR5", "ID2", "EOMES")
 activation_genes   <- c("HLA-DRA", "CD38", "FAS", "CD69")
 
-# DGE files per cluster (Sup vs Unsup)
+highlight_cols <- c(
+  "Exhaustion"        = "#A32D2D",
+  "Stemness"          = "#185FA5",
+  "Cytotoxicity"      = "#3B6D11",
+  "Stress response"   = "#BA7517",
+  "Type I IFN memory" = "#0F6E56",
+  "Chemokines"        = "#993556",
+  "Terminal diff."    = "#534AB7",
+  "Activation"        = "#D85A30",
+  "Other"             = "grey80"
+)
+
+# UPDATED DGE file names
 dge_files <- list(
-  "Effector CD8"        = file.path(dge_dir, "DGE_MAST_Expanding_EffectorCD8_Sup_vs_Unsup.csv"),
-  "Terminal TEMRA CD8"  = file.path(dge_dir, "DGE_MAST_Expanding_TerminalTEMRA_Sup_vs_Unsup.csv"),
-  "Transitional Tem CD8" = file.path(dge_dir, "DGE_MAST_Expanding_TransitionalTem_Sup_vs_Unsup.csv")
+  "TEM CD8"               = file.path(dge_dir, "DGE_MAST_Expanding_TEMCD8_Sup_vs_Unsup.csv"),
+  "TEMRA CD8"             = file.path(dge_dir, "DGE_MAST_Expanding_TEMRACD8_Sup_vs_Unsup.csv"),
+  "Transitional Tem CD8"  = file.path(dge_dir, "DGE_MAST_Expanding_TransitionalTem_Sup_vs_Unsup.csv")
 )
 
 for (cl_name in names(dge_files)) {
@@ -2294,7 +2140,6 @@ for (cl_name in names(dge_files)) {
   
   dge_data <- read.csv(fpath, row.names = 1)
   
-  # Assign color categories
   dge_data$highlight <- "Other"
   dge_data$highlight[rownames(dge_data) %in% exhaustion_genes]  <- "Exhaustion"
   dge_data$highlight[rownames(dge_data) %in% stemness_genes]    <- "Stemness"
@@ -2305,43 +2150,22 @@ for (cl_name in names(dge_files)) {
   dge_data$highlight[rownames(dge_data) %in% terminal_genes]    <- "Terminal diff."
   dge_data$highlight[rownames(dge_data) %in% activation_genes]  <- "Activation"
   
-  # Genes to label — all narrative-supporting genes
   genes_to_label <- c(exhaustion_genes, stemness_genes, cytotoxic_genes,
                       stress_genes, ifn_memory_genes, chemokine_genes,
                       terminal_genes, activation_genes)
   genes_to_label <- genes_to_label[genes_to_label %in% rownames(dge_data)]
   
-  # Custom colors — warm for ↑unsup pathways, cool for ↑sup pathways
-  highlight_cols <- c(
-    "Exhaustion"        = "#A32D2D",   # red — exhaustion (↑unsup)
-    "Stemness"          = "#185FA5",   # blue — stemness (↑sup)
-    "Cytotoxicity"      = "#3B6D11",   # dark green — cytotoxicity (mixed)
-    "Stress response"   = "#BA7517",   # amber — stress (↑unsup)
-    "Type I IFN memory" = "#0F6E56",   # teal — IFN memory (↑sup)
-    "Chemokines"        = "#993556",   # pink — chemokines (↑unsup)
-    "Terminal diff."    = "#534AB7",   # purple — terminal diff (↑unsup)
-    "Activation"        = "#D85A30",   # coral — activation (↑unsup)
-    "Other"             = "grey80"
-  )
-  
-  # Build volcano manually with ggplot2 + ggrepel (avoids EnhancedVolcano viewport errors)
   dge_data$gene <- rownames(dge_data)
   dge_data$neg_log10_padj <- -log10(dge_data$p_val_adj + 1e-300)
-  
-  # Significance categories for shape
   dge_data$sig_cat <- "ns"
   dge_data$sig_cat[dge_data$p_val_adj < 0.05 & abs(dge_data$avg_log2FC) > 0.25] <- "sig"
   
-  # Label only highlighted genes that are significant
   dge_data$label <- ""
   sig_highlight <- dge_data$gene %in% genes_to_label & dge_data$p_val_adj < 0.05
   dge_data$label[sig_highlight] <- dge_data$gene[sig_highlight]
-  
-  # Also label highlighted genes that are not significant but part of the story (in italics, smaller)
   nonsig_highlight <- dge_data$gene %in% genes_to_label & dge_data$p_val_adj >= 0.05
   dge_data$label[nonsig_highlight] <- dge_data$gene[nonsig_highlight]
   
-  # Factor highlight for legend ordering
   dge_data$highlight <- factor(dge_data$highlight,
                                levels = c("Exhaustion", "Stemness", "Cytotoxicity", "Stress response",
                                           "Type I IFN memory", "Chemokines", "Terminal diff.", "Activation", "Other"))
@@ -2352,31 +2176,16 @@ for (cl_name in names(dge_files)) {
     geom_point(data = dge_data %>% filter(highlight != "Other"),
                size = 2.5, alpha = 0.85) +
     ggrepel::geom_text_repel(
-      data          = dge_data %>% filter(label != "" & p_val_adj < 0.05),
-      aes(label = label),
-      size          = 3.5,
-      fontface      = "italic",
-      max.overlaps  = 40,
-      segment.size  = 0.3,
-      segment.color = "grey50",
-      min.segment.length = 0.1,
-      box.padding   = 0.4,
-      point.padding = 0.2,
-      show.legend   = FALSE
+      data = dge_data %>% filter(label != "" & p_val_adj < 0.05),
+      aes(label = label), size = 3.5, fontface = "italic",
+      max.overlaps = 40, segment.size = 0.3, segment.color = "grey50",
+      min.segment.length = 0.1, box.padding = 0.4, point.padding = 0.2, show.legend = FALSE
     ) +
     ggrepel::geom_text_repel(
-      data          = dge_data %>% filter(label != "" & p_val_adj >= 0.05),
-      aes(label = label),
-      size          = 2.8,
-      fontface      = "italic",
-      color         = "grey50",
-      max.overlaps  = 20,
-      segment.size  = 0.2,
-      segment.color = "grey70",
-      segment.linetype = "dashed",
-      min.segment.length = 0.1,
-      box.padding   = 0.3,
-      show.legend   = FALSE
+      data = dge_data %>% filter(label != "" & p_val_adj >= 0.05),
+      aes(label = label), size = 2.8, fontface = "italic", color = "grey50",
+      max.overlaps = 20, segment.size = 0.2, segment.color = "grey70",
+      segment.linetype = "dashed", min.segment.length = 0.1, box.padding = 0.3, show.legend = FALSE
     ) +
     geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40", linewidth = 0.4) +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed", color = "grey40", linewidth = 0.4) +
@@ -2439,36 +2248,19 @@ if (file.exists(all_dge_path)) {
                                          "Type I IFN memory", "Chemokines", "Terminal diff.", "Activation", "Other"))
   
   p_volc_all <- ggplot(dge_all, aes(x = avg_log2FC, y = neg_log10_padj, color = highlight)) +
-    geom_point(data = dge_all %>% filter(highlight == "Other"),
-               size = 0.5, alpha = 0.3) +
-    geom_point(data = dge_all %>% filter(highlight != "Other"),
-               size = 2.5, alpha = 0.85) +
+    geom_point(data = dge_all %>% filter(highlight == "Other"), size = 0.5, alpha = 0.3) +
+    geom_point(data = dge_all %>% filter(highlight != "Other"), size = 2.5, alpha = 0.85) +
     ggrepel::geom_text_repel(
-      data          = dge_all %>% filter(label != "" & p_val_adj < 0.05),
-      aes(label = label),
-      size          = 3.5,
-      fontface      = "italic",
-      max.overlaps  = 40,
-      segment.size  = 0.3,
-      segment.color = "grey50",
-      min.segment.length = 0.1,
-      box.padding   = 0.4,
-      point.padding = 0.2,
-      show.legend   = FALSE
+      data = dge_all %>% filter(label != "" & p_val_adj < 0.05),
+      aes(label = label), size = 3.5, fontface = "italic",
+      max.overlaps = 40, segment.size = 0.3, segment.color = "grey50",
+      min.segment.length = 0.1, box.padding = 0.4, point.padding = 0.2, show.legend = FALSE
     ) +
     ggrepel::geom_text_repel(
-      data          = dge_all %>% filter(label != "" & p_val_adj >= 0.05),
-      aes(label = label),
-      size          = 2.8,
-      fontface      = "italic",
-      color         = "grey50",
-      max.overlaps  = 20,
-      segment.size  = 0.2,
-      segment.color = "grey70",
-      segment.linetype = "dashed",
-      min.segment.length = 0.1,
-      box.padding   = 0.3,
-      show.legend   = FALSE
+      data = dge_all %>% filter(label != "" & p_val_adj >= 0.05),
+      aes(label = label), size = 2.8, fontface = "italic", color = "grey50",
+      max.overlaps = 20, segment.size = 0.2, segment.color = "grey70",
+      segment.linetype = "dashed", min.segment.length = 0.1, box.padding = 0.3, show.legend = FALSE
     ) +
     geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40", linewidth = 0.4) +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed", color = "grey40", linewidth = 0.4) +
@@ -2481,8 +2273,7 @@ if (file.exists(all_dge_path)) {
     ) +
     theme_cowplot(font_size = 12) +
     theme(
-      legend.position  = "right",
-      legend.text      = element_text(size = 9),
+      legend.position  = "right", legend.text = element_text(size = 9),
       plot.background  = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA)
     ) +
@@ -2493,17 +2284,10 @@ if (file.exists(all_dge_path)) {
   cat("    Volcano saved for all clusters combined\n")
 }
 
-# ── Volcano legend (separate, for reference) ─────────────────────────────────
-legend_df <- data.frame(
-  Category = names(highlight_cols),
-  Color = highlight_cols,
-  stringsAsFactors = FALSE
-)
+legend_df <- data.frame(Category = names(highlight_cols), Color = highlight_cols, stringsAsFactors = FALSE)
 write.csv(legend_df, file.path(volcano_dir, "Volcano_color_legend.csv"), row.names = FALSE)
 
 cat("  All volcano plots saved to:", volcano_dir, "\n")
-
-# ── (Wilcoxon stats computed above in bar plot section, saved as ModuleScore_Wilcoxon_all_comparisons.csv) ──
 
 # ── Export module score metadata ─────────────────────────────────────────────
 write.csv(
@@ -2513,7 +2297,6 @@ write.csv(
   row.names = TRUE
 )
 
-# ── Export gene lists used ───────────────────────────────────────────────────
 gene_list_df <- do.call(rbind, lapply(names(module_gene_lists), function(m) {
   genes <- module_gene_lists[[m]]
   present <- genes %in% rownames(expand_eff[["RNA"]])
@@ -2525,7 +2308,6 @@ cat("\n  Module score plots and stats saved to:", module_dir, "\n")
 
 ################################################################################
 # 8H (cont). MODULE-DEPENDENT PLOTS: G3, G3b, viral load, pseudotime × modules
-#   These were deferred from 8F/8G because they require expand_eff + module scores
 ################################################################################
 cat("\n=== Running deferred module-dependent analyses ===\n")
 
@@ -2612,7 +2394,6 @@ sample_scores <- expand_eff@meta.data %>%
 
 sample_scores$log10_VL <- log10(sample_scores$Viral_Load_num + 1)
 
-# Exhaustion vs VL
 if ("Exhaustion" %in% available_modules) {
   cor_exh <- cor.test(sample_scores$log10_VL, sample_scores$Exhaustion,
                       method = "spearman", exact = FALSE)
@@ -2635,7 +2416,6 @@ if ("Exhaustion" %in% available_modules) {
          plot = p_h1, width = 10, height = 8, dpi = 300, bg = "white")
 }
 
-# Stemness vs VL
 if ("Stemness" %in% available_modules) {
   cor_stem <- cor.test(sample_scores$log10_VL, sample_scores$Stemness,
                        method = "spearman", exact = FALSE)
@@ -2680,7 +2460,6 @@ p_h3 <- ggplot(vl_long, aes(x = log10_VL, y = Score)) +
 ggsave(file.path(vl_dir, "H3_AllModules_vs_ViralLoad.png"),
        plot = p_h3, width = 12, height = 14, dpi = 300, bg = "white")
 
-# Correlation table
 cor_results <- lapply(available_modules, function(mod) {
   ct <- cor.test(sample_scores$log10_VL, sample_scores[[mod]], method = "spearman", exact = FALSE)
   data.frame(Module = mod, rho = ct$estimate, p_value = ct$p.value, stringsAsFactors = FALSE)
@@ -2689,7 +2468,6 @@ cor_df <- do.call(rbind, cor_results)
 cor_df$p_adj <- p.adjust(cor_df$p_value, method = "BH")
 write.csv(cor_df, file.path(vl_dir, "ViralLoad_Spearman_correlations.csv"), row.names = FALSE)
 
-# Paired patient plot
 paired_patients <- sample_scores %>%
   group_by(PID) %>% filter(n_distinct(Timepoint_Group) > 1) %>% ungroup()
 
@@ -2731,7 +2509,6 @@ if (exists("traj_cells") & exists("cds")) {
     }
     m3_module_df <- m3_module_df %>% filter(!is.na(pseudotime) & is.finite(pseudotime))
     
-    # Exhaustion + Stemness combined
     m3_exh_stem <- m3_module_df %>%
       select(pseudotime, Timepoint, Exhaustion, Stemness) %>%
       tidyr::pivot_longer(cols = c(Exhaustion, Stemness), names_to = "Module", values_to = "Score")
@@ -2752,7 +2529,6 @@ if (exists("traj_cells") & exists("cds")) {
     ggsave(file.path(monocle_dir, "Monocle3_ExhaustionStemness_along_pseudotime.png"),
            plot = p_m3_exh_stem, width = 14, height = 6, dpi = 300, bg = "white")
     
-    # All modules
     m3_all_mods <- m3_module_df %>%
       select(pseudotime, Timepoint, all_of(available_modules)) %>%
       tidyr::pivot_longer(cols = all_of(available_modules), names_to = "Module", values_to = "Score")
@@ -2778,11 +2554,6 @@ if (exists("traj_cells") & exists("cds")) {
 }
 
 ################################################################################
-
-# ── CHECKPOINT: Save after module scoring ──────────────────────────────────
-# This is the final object with all metadata including module scores
-# To re-run module scores only, load TARA_cd8_HEI_with_trajectory.qs2
-# and run from section 8H onwards
 # 9. SAVE FINAL OBJECT
 ################################################################################
 qs_save(TARA_cd8, file.path(saved_dir, "TARA_cd8_HEI_annotated_final.qs2"))
@@ -2791,7 +2562,7 @@ cat("Final annotated HEI CD8 object saved.\n")
 ################################################################################
 # SESSION INFO
 ################################################################################
-cat("\n=== Done: All Figure 3 panels + analyses generated (HEI only) ===\n")
+cat("\n=== Done: All Figure 4-5 panels + analyses generated (HEI only) ===\n")
 cat("Output directory:", out_dir, "\n")
 cat("Analysis subfolders:\n")
 cat("  DGE:              ", dge_dir, "\n")
@@ -2803,3 +2574,4 @@ cat("  Trajectory:       ", traj_dir, "\n")
 cat("  Expansion ctrl:   ", expansion_dir, "\n")
 cat("  Viral load:       ", vl_dir, "\n")
 sessionInfo()
+

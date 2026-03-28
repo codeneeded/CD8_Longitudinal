@@ -1,12 +1,12 @@
 "","PreART_Entry","PostART_Suppressed","PostART_Unsuppressed"
-"Effector CD8",1358,2067,1310
 "KIR+ innate-like CD8",71,527,152
 "MAIT-like Trm",37,73,32
 "Naïve CD8",4252,1890,864
-"Naïve CD8 (innate-like)",3606,115,205
-"Naïve CD8 (post-ART)",375,814,436
-"Naïve-like TRDV1+ γδ",167,205,93
-"Terminal TEMRA CD8",989,1311,739
+"Naïve CD8 2",3606,115,205
+"Naïve CD8 3",375,814,436
+"Naïve γδ1 T cell",167,205,93
+"TEM CD8",1358,2067,1310
+"TEMRA CD8",989,1311,739
 "Transitional Tem CD8",304,804,259
-"TRDV1+ γδ T cell",328,1170,1386
-"Vγ9Vδ2 γδ T cell",138,52,82
+"γδ1 T cell",328,1170,1386
+"γδ2 T cell",138,52,82
