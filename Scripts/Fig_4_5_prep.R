@@ -88,8 +88,188 @@ TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_sorted_refined.qs2"))
 # Remove HEU and HUU — focus on HIV-exposed infected infants across ART stages
 TARA_ALL <- subset(TARA_ALL, Condition == "HEI")
 cat("Filtered to HEI only:", ncol(TARA_ALL), "cells\n")
-cat("Timepoint_Group distribution:\n")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# METADATA CORRECTION: Timepoint_Group, Viral_Load_num, Age
+# ══════════════════════════════════════════════════════════════════════════════
+# The source object may have incorrect VL values, ages, or classifications.
+# This block enforces the correct values based on the clinical Excel
+# (TARA_VL_CD4.xlsx) cross-referenced against each orig.ident.
+#
+# Rules:
+#   - "entry" / "V1" samples = PreART_Entry
+#   - Post-ART with VL < 200 cp/mL = PostART_Suppressed
+#   - Post-ART with VL >= 200 cp/mL = PostART_Unsuppressed
+#
+# Sources of error found:
+#   - CP020_V44: Seurat had VL=158, Excel at age 44m shows VL=534,772
+#   - CP013_24m: actual age is 25m (VL=20 at month 25)
+#   - CP018_V24: actual age is 25m (VL=20 at month 25)
+#   - CP003 V12/V24: Seurat VLs differ from Excel (different draws same month)
+#     but classification unchanged (both unsuppressed)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Define per-sample ground truth: Timepoint_Group, Viral_Load_num, Age
+# Each row: orig.ident -> list(group, vl, age)
+sample_metadata <- list(
+  # CP002
+  "CP002_entry"  = list(group = "PreART_Entry",        vl = 4284389,  age = 1),
+  # CP003
+  "CP003_entry"  = list(group = "PreART_Entry",        vl = 656769,   age = 1),
+  "CP003_V12"    = list(group = "PostART_Unsuppressed", vl = 503497,   age = 12),
+  "CP003_V24"    = list(group = "PostART_Unsuppressed", vl = 489676,   age = 24),
+  # CP006
+  "CP006_entry"  = list(group = "PreART_Entry",        vl = 10000000, age = 1),
+  "CP006_12m"    = list(group = "PostART_Suppressed",   vl = 73,       age = 12),
+  "CP006_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 24),
+  # CP011
+  "CP011_entry"  = list(group = "PreART_Entry",        vl = 36965,    age = 2),
+  # CP013
+  "CP013_entry"  = list(group = "PreART_Entry",        vl = 3434,     age = 1),
+  "CP013_12m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 12),
+  "CP013_24m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
+  # CP016
+  "CP016_entry"  = list(group = "PreART_Entry",        vl = 1978332,  age = 2),
+  # CP017
+  "CP017_entry"  = list(group = "PreART_Entry",        vl = 3167384,  age = 2),
+  # CP018
+  "CP018_entry"  = list(group = "PreART_Entry",        vl = 176970,   age = 1),
+  "CP018_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
+  "CP018_42m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 42),
+  # CP020
+  "CP020_V1"     = list(group = "PreART_Entry",        vl = 414409,   age = 1),
+  "CP020_V12"    = list(group = "PostART_Unsuppressed", vl = 6293122,  age = 12),
+  "CP020_V44"    = list(group = "PostART_Unsuppressed", vl = 534772,   age = 44),  # FIXED: was 158
+  # CP022
+  "CP022_entry"  = list(group = "PreART_Entry",        vl = 5075764,  age = 1),
+  # CP042
+  "CP042_entry"  = list(group = "PreART_Entry",        vl = 6113,     age = 1)
+)
+
+# ── Print BEFORE state ──
+cat("\n=== METADATA BEFORE CORRECTION ===\n")
+cat("Timepoint_Group:\n")
 print(table(TARA_ALL$Timepoint_Group))
+
+samples_in_data <- unique(TARA_ALL$orig.ident)
+cat("\nSamples in data:", paste(sort(samples_in_data), collapse = ", "), "\n")
+cat("Samples in lookup:", paste(sort(names(sample_metadata)), collapse = ", "), "\n")
+
+# Check for mismatches between data and lookup
+missing_in_lookup <- setdiff(samples_in_data, names(sample_metadata))
+missing_in_data   <- setdiff(names(sample_metadata), samples_in_data)
+if (length(missing_in_lookup) > 0) {
+  cat("WARNING: Samples in data but NOT in lookup:", paste(missing_in_lookup, collapse = ", "), "\n")
+}
+if (length(missing_in_data) > 0) {
+  cat("NOTE: Samples in lookup but NOT in data:", paste(missing_in_data, collapse = ", "), "\n")
+}
+
+# ── Apply corrections ──
+n_group_changed <- 0
+n_vl_changed    <- 0
+n_age_changed   <- 0
+
+for (sample_name in names(sample_metadata)) {
+  mask <- TARA_ALL$orig.ident == sample_name
+  n_cells <- sum(mask)
+  if (n_cells == 0) next
+  
+  meta <- sample_metadata[[sample_name]]
+  
+  # Timepoint_Group
+  old_group <- unique(TARA_ALL$Timepoint_Group[mask])
+  if (length(old_group) != 1 || old_group != meta$group) {
+    n_group_changed <- n_group_changed + n_cells
+    TARA_ALL$Timepoint_Group[mask] <- meta$group
+    if (length(old_group) == 1 && old_group != meta$group) {
+      cat(sprintf("  CHANGED %s: %s -> %s (%d cells)\n", sample_name, old_group, meta$group, n_cells))
+    }
+  }
+  
+  # Viral_Load_num
+  old_vl <- unique(TARA_ALL$Viral_Load_num[mask])
+  if (length(old_vl) != 1 || abs(old_vl - meta$vl) > 1) {
+    n_vl_changed <- n_vl_changed + n_cells
+    TARA_ALL$Viral_Load_num[mask] <- meta$vl
+    if (length(old_vl) == 1 && abs(old_vl - meta$vl) > 1) {
+      cat(sprintf("  CHANGED VL %s: %s -> %s (%d cells)\n", sample_name, old_vl, meta$vl, n_cells))
+    }
+  }
+  
+  # Age
+  old_age <- unique(TARA_ALL$Age[mask])
+  if (length(old_age) != 1 || old_age != meta$age) {
+    n_age_changed <- n_age_changed + n_cells
+    TARA_ALL$Age[mask] <- meta$age
+    if (length(old_age) == 1 && old_age != meta$age) {
+      cat(sprintf("  CHANGED Age %s: %s -> %s (%d cells)\n", sample_name, old_age, meta$age, n_cells))
+    }
+  }
+}
+
+cat(sprintf("\nCells with Timepoint_Group changed: %d\n", n_group_changed))
+cat(sprintf("Cells with Viral_Load_num changed:  %d\n", n_vl_changed))
+cat(sprintf("Cells with Age changed:             %d\n", n_age_changed))
+
+# ── Print AFTER state ──
+cat("\n=== METADATA AFTER CORRECTION ===\n")
+cat("Timepoint_Group:\n")
+print(table(TARA_ALL$Timepoint_Group))
+
+# ── Verification table ──
+cat("\n=== PER-SAMPLE VERIFICATION ===\n")
+library(dplyr)
+verify <- TARA_ALL@meta.data %>%
+  group_by(orig.ident, Timepoint_Group) %>%
+  summarise(
+    n_cells = n(),
+    VL      = first(Viral_Load_num),
+    Age     = first(Age),
+    .groups = "drop"
+  ) %>%
+  arrange(orig.ident)
+print(as.data.frame(verify), row.names = FALSE)
+
+# ── Spot-check CP020 ──
+cat("\nCP020 verification:\n")
+print(verify %>% filter(grepl("CP020", orig.ident)))
+
+# ── Rename orig.ident to PID_AgeM format ─────────────────────────────────────
+# e.g. CP018_V24 -> CP018_25m, CP003_entry -> CP003_1m, CP020_V44 -> CP020_44m
+cat("\n=== Renaming orig.ident to PID_AgeM format ===\n")
+
+# Build rename map from sample_metadata (which has correct ages)
+ident_rename <- sapply(names(sample_metadata), function(s) {
+  pid <- sub("_.*$", "", s)
+  age <- sample_metadata[[s]]$age
+  paste0(pid, "_", age, "m")
+})
+names(ident_rename) <- names(sample_metadata)
+
+cat("Rename map:\n")
+for (old_name in sort(names(ident_rename))) {
+  cat(sprintf("  %s -> %s\n", old_name, ident_rename[old_name]))
+}
+
+# Store original ident for reference
+TARA_ALL$orig.ident_raw <- TARA_ALL$orig.ident
+
+# Apply rename
+new_idents <- ident_rename[TARA_ALL$orig.ident]
+n_renamed <- sum(!is.na(new_idents))
+n_missing <- sum(is.na(new_idents))
+
+if (n_missing > 0) {
+  cat(sprintf("WARNING: %d cells had orig.ident not in rename map — kept original\n", n_missing))
+  new_idents[is.na(new_idents)] <- TARA_ALL$orig.ident[is.na(new_idents)]
+}
+
+TARA_ALL$orig.ident <- new_idents
+cat(sprintf("Renamed %d cells to PID_AgeM format\n", n_renamed))
+
+cat("\nNew orig.ident values:\n")
+print(sort(unique(TARA_ALL$orig.ident)))
 
 ################################################################################
 # 1. SUBSET: CD8 clusters + rescue CD8+ cells from other clusters
@@ -627,6 +807,17 @@ print(round(prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$has_TCR), margin 
 cat("\n=== Timepoint_Group per annotation ===\n")
 print(round(prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group), margin = 1), 3))
 
+
+################################################################################
+# 5. SAVE ANNOTATED OBJECT
+################################################################################
+qs_save(TARA_cd8, file.path(saved_dir, "TARA_cd8_HEI_annotated.qs2"))
+cat("Annotated HEI CD8 object saved.\n")
+
+################################################################################
+# ══════════════════════════════════════════════════════════════════════════════
+# 5B. METADATA CORRECTION: Timepoint_Group, Viral_Load_num, Age, orig.ident
+# ══════════════════════════════════════════════════════════════════════════════
 # ── Canonical cluster order (biological progression) — UPDATED ───────────────
 col_order_cd8 <- c(
   "Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
@@ -635,11 +826,123 @@ col_order_cd8 <- c(
   "γδ1 T cell", "Naïve γδ1 T cell", "γδ2 T cell"
 )
 
+# ENTRY POINT: If skipping sections 1-5, load your annotated object here:
+#   TARA_cd8 <- qs_read(file.path(saved_dir, "TARA_cd8_HEI_annotated.qs2"))
+# Then run from this block onward.
+#
+# Fixes:
+#   - CP020_V44: VL was 158 (wrong), should be 534,772 → Unsuppressed
+#   - CP013_24m: Age was 24, should be 25
+#   - CP018_V24: Age was 24, should be 25
+#   - orig.ident renamed to PID_AgeM format (e.g. CP018_V24 → CP018_25m)
 ################################################################################
-# 5. SAVE ANNOTATED OBJECT
-################################################################################
-qs_save(TARA_cd8, file.path(saved_dir, "TARA_cd8_HEI_annotated.qs2"))
-cat("Annotated HEI CD8 object saved.\n")
+
+cat("\n", strrep("=", 70), "\n")
+cat(strrep("=", 70), "\n")
+
+sample_metadata <- list(
+  "CP002_entry"  = list(group = "PreART_Entry",        vl = 4284389,  age = 1),
+  "CP003_entry"  = list(group = "PreART_Entry",        vl = 656769,   age = 1),
+  "CP003_V12"    = list(group = "PostART_Unsuppressed", vl = 503497,   age = 12),
+  "CP003_V24"    = list(group = "PostART_Unsuppressed", vl = 489676,   age = 24),
+  "CP006_entry"  = list(group = "PreART_Entry",        vl = 10000000, age = 1),
+  "CP006_12m"    = list(group = "PostART_Suppressed",   vl = 73,       age = 12),
+  "CP006_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 24),
+  "CP011_entry"  = list(group = "PreART_Entry",        vl = 36965,    age = 2),
+  "CP013_entry"  = list(group = "PreART_Entry",        vl = 3434,     age = 1),
+  "CP013_12m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 12),
+  "CP013_24m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
+  "CP016_entry"  = list(group = "PreART_Entry",        vl = 1978332,  age = 2),
+  "CP017_entry"  = list(group = "PreART_Entry",        vl = 3167384,  age = 2),
+  "CP018_entry"  = list(group = "PreART_Entry",        vl = 176970,   age = 1),
+  "CP018_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
+  "CP018_42m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 42),
+  "CP020_V1"     = list(group = "PreART_Entry",        vl = 414409,   age = 1),
+  "CP020_V12"    = list(group = "PostART_Unsuppressed", vl = 6293122,  age = 12),
+  "CP020_V44"    = list(group = "PostART_Unsuppressed", vl = 534772,   age = 44),  # FIXED: was 158/Suppressed
+  "CP022_entry"  = list(group = "PreART_Entry",        vl = 5075764,  age = 1),
+  "CP042_entry"  = list(group = "PreART_Entry",        vl = 6113,     age = 1)
+)
+
+# ── Print BEFORE ──
+cat("\nBEFORE correction:\n")
+cat("Timepoint_Group:\n")
+print(table(TARA_cd8$Timepoint_Group))
+
+samples_in_data <- unique(TARA_cd8$orig.ident)
+cat("\norig.ident values in data:\n")
+print(sort(samples_in_data))
+
+# Check for name mismatches
+missing_in_lookup <- setdiff(samples_in_data, names(sample_metadata))
+if (length(missing_in_lookup) > 0) {
+  cat("WARNING: Samples in data but NOT in lookup:", paste(missing_in_lookup, collapse = ", "), "\n")
+}
+
+# ── Save raw orig.ident ──
+TARA_cd8$orig.ident_raw <- TARA_cd8$orig.ident
+
+# ── Apply corrections + rename ──
+for (sample_name in names(sample_metadata)) {
+  mask <- TARA_cd8$orig.ident == sample_name
+  n_cells <- sum(mask)
+  if (n_cells == 0) next
+  
+  meta <- sample_metadata[[sample_name]]
+  
+  # Capture old values
+  old_group <- unique(TARA_cd8$Timepoint_Group[mask])
+  old_vl    <- unique(TARA_cd8$Viral_Load_num[mask])
+  old_age   <- unique(TARA_cd8$Age[mask])
+  
+  # Apply corrections
+  TARA_cd8$Timepoint_Group[mask] <- meta$group
+  TARA_cd8$Viral_Load_num[mask]  <- meta$vl
+  TARA_cd8$Age[mask]             <- meta$age
+  
+  # Rename orig.ident to PID_AgeM
+  pid <- sub("_.*$", "", sample_name)
+  new_ident <- paste0(pid, "_", meta$age, "m")
+  TARA_cd8$orig.ident[mask] <- new_ident
+  
+  # Report any changes
+  changes <- c()
+  if (length(old_group) == 1 && old_group != meta$group) {
+    changes <- c(changes, sprintf("Group: %s -> %s", old_group, meta$group))
+  }
+  if (length(old_vl) == 1 && abs(old_vl - meta$vl) > 1) {
+    changes <- c(changes, sprintf("VL: %s -> %s", format(old_vl, big.mark = ","), format(meta$vl, big.mark = ",")))
+  }
+  if (length(old_age) == 1 && old_age != meta$age) {
+    changes <- c(changes, sprintf("Age: %s -> %s", old_age, meta$age))
+  }
+  if (length(changes) > 0) {
+    cat(sprintf("  CHANGED %s -> %s: %s (%d cells)\n",
+                sample_name, new_ident, paste(changes, collapse = "; "), n_cells))
+  } else {
+    cat(sprintf("  OK      %s -> %s (%d cells)\n", sample_name, new_ident, n_cells))
+  }
+}
+
+# ── Print AFTER ──
+cat("\nAFTER correction:\n")
+cat("Timepoint_Group:\n")
+print(table(TARA_cd8$Timepoint_Group))
+
+cat("\nNew orig.ident values:\n")
+print(sort(unique(TARA_cd8$orig.ident)))
+
+# ── Verification table ──
+cat("\n=== PER-SAMPLE VERIFICATION ===\n")
+verify <- TARA_cd8@meta.data %>%
+  group_by(orig.ident, Timepoint_Group) %>%
+  summarise(n_cells = n(), VL = dplyr::first(Viral_Load_num), Age = dplyr::first(Age), .groups = "drop") %>%
+  arrange(orig.ident)
+print(as.data.frame(verify), row.names = FALSE)
+
+cat("\n", strrep("=", 70), "\n")
+cat("  METADATA CORRECTION COMPLETE — continue to section 8\n")
+cat(strrep("=", 70), "\n\n")
 
 ################################################################################
 # 8. DOWNSTREAM ANALYSES — organized into numbered subfolders
@@ -2574,4 +2877,4 @@ cat("  Trajectory:       ", traj_dir, "\n")
 cat("  Expansion ctrl:   ", expansion_dir, "\n")
 cat("  Viral load:       ", vl_dir, "\n")
 sessionInfo()
-
+table(TARA_cd8$orig.ident,TARA_cd8$Timepoint_Group)

@@ -181,7 +181,7 @@ exhaustion_genes   <- c("TOX","PDCD1","HAVCR2","LAG3","TIGIT","CTLA4","ENTPD1")
 stemness_genes     <- c("TCF7","SELL","CCR7","LEF1","BACH2","BCL2","IL7R","S1PR1","KLF2")
 cytotoxic_genes    <- c("GZMB","GNLY","PRF1","NKG7","GZMA","GZMH","FGFBP2")
 stress_genes       <- c("HSPA1A","HSPA1B","DNAJB1","IFI27","IFI44L")
-ifn_memory_genes   <- c("IFIT1","IFIT3","ISG15","MX1")
+ifn_memory_genes   <- c("IFIT1","IFIT3","ISG15","MX1","H3F3A","H3F3B")
 chemokine_genes    <- c("CCL3","CCL3L3","CCL4","CCL4L2","CCL5")
 terminal_genes     <- c("ZEB2","PRDM1","TBX21","CX3CR1","S1PR5","ID2","EOMES")
 activation_genes   <- c("HLA-DRA","CD38","FAS","CD69")
@@ -436,23 +436,90 @@ write.csv(data.frame(Cluster=rownames(count_mat),count_mat,Total=rowSums(count_m
 cat("  S3 done.\n")
 
 ################################################################################
-# ═══════════════ S4: MODULE + GENE PSEUDOTIME ══════════════════════════════
+# ═══════════════ S4: MODULE SCORE ALONG PSEUDOTIME (a–e) ═══════════════════
+#   Same style as Fig 5C/D but for the 5 modules NOT in the main figure
+#   S4a: Cytotoxicity    S4b: Inflammatory chemokines   S4c: Type I IFN memory
+#   S4d: Stress/IFN      S4e: Terminal differentiation
 ################################################################################
-cat("\n=== S4: Module & gene pseudotime panels ===\n")
+cat("\n=== S4: Module scores along pseudotime ===\n")
 
-m3_dir <- file.path(analysis_dir, "07_trajectory", "monocle3")
+# Load pseudotime data
+m3_pt_path <- file.path(analysis_dir, "07_trajectory", "monocle3", "Monocle3_pseudotime_per_cell.csv")
+module_path_s4 <- file.path(analysis_dir, "10_module_scores", "ModuleScores_per_cell.csv")
 
-# Copy individual module plots (not the combined AllModules/ExhaustionStemness in main figs)
-m3_files <- list.files(m3_dir, pattern="^Monocle3_[A-Z].*_along_pseudotime\\.png$", full.names=TRUE)
-m3_files <- m3_files[!grepl("AllModules|ExhaustionStemness", m3_files)]
-for (f in m3_files) file.copy(f, file.path(s4_dir, paste0("S4_",basename(f))), overwrite=TRUE)
-
-# Copy gene expression panels + trajectory UMAPs
-m3_gene <- list.files(m3_dir, pattern="Genes_in_pseudotime|NarrativeGenes|TopVariable|TopGenes_UMAP|UMAP_clusters|UMAP_ART",
-                      full.names=TRUE)
-for (f in m3_gene) file.copy(f, file.path(s4_dir, paste0("S4_",basename(f))), overwrite=TRUE)
-
-cat("  S4: Copied", length(m3_files)+length(m3_gene), "panels.\n")
+if (file.exists(m3_pt_path) & file.exists(module_path_s4)) {
+  m3_pt <- read.csv(m3_pt_path, row.names = 1)
+  if (!"cell" %in% colnames(m3_pt)) m3_pt$cell <- rownames(m3_pt)
+  
+  mod_scores_s4 <- read.csv(module_path_s4, row.names = 1)
+  # Remap old names if needed
+  mod_scores_s4$CD8_Annotation <- dplyr::recode(mod_scores_s4$CD8_Annotation,
+                                                "Effector CD8" = "TEM CD8", "Terminal TEMRA CD8" = "TEMRA CD8",
+                                                .default = mod_scores_s4$CD8_Annotation)
+  
+  common <- intersect(m3_pt$cell, rownames(mod_scores_s4))
+  cat("    Cells with both pseudotime + module scores:", length(common), "\n")
+  
+  pt_mod_s4 <- data.frame(
+    pseudotime         = m3_pt$monocle3_pseudotime[match(common, m3_pt$cell)],
+    Timepoint          = mod_scores_s4[common, "Timepoint_Group"],
+    Cytotoxicity       = mod_scores_s4[common, "Cytotoxicity"],
+    Inflammatory_Chemokines = mod_scores_s4[common, "Inflammatory_Chemokines"],
+    TypeI_IFN_Memory   = mod_scores_s4[common, "TypeI_IFN_Memory"],
+    Stress_IFN         = mod_scores_s4[common, "Stress_IFN"],
+    Terminal_Differentiation = mod_scores_s4[common, "Terminal_Differentiation"]
+  ) %>% filter(!is.na(pseudotime) & is.finite(pseudotime) & !is.na(Timepoint))
+  
+  pt_mod_s4$Timepoint <- factor(pt_mod_s4$Timepoint,
+                                levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
+  
+  # Define the 5 panels
+  s4_panels <- list(
+    list(panel = "S4a", col = "Cytotoxicity",             ylab = "Cytotoxicity score",
+         title = "Cytotoxicity along differentiation"),
+    list(panel = "S4b", col = "Inflammatory_Chemokines",  ylab = "Inflammatory chemokines score",
+         title = "Inflammatory chemokines along differentiation"),
+    list(panel = "S4c", col = "TypeI_IFN_Memory",         ylab = "Type I IFN memory score",
+         title = "Type I IFN memory along differentiation"),
+    list(panel = "S4d", col = "Stress_IFN",               ylab = "Stress / IFN (acute) score",
+         title = "Stress / IFN (acute) along differentiation"),
+    list(panel = "S4e", col = "Terminal_Differentiation",  ylab = "Terminal differentiation score",
+         title = "Terminal differentiation along differentiation")
+  )
+  
+  for (sp in s4_panels) {
+    cat("    ", sp$panel, ":", sp$title, "...\n")
+    
+    p_s4 <- ggplot(pt_mod_s4, aes(x = pseudotime, y = .data[[sp$col]], color = Timepoint)) +
+      geom_point(size = 0.15, alpha = 0.1) +
+      geom_smooth(method = "loess", se = TRUE, linewidth = 1.8, alpha = 0.2, span = 0.4) +
+      scale_color_manual(values = art_colors, name = "ART Status",
+                         labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+      labs(x = "Monocle3 pseudotime", y = sp$ylab, title = sp$title) +
+      theme_cowplot(font_size = 22) +
+      theme(
+        axis.text        = element_text(size = 16),
+        axis.title       = element_text(size = 18),
+        plot.title       = element_text(size = 20, face = "bold"),
+        legend.text      = element_text(size = 16),
+        legend.title     = element_text(size = 17, face = "bold"),
+        legend.position  = "bottom",
+        plot.background  = element_rect(fill = "white", color = NA),
+        panel.background = element_rect(fill = "white", color = NA)
+      ) +
+      guides(color = guide_legend(override.aes = list(size = 5, alpha = 1)))
+    
+    ggsave(file.path(s4_dir, paste0(sp$panel, "_", gsub(" ", "_", sp$title), ".png")),
+           plot = p_s4, width = 9, height = 7, dpi = 300, bg = "white")
+  }
+  
+  cat("  S4: All 5 module pseudotime panels generated.\n")
+  cat("  Layout: Row 1 = S4a | S4b | S4c,  Row 2 = S4d | S4e\n")
+} else {
+  cat("  WARNING: Missing pseudotime or module score files.\n")
+  cat("    Pseudotime:", m3_pt_path, "exists:", file.exists(m3_pt_path), "\n")
+  cat("    Modules:", module_path_s4, "exists:", file.exists(module_path_s4), "\n")
+}
 
 ################################################################################
 # ═══════════════ S5: NAÏVE PAIRWISE VOLCANOS ═══════════════════════════════
@@ -560,6 +627,182 @@ for (d in list(c("S1",s1_dir),c("S2",s2_dir),c("S3",s3_dir),c("S4",s4_dir),c("S5
   cat(" ",d[1],":",length(list.files(d[2],"\\.png$|\\.csv$")),"files\n")
 }
 
+################################################################################
+# ═══════════════ S6: KIR+ INNATE-LIKE CD8 EXPANSION UNDER ART ══════════════
+#   S6a: Proportion by ART status
+#   S6b: Clonal expansion by ART status
+#   S6c: Volcano (suppressed vs unsuppressed)
+#   S6d: Top clonotypes shared across clusters
+################################################################################
+cat("\n=== S6: KIR+ innate-like CD8 panels ===\n")
+
+s6_dir <- file.path(supp_dir, "S6_KIR_innatelike")
+dir.create(s6_dir, recursive = TRUE, showWarnings = FALSE)
+
+if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
+  kir_cells <- subset(TARA_cd8, CD8_Annotation == "KIR+ innate-like CD8")
+  kir_cells$Timepoint_Group <- factor(kir_cells$Timepoint_Group,
+                                      levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
+  
+  # ── S6a: Proportion by ART status ──────────────────────────────────────────
+  cat("    S6a: Proportion by ART status...\n")
+  prop_df <- as.data.frame(table(kir_cells$Timepoint_Group))
+  colnames(prop_df) <- c("ART_Status", "Count")
+  prop_df$Pct <- round(100 * prop_df$Count / sum(prop_df$Count), 1)
+  
+  p_s6a <- ggplot(prop_df, aes(x = ART_Status, y = Count, fill = ART_Status)) +
+    geom_col(width = 0.6) +
+    geom_text(aes(label = paste0(Pct, "%")), vjust = -0.5, size = 7, fontface = "bold") +
+    scale_fill_manual(values = art_colors, guide = "none") +
+    scale_x_discrete(labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+    labs(x = "", y = "Number of KIR+ cells",
+         title = "KIR+ innate-like CD8 by ART status") +
+    theme_cowplot(font_size = 20) +
+    theme(axis.text = element_text(size = 16), axis.title = element_text(size = 18),
+          plot.title = element_text(size = 20, face = "bold"),
+          plot.background = element_rect(fill = "white", color = NA))
+  
+  ggsave(file.path(s6_dir, "S6a_KIR_proportion_by_ART.png"),
+         plot = p_s6a, width = 8, height = 7, dpi = 300, bg = "white")
+  
+  # ── S6b: Clonal expansion by ART status ────────────────────────────────────
+  cat("    S6b: Clonal expansion...\n")
+  kir_clone_df <- kir_cells@meta.data %>%
+    filter(!is.na(cloneSize)) %>%
+    mutate(cloneSize = factor(cloneSize, levels = c(
+      "Single (0 < X <= 1)", "Small (1 < X <= 5)", "Medium (5 < X <= 20)",
+      "Large (20 < X <= 100)", "Hyperexpanded (100 < X <= 500)")))
+  
+  clone_colors <- c("Single (0 < X <= 1)" = "#E8ECEF",
+                    "Small (1 < X <= 5)" = "#A8D5E2",
+                    "Medium (5 < X <= 20)" = "#5AAFA9",
+                    "Large (20 < X <= 100)" = "#2B6777",
+                    "Hyperexpanded (100 < X <= 500)" = "#14213D")
+  
+  p_s6b <- ggplot(kir_clone_df, aes(x = Timepoint_Group, fill = cloneSize)) +
+    geom_bar(position = "fill", width = 0.6) +
+    scale_fill_manual(values = clone_colors, name = "Clone size") +
+    scale_x_discrete(labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+    scale_y_continuous(labels = scales::percent) +
+    labs(x = "", y = "Proportion", title = "Clonal expansion in KIR+ CD8") +
+    theme_cowplot(font_size = 20) +
+    theme(axis.text = element_text(size = 16), axis.title = element_text(size = 18),
+          plot.title = element_text(size = 20, face = "bold"),
+          legend.text = element_text(size = 14), legend.title = element_text(size = 15, face = "bold"),
+          legend.position = "right",
+          plot.background = element_rect(fill = "white", color = NA))
+  
+  ggsave(file.path(s6_dir, "S6b_KIR_clonal_expansion_by_ART.png"),
+         plot = p_s6b, width = 10, height = 7, dpi = 300, bg = "white")
+  
+  # ── S6c: Volcano (suppressed vs unsuppressed KIR+) ─────────────────────────
+  cat("    S6c: Volcano...\n")
+  kir_dge_path <- file.path(analysis_dir, "03_DGE", "DGE_MAST_KIR_Sup_vs_Unsup.csv")
+  
+  # If pre-computed DGE exists, use it; otherwise compute on the fly
+  if (file.exists(kir_dge_path)) {
+    kir_dge <- read.csv(kir_dge_path, row.names = 1)
+  } else {
+    cat("      Computing KIR+ DGE on the fly...\n")
+    kir_post <- subset(kir_cells, Timepoint_Group %in% c("PostART_Suppressed", "PostART_Unsuppressed"))
+    Idents(kir_post) <- "Timepoint_Group"
+    DefaultAssay(kir_post) <- "RNA"
+    kir_post <- JoinLayers(kir_post)
+    kir_dge <- FindMarkers(kir_post, ident.1 = "PostART_Suppressed",
+                           ident.2 = "PostART_Unsuppressed",
+                           test.use = "MAST", min.pct = 0.1, logfc.threshold = 0.1)
+    write.csv(kir_dge, file.path(s6_dir, "DGE_MAST_KIR_Sup_vs_Unsup.csv"))
+  }
+  
+  kir_dge$gene <- rownames(kir_dge)
+  kir_dge$neg_log10_padj <- -log10(kir_dge$p_val_adj + 1e-300)
+  
+  kir_dge$highlight <- "Other"
+  kir_dge$highlight[kir_dge$gene %in% exhaustion_genes]  <- "Exhaustion"
+  kir_dge$highlight[kir_dge$gene %in% stemness_genes]    <- "Stemness"
+  kir_dge$highlight[kir_dge$gene %in% cytotoxic_genes]   <- "Cytotoxicity"
+  kir_dge$highlight[kir_dge$gene %in% stress_genes]      <- "Stress response"
+  kir_dge$highlight[kir_dge$gene %in% ifn_memory_genes]  <- "Type I IFN memory"
+  kir_dge$highlight[kir_dge$gene %in% chemokine_genes]   <- "Chemokines"
+  kir_dge$highlight[kir_dge$gene %in% terminal_genes]    <- "Terminal diff."
+  kir_dge$highlight[kir_dge$gene %in% activation_genes]  <- "Activation"
+  kir_dge$highlight <- factor(kir_dge$highlight, levels = names(highlight_cols))
+  
+  kir_label_genes <- c(exhaustion_genes, stemness_genes, cytotoxic_genes,
+                       stress_genes, ifn_memory_genes, chemokine_genes,
+                       terminal_genes, activation_genes)
+  kir_dge$label <- ""
+  kir_dge$label[kir_dge$gene %in% kir_label_genes & kir_dge$p_val_adj < 0.05] <-
+    kir_dge$gene[kir_dge$gene %in% kir_label_genes & kir_dge$p_val_adj < 0.05]
+  
+  kir_x_lim <- quantile(abs(kir_dge$avg_log2FC[is.finite(kir_dge$avg_log2FC)]), 0.995) * 1.15
+  kir_y_cap <- quantile(kir_dge$neg_log10_padj[is.finite(kir_dge$neg_log10_padj)], 0.995) * 1.10
+  
+  p_s6c <- ggplot(kir_dge, aes(x = pmax(pmin(avg_log2FC, kir_x_lim*0.98), -kir_x_lim*0.98),
+                               y = pmin(neg_log10_padj, kir_y_cap), color = highlight)) +
+    geom_point(data = kir_dge %>% filter(highlight == "Other"), size = 2, alpha = 0.3) +
+    geom_point(data = kir_dge %>% filter(highlight != "Other"), size = 5, alpha = 0.85) +
+    geom_label_repel(data = kir_dge %>% filter(label != ""),
+                     aes(label = label, fill = highlight), color = "white",
+                     size = 5, fontface = "bold.italic",
+                     max.overlaps = 40, segment.size = 0.4, segment.color = "grey40",
+                     box.padding = 0.4, label.size = 0.2, show.legend = FALSE,
+                     force = 2, force_pull = 0.5) +
+    geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40", linewidth = 0.4) +
+    geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed", color = "grey40", linewidth = 0.4) +
+    scale_color_manual(values = highlight_cols, name = "Gene category", drop = FALSE) +
+    scale_fill_manual(values = highlight_cols, guide = "none") +
+    scale_x_continuous(limits = c(-kir_x_lim, kir_x_lim), oob = scales::squish) +
+    scale_y_continuous(limits = c(0, kir_y_cap), oob = scales::squish) +
+    labs(x = expression(log[2]~fold~change~~(symbol('\254')~unsuppressed~~~suppressed~symbol('\256'))),
+         y = expression(-log[10]~adjusted~italic(p)),
+         title = "KIR+ innate-like CD8: Suppressed vs Unsuppressed") +
+    theme_cowplot(font_size = 18) +
+    theme(plot.title = element_text(size = 18, face = "bold"),
+          legend.position = "right", legend.text = element_text(size = 14),
+          axis.text = element_text(size = 14), axis.title = element_text(size = 16),
+          plot.background = element_rect(fill = "white", color = NA))
+  
+  ggsave(file.path(s6_dir, "S6c_KIR_Volcano_Sup_vs_Unsup.png"),
+         plot = p_s6c, width = 12, height = 9, dpi = 300, bg = "white")
+  
+  # ── S6d: Top clonotypes shared across clusters ─────────────────────────────
+  cat("    S6d: Shared clonotypes across clusters...\n")
+  top_kir_clones <- kir_cells@meta.data %>%
+    filter(!is.na(CTaa), Timepoint_Group == "PostART_Suppressed") %>%
+    group_by(CTaa) %>% summarise(n = n(), .groups = "drop") %>%
+    arrange(desc(n)) %>% head(5) %>% pull(CTaa)
+  
+  if (length(top_kir_clones) > 0) {
+    shared_data <- TARA_cd8@meta.data %>%
+      filter(CTaa %in% top_kir_clones) %>%
+      group_by(CTaa, CD8_Annotation) %>%
+      summarise(n = n(), .groups = "drop") %>%
+      mutate(Clone = factor(CTaa, levels = top_kir_clones),
+             Clone_short = paste0("Clone ", seq_along(top_kir_clones))[match(CTaa, top_kir_clones)])
+    
+    p_s6d <- ggplot(shared_data, aes(x = Clone_short, y = n, fill = CD8_Annotation)) +
+      geom_col(width = 0.6) +
+      scale_fill_brewer(palette = "Set2", name = "CD8 cluster") +
+      labs(x = "", y = "Number of cells",
+           title = "Top KIR+ clonotypes: distribution across CD8 clusters") +
+      theme_cowplot(font_size = 18) +
+      theme(axis.text = element_text(size = 14), axis.title = element_text(size = 16),
+            plot.title = element_text(size = 18, face = "bold"),
+            legend.text = element_text(size = 14), legend.position = "right",
+            plot.background = element_rect(fill = "white", color = NA)) +
+      coord_flip()
+    
+    ggsave(file.path(s6_dir, "S6d_KIR_top_clones_across_clusters.png"),
+           plot = p_s6d, width = 12, height = 7, dpi = 300, bg = "white")
+  }
+  
+  cat("  S6: All panels saved to", s6_dir, "\n")
+} else {
+  cat("  S6: KIR+ innate-like CD8 cluster not found — skipping\n")
+}
+
+################################################################################
 # ── Interpretation summaries ─────────────────────────────────────────────────
 summary_dir <- file.path(supp_dir, "interpretation_summaries")
 dir.create(summary_dir, recursive=TRUE, showWarnings=FALSE)

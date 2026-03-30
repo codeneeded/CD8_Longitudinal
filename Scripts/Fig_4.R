@@ -229,7 +229,7 @@ if (file.exists(dge_all_path)) {
   stemness_genes     <- c("TCF7", "SELL", "CCR7", "LEF1", "BACH2", "BCL2", "IL7R", "S1PR1", "KLF2")
   cytotoxic_genes    <- c("GZMB", "GNLY", "PRF1", "NKG7", "GZMA", "GZMH", "FGFBP2")
   stress_genes       <- c("HSPA1A", "HSPA1B", "DNAJB1", "IFI27", "IFI44L")
-  ifn_memory_genes   <- c("IFIT1", "IFIT3", "ISG15", "MX1")
+  ifn_memory_genes   <- c("IFIT1", "IFIT3", "ISG15", "MX1", "H3F3A", "H3F3B")
   chemokine_genes    <- c("CCL3", "CCL3L3", "CCL4", "CCL4L2", "CCL5")
   terminal_genes     <- c("ZEB2", "PRDM1", "TBX21", "CX3CR1", "S1PR5", "ID2", "EOMES")
   activation_genes   <- c("HLA-DRA", "CD38", "FAS", "CD69")
@@ -256,6 +256,7 @@ if (file.exists(dge_all_path)) {
   dge_all$highlight[dge_all$gene %in% activation_genes]  <- "Activation"
   dge_all$highlight <- factor(dge_all$highlight, levels = names(highlight_cols))
   
+  # Labels: only significant genes in highlight categories
   genes_to_label <- c(exhaustion_genes, stemness_genes, cytotoxic_genes,
                       stress_genes, ifn_memory_genes, chemokine_genes,
                       terminal_genes, activation_genes)
@@ -264,10 +265,9 @@ if (file.exists(dge_all_path)) {
   dge_all$label[dge_all$gene %in% genes_to_label & dge_all$p_val_adj < 0.05] <-
     dge_all$gene[dge_all$gene %in% genes_to_label & dge_all$p_val_adj < 0.05]
   
-  # Tight x-axis: cap at 99.5th percentile of |log2FC| (most genes 0–6, outliers at 10–20)
+  # Tight x-axis: cap at 99.5th percentile of |log2FC|
   x_vals <- abs(dge_all$avg_log2FC[is.finite(dge_all$avg_log2FC)])
   x_lim  <- quantile(x_vals, 0.995) * 1.15
-  # Clamp outlier genes to the edge so they're visible but don't stretch the axis
   dge_all$avg_log2FC_plot <- pmax(pmin(dge_all$avg_log2FC, x_lim * 0.98), -x_lim * 0.98)
   
   # Tight y-axis: cap at 99.5th percentile
@@ -284,30 +284,15 @@ if (file.exists(dge_all_path)) {
       size = 8, fontface = "bold.italic",
       max.overlaps = 50, segment.size = 0.4, segment.color = "grey40",
       min.segment.length = 0.1, box.padding = 0.5,
-      label.size = 0.2, show.legend = FALSE
+      label.size = 0.2, show.legend = FALSE,
+      force = 2, force_pull = 0.5
     ) +
     geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40", linewidth = 0.4) +
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed", color = "grey40", linewidth = 0.4) +
     scale_color_manual(values = highlight_cols, name = "Gene category", drop = FALSE) +
     scale_fill_manual(values = highlight_cols, guide = "none") +
-    scale_y_continuous(expand = expansion(mult = c(0.02, 0.02))) +
-    coord_cartesian(xlim = c(-x_lim, x_lim), ylim = c(0, y_cap), clip = "off") +
-    # ── Directional arrows BELOW the plot area (in margin space) ─────────────
-    # Negative y values place these below y=0, visible because clip = "off"
-    annotate("segment", x = 0.15, xend = x_lim * 0.85,
-             y = -y_cap * 0.12, yend = -y_cap * 0.12,
-             arrow = arrow(length = unit(0.3, "cm"), type = "closed"),
-             color = "#52B788", linewidth = 1.3) +
-    annotate("text", x = x_lim * 0.52, y = -y_cap * 0.17,
-             label = "Higher in suppressed", color = "#52B788",
-             size = 6.5, fontface = "bold") +
-    annotate("segment", x = -0.15, xend = -x_lim * 0.85,
-             y = -y_cap * 0.12, yend = -y_cap * 0.12,
-             arrow = arrow(length = unit(0.3, "cm"), type = "closed"),
-             color = "#E76F51", linewidth = 1.3) +
-    annotate("text", x = -x_lim * 0.52, y = -y_cap * 0.17,
-             label = "Higher in unsuppressed", color = "#E76F51",
-             size = 6.5, fontface = "bold") +
+    scale_x_continuous(limits = c(-x_lim, x_lim), oob = scales::squish) +
+    scale_y_continuous(limits = c(0, y_cap), oob = scales::squish) +
     labs(
       x = expression(log[2]~fold~change),
       y = expression(-log[10]~adjusted~italic(p))
@@ -322,14 +307,39 @@ if (file.exists(dge_all_path)) {
       legend.spacing.y = unit(0.3, "cm"),
       axis.text        = element_text(size = 18),
       axis.title       = element_text(size = 20),
+      axis.title.x     = element_text(size = 18),
       plot.background  = element_rect(fill = "white", color = NA),
-      panel.background = element_rect(fill = "white", color = NA),
-      plot.margin      = margin(10, 10, 75, 10)  # extra bottom margin for arrows below axis title
+      panel.background = element_rect(fill = "white", color = NA)
     ) +
     guides(color = guide_legend(override.aes = list(size = 9, alpha = 1)))
   
+  # ── Add directional arrows below the plot using grid grobs ─────────────────
+  library(grid)
+  arrow_right <- grobTree(
+    linesGrob(x = unit(c(0.52, 0.88), "npc"), y = unit(c(0.5, 0.5), "npc"),
+              arrow = arrow(length = unit(0.3, "cm"), type = "closed"),
+              gp = gpar(col = "#52B788", lwd = 3)),
+    textGrob("Higher in suppressed", x = unit(0.70, "npc"), y = unit(0.15, "npc"),
+             gp = gpar(col = "#52B788", fontsize = 14, fontface = "bold"))
+  )
+  arrow_left <- grobTree(
+    linesGrob(x = unit(c(0.48, 0.12), "npc"), y = unit(c(0.5, 0.5), "npc"),
+              arrow = arrow(length = unit(0.3, "cm"), type = "closed"),
+              gp = gpar(col = "#E76F51", lwd = 3)),
+    textGrob("Higher in unsuppressed", x = unit(0.30, "npc"), y = unit(0.15, "npc"),
+             gp = gpar(col = "#E76F51", fontsize = 14, fontface = "bold"))
+  )
+  
+  p_E_final <- p_E +
+    theme(plot.margin = margin(10, 10, 85, 10)) +
+    annotation_custom(grob = arrow_right, xmin = -Inf, xmax = Inf,
+                      ymin = -y_cap * 0.28, ymax = -y_cap * 0.15) +
+    annotation_custom(grob = arrow_left, xmin = -Inf, xmax = Inf,
+                      ymin = -y_cap * 0.28, ymax = -y_cap * 0.15) +
+    coord_cartesian(ylim = c(0, y_cap), xlim = c(-x_lim, x_lim), clip = "off")
+  
   ggsave(file.path(fig4_dir, "Fig4E_Volcano_AllClusters.png"),
-         plot = p_E, width = 14, height = 11, dpi = 300, bg = "white")
+         plot = p_E_final, width = 14, height = 11, dpi = 300, bg = "white")
 } else {
   cat("    WARNING: DGE file not found at", dge_all_path, "\n")
 }
@@ -497,3 +507,4 @@ if (file.exists(module_path)) {
 
 cat("\n=== Figure 4 complete:", length(list.files(fig4_dir, "\\.png$")), "panels ===\n")
 cat("Output:", fig4_dir, "\n")
+

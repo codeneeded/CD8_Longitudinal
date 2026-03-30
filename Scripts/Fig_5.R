@@ -194,9 +194,9 @@ if (exists("m3_pt")) {
 }
 
 ################################################################################
-# Panels C & D: Exhaustion and Stemness along pseudotime
+# Panels C, D & E: Exhaustion, Stemness, and Type I IFN memory along pseudotime
 ################################################################################
-cat("  Panels C & D: Module scores along pseudotime...\n")
+cat("  Panels C, D & E: Module scores along pseudotime...\n")
 
 if (exists("m3_pt") & file.exists(module_path)) {
   mod_scores <- read.csv(module_path, row.names = 1)
@@ -206,21 +206,15 @@ if (exists("m3_pt") & file.exists(module_path)) {
     pseudotime = m3_pt$monocle3_pseudotime[match(common, m3_pt$cell)],
     Timepoint  = mod_scores[common, "Timepoint_Group"],
     Exhaustion = mod_scores[common, "Exhaustion"],
-    Stemness   = mod_scores[common, "Stemness"]
+    Stemness   = mod_scores[common, "Stemness"],
+    TypeI_IFN_Memory = mod_scores[common, "TypeI_IFN_Memory"]
   ) %>% filter(!is.na(pseudotime) & is.finite(pseudotime))
   
   pt_mod$Timepoint <- factor(pt_mod$Timepoint,
                              levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
   
-  # ── Panel C: Exhaustion ────────────────────────────────────────────────────
-  p_5C <- ggplot(pt_mod, aes(x = pseudotime, y = Exhaustion, color = Timepoint)) +
-    geom_point(size = 0.15, alpha = 0.1) +
-    geom_smooth(method = "loess", se = TRUE, linewidth = 1.8, alpha = 0.2, span = 0.4) +
-    scale_color_manual(values = art_colors, name = "ART Status",
-                       labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
-    labs(x = "Monocle3 pseudotime", y = "Exhaustion score",
-         title = "Exhaustion along differentiation") +
-    theme_cowplot(font_size = 22) +
+  # Shared theme for pseudotime panels
+  pt_theme <- theme_cowplot(font_size = 22) +
     theme(
       axis.text        = element_text(size = 16),
       axis.title       = element_text(size = 18),
@@ -230,7 +224,17 @@ if (exists("m3_pt") & file.exists(module_path)) {
       legend.position  = "bottom",
       plot.background  = element_rect(fill = "white", color = NA),
       panel.background = element_rect(fill = "white", color = NA)
-    ) +
+    )
+  
+  # ── Panel C: Exhaustion ────────────────────────────────────────────────────
+  p_5C <- ggplot(pt_mod, aes(x = pseudotime, y = Exhaustion, color = Timepoint)) +
+    geom_point(size = 0.15, alpha = 0.1) +
+    geom_smooth(method = "loess", se = TRUE, linewidth = 1.8, alpha = 0.2, span = 0.4) +
+    scale_color_manual(values = art_colors, name = "ART Status",
+                       labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+    labs(x = "Monocle3 pseudotime", y = "Exhaustion score",
+         title = "Exhaustion along differentiation") +
+    pt_theme +
     guides(color = guide_legend(override.aes = list(size = 5, alpha = 1)))
   
   ggsave(file.path(fig5_dir, "Fig5C_Exhaustion_pseudotime.png"),
@@ -244,29 +248,37 @@ if (exists("m3_pt") & file.exists(module_path)) {
                        labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
     labs(x = "Monocle3 pseudotime", y = "Stemness score",
          title = "Stemness along differentiation") +
-    theme_cowplot(font_size = 22) +
-    theme(
-      axis.text        = element_text(size = 16),
-      axis.title       = element_text(size = 18),
-      plot.title       = element_text(size = 20, face = "bold"),
-      legend.text      = element_text(size = 16),
-      legend.title     = element_text(size = 17, face = "bold"),
-      legend.position  = "bottom",
-      plot.background  = element_rect(fill = "white", color = NA),
-      panel.background = element_rect(fill = "white", color = NA)
-    ) +
+    pt_theme +
     guides(color = guide_legend(override.aes = list(size = 5, alpha = 1)))
   
   ggsave(file.path(fig5_dir, "Fig5D_Stemness_pseudotime.png"),
          plot = p_5D, width = 9, height = 7, dpi = 300, bg = "white")
+  
+  # ── Panel E: Type I IFN memory ─────────────────────────────────────────────
+  if ("TypeI_IFN_Memory" %in% colnames(pt_mod) && any(!is.na(pt_mod$TypeI_IFN_Memory))) {
+    p_5E <- ggplot(pt_mod, aes(x = pseudotime, y = TypeI_IFN_Memory, color = Timepoint)) +
+      geom_point(size = 0.15, alpha = 0.1) +
+      geom_smooth(method = "loess", se = TRUE, linewidth = 1.8, alpha = 0.2, span = 0.4) +
+      scale_color_manual(values = art_colors, name = "ART Status",
+                         labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+      labs(x = "Monocle3 pseudotime", y = "Type I IFN memory score",
+           title = "Type I IFN memory along differentiation") +
+      pt_theme +
+      guides(color = guide_legend(override.aes = list(size = 5, alpha = 1)))
+    
+    ggsave(file.path(fig5_dir, "Fig5E_TypeI_IFN_Memory_pseudotime.png"),
+           plot = p_5E, width = 9, height = 7, dpi = 300, bg = "white")
+  } else {
+    cat("    WARNING: TypeI_IFN_Memory not found in module scores — skipping 5E\n")
+  }
 } else {
-  cat("    WARNING: Cannot generate C/D — missing pseudotime or module score files\n")
+  cat("    WARNING: Cannot generate C/D/E — missing pseudotime or module score files\n")
 }
 
 ################################################################################
-# Panels E & F: Exhaustion and Stemness vs viral load
+# Panels F, G & H: Exhaustion, Stemness, and IFN memory vs viral load
 ################################################################################
-cat("  Panels E & F: Module scores vs viral load...\n")
+cat("  Panels F, G & H: Module scores vs viral load...\n")
 
 if (file.exists(vl_path)) {
   sample_scores <- read.csv(vl_path)
@@ -275,12 +287,25 @@ if (file.exists(vl_path)) {
   sample_scores$Timepoint_Group <- factor(sample_scores$Timepoint_Group,
                                           levels = c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed"))
   
-  # ── Panel E: Exhaustion vs viral load ──────────────────────────────────────
+  # Shared theme for VL panels
+  vl_theme <- theme_cowplot(font_size = 22) +
+    theme(
+      axis.text        = element_text(size = 16),
+      axis.title       = element_text(size = 18),
+      plot.title       = element_text(size = 20, face = "bold"),
+      legend.text      = element_text(size = 16),
+      legend.title     = element_text(size = 17, face = "bold"),
+      legend.position  = "right",
+      plot.background  = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA)
+    )
+  
+  # ── Panel F: Exhaustion vs viral load ──────────────────────────────────────
   if ("Exhaustion" %in% colnames(sample_scores)) {
     cor_exh <- cor.test(sample_scores$log10_VL, sample_scores$Exhaustion,
                         method = "spearman", exact = FALSE)
     
-    p_5E <- ggplot(sample_scores, aes(x = log10_VL, y = Exhaustion)) +
+    p_5F <- ggplot(sample_scores, aes(x = log10_VL, y = Exhaustion)) +
       geom_point(aes(color = Timepoint_Group, size = n_expanding), alpha = 0.8) +
       geom_smooth(method = "lm", se = TRUE, color = "grey30", linewidth = 0.8, linetype = "dashed") +
       geom_text_repel(aes(label = PID), size = 5, max.overlaps = 15, color = "grey30") +
@@ -288,33 +313,23 @@ if (file.exists(vl_path)) {
                          labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
       scale_size_continuous(name = "N expanding", range = c(3, 9)) +
       annotate("text", x = -Inf, y = Inf,
-               label = sprintf("ρ = %.2f\np = %.2g", cor_exh$estimate, cor_exh$p.value),
+               label = sprintf("\u03c1 = %.2f\np = %.2g", cor_exh$estimate, cor_exh$p.value),
                hjust = -0.1, vjust = 1.3, size = 8, fontface = "bold") +
       labs(x = expression(log[10]~viral~load), y = "Mean exhaustion score",
            title = "Exhaustion vs viral load") +
-      theme_cowplot(font_size = 22) +
-      theme(
-        axis.text        = element_text(size = 16),
-        axis.title       = element_text(size = 18),
-        plot.title       = element_text(size = 20, face = "bold"),
-        legend.text      = element_text(size = 16),
-        legend.title     = element_text(size = 17, face = "bold"),
-        legend.position  = "right",
-        plot.background  = element_rect(fill = "white", color = NA),
-        panel.background = element_rect(fill = "white", color = NA)
-      ) +
+      vl_theme +
       guides(color = guide_legend(override.aes = list(size = 5)))
     
-    ggsave(file.path(fig5_dir, "Fig5E_Exhaustion_vs_ViralLoad.png"),
-           plot = p_5E, width = 11, height = 8, dpi = 300, bg = "white")
+    ggsave(file.path(fig5_dir, "Fig5F_Exhaustion_vs_ViralLoad.png"),
+           plot = p_5F, width = 11, height = 8, dpi = 300, bg = "white")
   }
   
-  # ── Panel F: Stemness vs viral load ────────────────────────────────────────
+  # ── Panel G: Stemness vs viral load ────────────────────────────────────────
   if ("Stemness" %in% colnames(sample_scores)) {
     cor_stem <- cor.test(sample_scores$log10_VL, sample_scores$Stemness,
                          method = "spearman", exact = FALSE)
     
-    p_5F <- ggplot(sample_scores, aes(x = log10_VL, y = Stemness)) +
+    p_5G <- ggplot(sample_scores, aes(x = log10_VL, y = Stemness)) +
       geom_point(aes(color = Timepoint_Group, size = n_expanding), alpha = 0.8) +
       geom_smooth(method = "lm", se = TRUE, color = "grey30", linewidth = 0.8, linetype = "dashed") +
       geom_text_repel(aes(label = PID), size = 5, max.overlaps = 15, color = "grey30") +
@@ -322,28 +337,43 @@ if (file.exists(vl_path)) {
                          labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
       scale_size_continuous(name = "N expanding", range = c(3, 9)) +
       annotate("text", x = -Inf, y = Inf,
-               label = sprintf("ρ = %.2f\np = %.2g", cor_stem$estimate, cor_stem$p.value),
+               label = sprintf("\u03c1 = %.2f\np = %.2g", cor_stem$estimate, cor_stem$p.value),
                hjust = -0.1, vjust = 1.3, size = 8, fontface = "bold") +
       labs(x = expression(log[10]~viral~load), y = "Mean stemness score",
            title = "Stemness vs viral load") +
-      theme_cowplot(font_size = 22) +
-      theme(
-        axis.text        = element_text(size = 16),
-        axis.title       = element_text(size = 18),
-        plot.title       = element_text(size = 20, face = "bold"),
-        legend.text      = element_text(size = 16),
-        legend.title     = element_text(size = 17, face = "bold"),
-        legend.position  = "right",
-        plot.background  = element_rect(fill = "white", color = NA),
-        panel.background = element_rect(fill = "white", color = NA)
-      ) +
+      vl_theme +
       guides(color = guide_legend(override.aes = list(size = 5)))
     
-    ggsave(file.path(fig5_dir, "Fig5F_Stemness_vs_ViralLoad.png"),
-           plot = p_5F, width = 11, height = 8, dpi = 300, bg = "white")
+    ggsave(file.path(fig5_dir, "Fig5G_Stemness_vs_ViralLoad.png"),
+           plot = p_5G, width = 11, height = 8, dpi = 300, bg = "white")
+  }
+  
+  # ── Panel H: Type I IFN memory vs viral load ──────────────────────────────
+  if ("TypeI_IFN_Memory" %in% colnames(sample_scores)) {
+    cor_ifn <- cor.test(sample_scores$log10_VL, sample_scores$TypeI_IFN_Memory,
+                        method = "spearman", exact = FALSE)
+    
+    p_5H <- ggplot(sample_scores, aes(x = log10_VL, y = TypeI_IFN_Memory)) +
+      geom_point(aes(color = Timepoint_Group, size = n_expanding), alpha = 0.8) +
+      geom_smooth(method = "lm", se = TRUE, color = "grey30", linewidth = 0.8, linetype = "dashed") +
+      geom_text_repel(aes(label = PID), size = 5, max.overlaps = 15, color = "grey30") +
+      scale_color_manual(values = art_colors, name = "ART Status",
+                         labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+      scale_size_continuous(name = "N expanding", range = c(3, 9)) +
+      annotate("text", x = -Inf, y = Inf,
+               label = sprintf("\u03c1 = %.2f\np = %.2g", cor_ifn$estimate, cor_ifn$p.value),
+               hjust = -0.1, vjust = 1.3, size = 8, fontface = "bold") +
+      labs(x = expression(log[10]~viral~load), y = "Mean Type I IFN memory score",
+           title = "Type I IFN memory vs viral load") +
+      vl_theme +
+      guides(color = guide_legend(override.aes = list(size = 5)))
+    
+    ggsave(file.path(fig5_dir, "Fig5H_IFNmemory_vs_ViralLoad.png"),
+           plot = p_5H, width = 11, height = 8, dpi = 300, bg = "white")
   }
 } else {
   cat("    WARNING: Viral load file not found at", vl_path, "\n")
 }
 
 cat("\n=== Figure 5 complete:", length(list.files(fig5_dir, "\\.png$")), "panels saved to:", fig5_dir, "===\n")
+

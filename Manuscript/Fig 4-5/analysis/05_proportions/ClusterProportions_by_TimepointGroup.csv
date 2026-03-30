@@ -10,25 +10,25 @@
 "Transitional Tem CD8","PreART_Entry",0.0261505376344086
 "γδ1 T cell","PreART_Entry",0.0282150537634409
 "γδ2 T cell","PreART_Entry",0.0118709677419355
-"KIR+ innate-like CD8","PostART_Suppressed",0.05837394771821
-"MAIT-like Trm","PostART_Suppressed",0.00808595480726628
-"Naïve CD8","PostART_Suppressed",0.20934869295525
-"Naïve CD8 2","PostART_Suppressed",0.0127381479840496
-"Naïve CD8 3","PostART_Suppressed",0.0901639344262295
-"Naïve γδ1 T cell","PostART_Suppressed",0.0227071333628711
-"TEM CD8","PostART_Suppressed",0.228954364200266
-"TEMRA CD8","PostART_Suppressed",0.145214887018166
-"Transitional Tem CD8","PostART_Suppressed",0.0890562693841382
-"γδ1 T cell","PostART_Suppressed",0.129596809924679
-"γδ2 T cell","PostART_Suppressed",0.00575985821887461
-"KIR+ innate-like CD8","PostART_Unsuppressed",0.0273479668945664
-"MAIT-like Trm","PostART_Unsuppressed",0.00575746671464556
-"Naïve CD8","PostART_Unsuppressed",0.15545160129543
-"Naïve CD8 2","PostART_Unsuppressed",0.0368837711406981
-"Naïve CD8 3","PostART_Unsuppressed",0.0784454839870457
-"Naïve γδ1 T cell","PostART_Unsuppressed",0.0167326376394386
-"TEM CD8","PostART_Unsuppressed",0.235696293630802
-"TEMRA CD8","PostART_Unsuppressed",0.132961496941346
-"Transitional Tem CD8","PostART_Unsuppressed",0.0465994962216625
-"γδ1 T cell","PostART_Unsuppressed",0.249370277078086
-"γδ2 T cell","PostART_Unsuppressed",0.0147535084562792
+"KIR+ innate-like CD8","PostART_Suppressed",0.0682151915632092
+"MAIT-like Trm","PostART_Suppressed",0.00667467627820051
+"Naïve CD8","PostART_Suppressed",0.23267921505807
+"Naïve CD8 2","PostART_Suppressed",0.0142838072353491
+"Naïve CD8 3","PostART_Suppressed",0.105593378721132
+"Naïve γδ1 T cell","PostART_Suppressed",0.0252302763315979
+"TEM CD8","PostART_Suppressed",0.192631157388867
+"TEMRA CD8","PostART_Suppressed",0.156721399012148
+"Transitional Tem CD8","PostART_Suppressed",0.0931784808436791
+"γδ1 T cell","PostART_Suppressed",0.0982512348151115
+"γδ2 T cell","PostART_Suppressed",0.0065411827526365
+"KIR+ innate-like CD8","PostART_Unsuppressed",0.0236786469344609
+"MAIT-like Trm","PostART_Unsuppressed",0.00775193798449612
+"Naïve CD8","PostART_Unsuppressed",0.142494714587738
+"Naïve CD8 2","PostART_Unsuppressed",0.0300211416490486
+"Naïve CD8 3","PostART_Unsuppressed",0.0646934460887949
+"Naïve γδ1 T cell","PostART_Unsuppressed",0.0153629316420014
+"TEM CD8","PostART_Unsuppressed",0.272586328400282
+"TEMRA CD8","PostART_Unsuppressed",0.123467230443975
+"Transitional Tem CD8","PostART_Unsuppressed",0.0514446793516561
+"γδ1 T cell","PostART_Unsuppressed",0.256518675123326
+"γδ2 T cell","PostART_Unsuppressed",0.0119802677942213
