@@ -1,5 +1,5 @@
 ################################################################################
-# FIGURE 3 — MAIN PANELS + SUPPLEMENTARY S3 (FINAL)
+# FIGURE 3 — MAIN PANELS + SUPPLEMENTARY S3 (FINAL - EDITED)
 #
 # MAIN FIGURE 3:
 #   A  — Experimental schematic (Illustrator)
@@ -31,6 +31,7 @@ library(ggalluvial)
 library(patchwork)
 library(RColorBrewer)
 library(qs2)
+library(ggrepel)
 
 base_dir  <- "~/Documents/CD8_Longitudinal"
 saved_dir <- file.path(base_dir, "saved_R_data")
@@ -46,26 +47,27 @@ tara_cp003  <- qs_read(file.path(saved_dir, "tara_cp003_fig3_annotated.qs2"))
 red_use <- "umap.mnn.rna"
 
 # ═══════════════════════════════════════════════════════════════
-# PALETTES
+# PALETTES - IMPROVED COLORS
 # ═══════════════════════════════════════════════════════════════
 
 anno_order <- c("Naive/Bystander", "Transitional Tem", "Tpex",
                 "TEMRA/Effector", "Cycling Effector", "Tex")
 
+# IMPROVED: More vibrant, distinct colors
 anno_cols <- c(
-  "Naive/Bystander"  = "#4E79A7",
-  "Transitional Tem" = "#59A14F",
-  "Tpex"             = "#EDC948",
-  "TEMRA/Effector"   = "#E15759",
-  "Cycling Effector"  = "#FF9DA7",
-  "Tex"              = "#9C755F"
+  "Naive/Bystander"   = "#2166AC",
+  "Transitional Tem"  = "#1A9850",
+  "Tpex"              = "#F4A261",
+  "TEMRA/Effector"    = "#E63946",
+  "Cycling Effector"  = "#9D4EDD",
+  "Tex"               = "#6D4C41"
 )
 
 cp003_clean$Fig3_Annotation <- factor(cp003_clean$Fig3_Annotation, levels = anno_order)
 
-hiv_cols   <- c("Other" = "grey85", "HIV-Specific TCR" = "#E63946")
+hiv_cols   <- c("Other" = "#E0E0E0", "HIV-Specific TCR" = "#E63946")
 phase_cols <- c("G1" = "#AEC6CF", "S" = "#FFD700", "G2M" = "#E63946")
-tp_cols    <- c("2 months" = "#E63946", "101 months" = "#4E79A7")
+tp_cols    <- c("2 months" = "#E63946", "101 months" = "#2166AC")
 
 
 ################################################################################
@@ -73,38 +75,124 @@ tp_cols    <- c("2 months" = "#E63946", "101 months" = "#4E79A7")
 ################################################################################
 
 # ═══════════════════════════════════════════════════════════════
-# PANEL B1: UMAP — Annotated clusters (no legend, large labels)
+# PANEL B1: UMAP — Annotated clusters (labels on plot, no legend)
 # ═══════════════════════════════════════════════════════════════
 cat("Panel B1: Annotated UMAP...\n")
 
-panelB1 <- DimPlot2(
-  cp003_clean, reduction = red_use, group.by = "Fig3_Annotation",
-  cols = 'default', label = TRUE, box = TRUE, label.size = 13,
-  repel = TRUE, pt.size = 0.6, raster = FALSE,
-  theme = list(NoAxes(), NoLegend(), theme_umap_arrows())
-) + ggtitle("CP003 stimulation") +
-  theme(plot.title = element_text(size = 32, face = "bold"))
+# Get UMAP coordinates for manual plotting
+umap_coords <- as.data.frame(Embeddings(cp003_clean, reduction = red_use))
+colnames(umap_coords) <- c("UMAP1", "UMAP2")
+umap_coords$Annotation <- cp003_clean$Fig3_Annotation
+
+# Calculate cluster centers for labels
+cluster_centers <- umap_coords %>%
+  group_by(Annotation) %>%
+  summarise(UMAP1 = median(UMAP1), UMAP2 = median(UMAP2), .groups = "drop")
+
+# Calculate data ranges for proportional arrows
+x_range <- diff(range(umap_coords$UMAP1, na.rm = TRUE))
+y_range <- diff(range(umap_coords$UMAP2, na.rm = TRUE))
+
+# Arrow lengths proportional to ranges (same visual length on square output)
+arrow_frac <- 0.12
+x_arrow_len <- x_range * arrow_frac
+y_arrow_len <- y_range * arrow_frac
+
+# Arrow position - outside data
+x_arrow <- min(umap_coords$UMAP1, na.rm = TRUE) - x_range * 0.05
+y_arrow <- min(umap_coords$UMAP2, na.rm = TRUE) - y_range * 0.08
+
+panelB1 <- ggplot(umap_coords, aes(x = UMAP1, y = UMAP2, color = Annotation)) +
+  geom_point(size = 2.5, alpha = 0.85) +
+  scale_color_manual(values = anno_cols) +
+  # Labels: WHITE fill, COLORED text (like Fig 1)
+  geom_label_repel(
+    data = cluster_centers,
+    aes(x = UMAP1, y = UMAP2, label = Annotation, color = Annotation),
+    fill = "white",
+    size = 11,
+    fontface = "bold",
+    label.size = 0.5,
+    label.padding = unit(0.3, "lines"),
+    box.padding = 0.6,
+    segment.color = "grey50",
+    segment.size = 0.5,
+    max.overlaps = 20,
+    show.legend = FALSE
+  ) +
+  # UMAP arrows - proportional lengths for equal visual size
+  annotate("segment", 
+           x = x_arrow, xend = x_arrow + x_arrow_len,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.25, "cm"), type = "closed"),
+           linewidth = 0.8, color = "black") +
+  annotate("text", x = x_arrow + x_arrow_len/2, y = y_arrow - y_range * 0.04,
+           label = "UMAP1", size = 5, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + y_arrow_len,
+           arrow = arrow(length = unit(0.25, "cm"), type = "closed"),
+           linewidth = 0.8, color = "black") +
+  annotate("text", x = x_arrow - x_range * 0.04, y = y_arrow + y_arrow_len/2,
+           label = "UMAP2", size = 5, fontface = "bold", angle = 90) +
+  ggtitle("CP003 Stimulation") +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 40, face = "bold", hjust = 0.5),
+    legend.position = "none",
+    plot.margin = margin(10, 10, 20, 20)
+  ) +
+  coord_cartesian(clip = "off")
 
 ggsave(file.path(panel_dir, "Fig3B1_UMAP_Annotated.png"),
        panelB1, width = 9, height = 9, dpi = 400, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
-# PANEL B2: UMAP — HIV-Specific TCR overlay
+# PANEL B2: UMAP — HIV-Specific TCR overlay (no legend, title says it all)
 # ═══════════════════════════════════════════════════════════════
 cat("Panel B2: HIV-Specific UMAP...\n")
 
-panelB2 <- DimPlot(
-  cp003_clean, reduction = red_use, group.by = "HIV_Specific_TCR",
-  cols = hiv_cols, pt.size = 0.6, raster = FALSE
-) + NoAxes() + NoLegend() +
-  ggtitle("HIV-specific clones (red)") +
-  theme(plot.title = element_text(size = 32, face = "bold", color = "#E63946"))
+umap_coords$HIV_Status <- cp003_clean$HIV_Specific_TCR
+
+# Order so HIV cells plot on top
+umap_ordered <- umap_coords %>%
+  arrange(HIV_Status == "HIV-Specific TCR")
+
+panelB2 <- ggplot(umap_ordered, aes(x = UMAP1, y = UMAP2, color = HIV_Status)) +
+  geom_point(aes(size = HIV_Status), alpha = 0.8) +
+  scale_color_manual(values = hiv_cols) +
+  scale_size_manual(values = c("Other" = 1.5, "HIV-Specific TCR" = 3)) +
+  # UMAP arrows - proportional lengths (same as B1)
+  annotate("segment", 
+           x = x_arrow, xend = x_arrow + x_arrow_len,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.25, "cm"), type = "closed"),
+           linewidth = 0.8, color = "black") +
+  annotate("text", x = x_arrow + x_arrow_len/2, y = y_arrow - y_range * 0.04,
+           label = "UMAP1", size = 5, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + y_arrow_len,
+           arrow = arrow(length = unit(0.25, "cm"), type = "closed"),
+           linewidth = 0.8, color = "black") +
+  annotate("text", x = x_arrow - x_range * 0.04, y = y_arrow + y_arrow_len/2,
+           label = "UMAP2", size = 5, fontface = "bold", angle = 90) +
+  ggtitle("HIV-Specific Clones (Red)") +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 40, face = "bold", hjust = 0.5, color = "#E63946"),
+    legend.position = "none",
+    plot.margin = margin(10, 10, 20, 20)
+  ) +
+  coord_cartesian(clip = "off")
 
 ggsave(file.path(panel_dir, "Fig3B2_UMAP_HIV_Specific.png"),
        panelB2, width = 9, height = 9, dpi = 400, bg = "white")
+
+
 # ═══════════════════════════════════════════════════════════════
-# PANEL C: Alluvial
+# PANEL C: Alluvial (IMPROVED - larger text, colored subtitle)
 # ═══════════════════════════════════════════════════════════════
 cat("Panel C: Alluvial...\n")
 
@@ -144,25 +232,25 @@ if (nrow(multi_tp) > 0) {
     scale_fill_manual(values = clone_pal, guide = "none") +
     scale_x_discrete(expand = c(0.08, 0.08), drop = FALSE) +
     scale_y_continuous(expand = c(0, 0)) +
-    theme_classic(base_size = 28) +
+    theme_classic(base_size = 36) +
     theme(
-      axis.text.x   = element_text(size = 24, hjust = 0.5, lineheight = 0.9, face = "bold"),
-      axis.text.y   = element_text(size = 22),
-      axis.title    = element_text(size = 26, face = "bold"),
-      plot.title    = element_text(size = 32, face = "bold"),
-      plot.subtitle = element_text(size = 22, color = "grey40")
+      axis.text.x   = element_text(size = 32, hjust = 0.5, lineheight = 0.9, face = "bold"),
+      axis.text.y   = element_text(size = 30),
+      axis.title    = element_text(size = 36, face = "bold"),
+      plot.title    = element_text(size = 48, face = "bold"),
+      plot.subtitle = element_text(size = 32, color = "#E63946", face = "bold")
     ) +
     labs(x = NULL, y = "Number of cells",
-         title = "HIV-specific clonotype persistence",
-         subtitle = paste0(n_clones, " clonotypes at \u22652 timepoints"))
+         title = "HIV-Specific Clonotype Persistence",
+         subtitle = paste0(n_clones, " clonotypes detected at ≥2 timepoints"))
   
   ggsave(file.path(panel_dir, "Fig3C_Alluvial.png"),
-         panelC, width = 12, height = 9, dpi = 400, bg = "white")
+         panelC, width = 16, height = 12, dpi = 400, bg = "white")
 }
 
 
 # ═══════════════════════════════════════════════════════════════
-# PANEL D: Functional gene expression — HIV-validated in TARA
+# PANEL D: Functional gene expression (IMPROVED - larger text)
 # ═══════════════════════════════════════════════════════════════
 cat("Panel D: Functional profile...\n")
 
@@ -204,31 +292,31 @@ cat_cols <- c(
 panelD <- ggplot(gene_stats, aes(x = gene, y = pct_expressing, fill = category)) +
   geom_col(width = 0.65) +
   geom_text(aes(label = paste0(pct_expressing, "%")),
-            hjust = -0.08, size = 7, fontface = "bold") +
+            hjust = -0.08, size = 9, fontface = "bold") +
   scale_fill_manual(values = cat_cols, name = NULL) +
   scale_y_continuous(limits = c(0, 115), breaks = seq(0, 100, 25), expand = c(0, 0)) +
   coord_flip() +
-  theme_classic(base_size = 28) +
+  theme_classic(base_size = 36) +
   theme(
-    axis.text.x   = element_text(size = 22),
-    axis.text.y   = element_text(size = 22, face = "italic"),
-    axis.title    = element_text(size = 26, face = "bold"),
+    axis.text.x   = element_text(size = 30),
+    axis.text.y   = element_text(size = 28, face = "italic"),
+    axis.title    = element_text(size = 34, face = "bold"),
     legend.position = "bottom",
-    legend.text   = element_text(size = 20),
-    plot.title    = element_text(size = 32, face = "bold"),
-    plot.subtitle = element_text(size = 22, color = "grey40")
+    legend.text   = element_text(size = 26),
+    plot.title    = element_text(size = 44, face = "bold"),
+    plot.subtitle = element_text(size = 30, color = "#2166AC", face = "bold")
   ) +
   labs(x = NULL, y = "% cells expressing",
-       title = "Functional profile of HIV-specific clones",
+       title = "Functional Profile of HIV-Specific Clones",
        subtitle = "127 validated cells in TARA unstimulated data") +
   guides(fill = guide_legend(nrow = 2))
 
 ggsave(file.path(panel_dir, "Fig3D_Functional_Profile.png"),
-       panelD, width = 12, height = 10, dpi = 400, bg = "white")
+       panelD, width = 16, height = 14, dpi = 400, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
-# PANEL E: Persistence histogram
+# PANEL E: Persistence histogram (IMPROVED)
 # ═══════════════════════════════════════════════════════════════
 cat("Panel E: Persistence...\n")
 
@@ -259,25 +347,25 @@ persist_summary <- persist_full %>% count(n_timepoints) %>%
 
 panelE <- ggplot(persist_summary, aes(x = n_timepoints, y = n)) +
   geom_col(fill = "#E63946", width = 0.6) +
-  geom_text(aes(label = n), vjust = -0.5, size = 10, fontface = "bold") +
+  geom_text(aes(label = n), vjust = -0.5, size = 14, fontface = "bold") +
   scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
-  theme_classic(base_size = 28) +
+  theme_classic(base_size = 36) +
   theme(
-    axis.text     = element_text(size = 24),
-    axis.title    = element_text(size = 26, face = "bold"),
-    plot.title    = element_text(size = 32, face = "bold"),
-    plot.subtitle = element_text(size = 22, color = "grey40")
+    axis.text     = element_text(size = 32, face = "bold"),
+    axis.title    = element_text(size = 36, face = "bold"),
+    plot.title    = element_text(size = 44, face = "bold"),
+    plot.subtitle = element_text(size = 30, color = "#E63946", face = "bold")
   ) +
-  labs(x = "Timepoints detected", y = "N clonotypes",
-       title = "Clonotype persistence",
+  labs(x = "Timepoints Detected", y = "N Clonotypes",
+       title = "Clonotype Persistence",
        subtitle = paste0(nrow(persist_full), " HIV-specific clonotypes"))
 
 ggsave(file.path(panel_dir, "Fig3E_Persistence.png"),
-       panelE, width = 8, height = 8, dpi = 400, bg = "white")
+       panelE, width = 10, height = 10, dpi = 400, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
-# PANEL F: TARA cluster composition
+# PANEL F: TARA cluster composition (IMPROVED - larger text)
 # ═══════════════════════════════════════════════════════════════
 cat("Panel F: TARA clusters...\n")
 
@@ -292,26 +380,26 @@ panelF <- ggplot(tara_hiv_clusters,
                  aes(x = Manual_Annotation_refined, y = n, fill = Manual_Annotation_refined)) +
   geom_col(width = 0.6, show.legend = FALSE) +
   geom_text(aes(label = paste0(n, " (", pct, "%)")),
-            hjust = -0.08, size = 7, fontface = "bold") +
+            hjust = -0.08, size = 10, fontface = "bold") +
   scale_y_continuous(expand = expansion(mult = c(0, 0.4))) +
   scale_fill_manual(values = c("TEMRA/CTL" = "#E15759", "Tpex CD8" = "#EDC948",
                                "DNAM1+ CD4 T cell" = "#4E79A7", "DN T cell_3" = "#76B7B2",
                                "Gamma Delta 1 T cells" = "#B07AA1", "Plasmablast" = "#FF9DA7")) +
   coord_flip() +
-  theme_classic(base_size = 28) +
+  theme_classic(base_size = 36) +
   theme(
-    axis.text.x   = element_text(size = 22),
-    axis.text.y   = element_text(size = 22),
-    axis.title    = element_text(size = 26, face = "bold"),
-    plot.title    = element_text(size = 32, face = "bold"),
-    plot.subtitle = element_text(size = 22, color = "grey40")
+    axis.text.x   = element_text(size = 30),
+    axis.text.y   = element_text(size = 28, face = "bold"),
+    axis.title    = element_text(size = 34, face = "bold"),
+    plot.title    = element_text(size = 44, face = "bold"),
+    plot.subtitle = element_text(size = 28, color = "#2166AC", face = "bold")
   ) +
-  labs(x = NULL, y = "N cells",
-       title = "Cluster distribution in TARA",
+  labs(x = NULL, y = "N Cells",
+       title = "Cluster Distribution in TARA",
        subtitle = "127 cells from 7 validated clonotypes")
 
 ggsave(file.path(panel_dir, "Fig3F_TARA_Clusters.png"),
-       panelF, width = 10, height = 6, dpi = 400, bg = "white")
+       panelF, width = 14, height = 8, dpi = 400, bg = "white")
 
 
 ################################################################################
@@ -336,21 +424,21 @@ p_s3a <- ggplot(cc_data, aes(x = Fig3_Annotation, y = proportion, fill = Phase))
   geom_col(width = 0.7) +
   scale_fill_manual(values = phase_cols) +
   scale_y_continuous(expand = c(0, 0), labels = scales::percent) +
-  theme_classic(base_size = 22) +
+  theme_classic(base_size = 26) +
   theme(
-    axis.text.x  = element_text(size = 18, angle = 35, hjust = 1, face = "bold"),
-    axis.text.y  = element_text(size = 18),
-    axis.title   = element_text(size = 20, face = "bold"),
+    axis.text.x  = element_text(size = 22, angle = 35, hjust = 1, face = "bold"),
+    axis.text.y  = element_text(size = 22),
+    axis.title   = element_text(size = 26, face = "bold"),
     legend.position = "top",
-    legend.text  = element_text(size = 18),
-    legend.title = element_text(size = 18),
-    plot.title   = element_text(size = 24, face = "bold")
+    legend.text  = element_text(size = 22),
+    legend.title = element_text(size = 22, face = "bold"),
+    plot.title   = element_text(size = 32, face = "bold")
   ) +
-  labs(x = NULL, y = "Proportion", fill = "Cell cycle",
-       title = "Cell cycle by cluster annotation")
+  labs(x = NULL, y = "Proportion", fill = "Cell Cycle",
+       title = "Cell Cycle by Cluster Annotation")
 
 ggsave(file.path(s3_dir, "S3A_CellCycle.png"),
-       p_s3a, width = 9, height = 6, dpi = 300, bg = "white")
+       p_s3a, width = 11, height = 8, dpi = 300, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -391,20 +479,20 @@ p_s3b <- ggplot(violin_stim, aes(x = Module, y = Score, fill = HIV_Specific_TCR)
   geom_boxplot(width = 0.12, outlier.size = 0.3, alpha = 0.6,
                position = position_dodge(width = 0.8)) +
   scale_fill_manual(values = c("Other" = "grey70", "HIV-Specific TCR" = "#E63946"), name = NULL) +
-  theme_classic(base_size = 22) +
+  theme_classic(base_size = 26) +
   theme(
-    axis.text.x  = element_text(size = 18, face = "bold"),
-    axis.text.y  = element_text(size = 18),
-    axis.title   = element_text(size = 20, face = "bold"),
+    axis.text.x  = element_text(size = 22, face = "bold"),
+    axis.text.y  = element_text(size = 22),
+    axis.title   = element_text(size = 26, face = "bold"),
     legend.position = "top",
-    legend.text  = element_text(size = 18),
-    plot.title   = element_text(size = 24, face = "bold")
+    legend.text  = element_text(size = 22),
+    plot.title   = element_text(size = 32, face = "bold")
   ) +
-  labs(x = NULL, y = "Module score",
-       title = "HIV-specific vs bystander (stimulation data)")
+  labs(x = NULL, y = "Module Score",
+       title = "HIV-Specific vs Bystander (Stimulation Data)")
 
 ggsave(file.path(s3_dir, "S3B_ModuleScores_HIVvsOther.png"),
-       p_s3b, width = 10, height = 7, dpi = 300, bg = "white")
+       p_s3b, width = 12, height = 9, dpi = 300, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -423,21 +511,21 @@ dot_genes <- dot_genes[dot_genes %in% rownames(cp003_clean)]
 Idents(cp003_clean) <- "Fig3_Annotation"
 
 p_s3c <- DotPlot(cp003_clean, features = dot_genes, group.by = "Fig3_Annotation",
-                 cols = c("grey90", "#E15759"), dot.scale = 8) +
+                 cols = c("grey90", "#E15759"), dot.scale = 10) +
   coord_flip() +
-  theme_classic(base_size = 20) +
+  theme_classic(base_size = 24) +
   theme(
-    axis.text.x  = element_text(size = 16, angle = 40, hjust = 1, face = "bold"),
-    axis.text.y  = element_text(size = 14),
-    axis.title   = element_text(size = 18, face = "bold"),
-    legend.text  = element_text(size = 14),
-    legend.title = element_text(size = 14),
-    plot.title   = element_text(size = 22, face = "bold")
+    axis.text.x  = element_text(size = 20, angle = 40, hjust = 1, face = "bold"),
+    axis.text.y  = element_text(size = 18, face = "italic"),
+    axis.title   = element_text(size = 22, face = "bold"),
+    legend.text  = element_text(size = 18),
+    legend.title = element_text(size = 18, face = "bold"),
+    plot.title   = element_text(size = 28, face = "bold")
   ) +
-  labs(title = "Key marker expression by annotation")
+  labs(title = "Key Marker Expression by Annotation")
 
 ggsave(file.path(s3_dir, "S3C_DotPlot.png"),
-       p_s3c, width = 11, height = 11, dpi = 300, bg = "white")
+       p_s3c, width = 13, height = 13, dpi = 300, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -452,21 +540,21 @@ hiv_pct <- cp003_clean@meta.data %>%
 
 p_s3d <- ggplot(hiv_pct, aes(x = Fig3_Annotation, y = pct_hiv, fill = Fig3_Annotation)) +
   geom_col(width = 0.6, show.legend = FALSE) +
-  geom_text(aes(label = paste0(pct_hiv, "%")), vjust = -0.5, size = 7, fontface = "bold") +
+  geom_text(aes(label = paste0(pct_hiv, "%")), vjust = -0.5, size = 9, fontface = "bold") +
   scale_fill_manual(values = anno_cols) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 105)) +
-  theme_classic(base_size = 22) +
+  theme_classic(base_size = 26) +
   theme(
-    axis.text.x  = element_text(size = 18, angle = 35, hjust = 1, face = "bold"),
-    axis.text.y  = element_text(size = 18),
-    axis.title   = element_text(size = 20, face = "bold"),
-    plot.title   = element_text(size = 24, face = "bold")
+    axis.text.x  = element_text(size = 22, angle = 35, hjust = 1, face = "bold"),
+    axis.text.y  = element_text(size = 22),
+    axis.title   = element_text(size = 26, face = "bold"),
+    plot.title   = element_text(size = 32, face = "bold")
   ) +
   labs(x = NULL, y = "% HIV-Specific TCR",
-       title = "HIV-specific cell enrichment by cluster")
+       title = "HIV-Specific Cell Enrichment by Cluster")
 
 ggsave(file.path(s3_dir, "S3D_HIV_Pct.png"),
-       p_s3d, width = 8, height = 6, dpi = 300, bg = "white")
+       p_s3d, width = 10, height = 8, dpi = 300, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -486,20 +574,20 @@ p_s3e <- ggplot(tp_comp, aes(x = Fig3_Annotation, y = pct, fill = Timepoint)) +
   geom_col(width = 0.7) +
   scale_fill_manual(values = tp_cols) +
   scale_y_continuous(expand = c(0, 0), labels = scales::percent) +
-  theme_classic(base_size = 22) +
+  theme_classic(base_size = 26) +
   theme(
-    axis.text.x  = element_text(size = 18, angle = 35, hjust = 1, face = "bold"),
-    axis.text.y  = element_text(size = 18),
-    axis.title   = element_text(size = 20, face = "bold"),
+    axis.text.x  = element_text(size = 22, angle = 35, hjust = 1, face = "bold"),
+    axis.text.y  = element_text(size = 22),
+    axis.title   = element_text(size = 26, face = "bold"),
     legend.position = "top",
-    legend.text  = element_text(size = 18),
-    plot.title   = element_text(size = 24, face = "bold")
+    legend.text  = element_text(size = 22),
+    plot.title   = element_text(size = 32, face = "bold")
   ) +
   labs(x = NULL, y = "Proportion", fill = NULL,
-       title = "Timepoint composition by cluster")
+       title = "Timepoint Composition by Cluster")
 
 ggsave(file.path(s3_dir, "S3E_Timepoint.png"),
-       p_s3e, width = 9, height = 6, dpi = 300, bg = "white")
+       p_s3e, width = 11, height = 8, dpi = 300, bg = "white")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -533,24 +621,24 @@ p_s3f <- ggplot(hiv_tp_violin, aes(x = Module, y = Score, fill = Timepoint)) +
   geom_boxplot(width = 0.12, outlier.size = 0.3, alpha = 0.6,
                position = position_dodge(width = 0.8)) +
   scale_fill_manual(values = tp_cols, name = NULL) +
-  theme_classic(base_size = 22) +
+  theme_classic(base_size = 26) +
   theme(
-    axis.text.x  = element_text(size = 18, face = "bold"),
-    axis.text.y  = element_text(size = 18),
-    axis.title   = element_text(size = 20, face = "bold"),
+    axis.text.x  = element_text(size = 22, face = "bold"),
+    axis.text.y  = element_text(size = 22),
+    axis.title   = element_text(size = 26, face = "bold"),
     legend.position = "top",
-    legend.text  = element_text(size = 18),
-    plot.title   = element_text(size = 24, face = "bold"),
-    plot.subtitle = element_text(size = 18, color = "grey40")
+    legend.text  = element_text(size = 22),
+    plot.title   = element_text(size = 32, face = "bold"),
+    plot.subtitle = element_text(size = 24, color = "#E63946", face = "bold")
   ) +
-  labs(x = NULL, y = "Module score",
-       title = "HIV-specific cells: 2 months vs 101 months",
+  labs(x = NULL, y = "Module Score",
+       title = "HIV-Specific Cells: 2 Months vs 101 Months",
        subtitle = paste0("n = ", sum(cp003_clean$HIV_Specific_TCR == "HIV-Specific TCR" & cp003_clean$Months == 2),
                          " (2m), n = ", sum(cp003_clean$HIV_Specific_TCR == "HIV-Specific TCR" & cp003_clean$Months == 101),
                          " (101m)"))
 
 ggsave(file.path(s3_dir, "S3F_ModuleScores_2m_vs_101m.png"),
-       p_s3f, width = 10, height = 7, dpi = 300, bg = "white")
+       p_s3f, width = 12, height = 9, dpi = 300, bg = "white")
 
 
 ################################################################################
@@ -559,12 +647,12 @@ ggsave(file.path(s3_dir, "S3F_ModuleScores_2m_vs_101m.png"),
 cat("\n")
 cat("══════════════════════════════════════════════════════════════\n")
 cat(" MAIN FIGURE 3:", panel_dir, "\n")
-cat("  B1: UMAP annotated (no legend, labels on plot)\n")
-cat("  B2: UMAP HIV-specific overlay\n")
-cat("  C:  Alluvial tracking\n")
-cat("  D:  Functional profile (% expressing, TARA unstimulated)\n")
-cat("  E:  Persistence histogram\n")
-cat("  F:  TARA cluster composition\n")
+cat("  B1: UMAP annotated (larger points, ggplot2 manual)\n")
+cat("  B2: UMAP HIV-specific overlay (larger points)\n")
+cat("  C:  Alluvial tracking (larger text, colored subtitle)\n")
+cat("  D:  Functional profile (larger text, colored subtitle)\n")
+cat("  E:  Persistence histogram (larger text)\n")
+cat("  F:  TARA cluster composition (larger text, colored subtitle)\n")
 cat("══════════════════════════════════════════════════════════════\n")
 cat(" SUPPLEMENTARY S3:", s3_dir, "\n")
 cat("  S3A: Cell cycle by annotation\n")

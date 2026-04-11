@@ -3,7 +3,7 @@
 #
 # Panel A: (i)  UMAP — clonal expansion split by HEI / HEU / HUU
 #          (ii) Stacked bar — cloneSize per CD8 cluster
-# Panel B: Alluvial plots + VL/CD4 clinical data per patient
+# Panel B: Alluvial plots + VL/CD4 clinical data per patient (SEPARATED)
 # Panel C: Waffle charts — Trex epitope specificity + separate legend
 #
 # REQUIRES: TARA_ALL_sorted_v4.qs2, TARA_VL_CD4.xlsx
@@ -22,6 +22,7 @@ library(qs2)
 library(Trex)
 library(readxl)
 library(RColorBrewer)
+library(ggrepel)
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 base_dir   <- "~/Documents/CD8_Longitudinal"
@@ -47,19 +48,15 @@ cd8_short_labels <- setNames(
 )
 
 cluster_cols <- c(
-  "1a: Naive 1 CD8"            = "#4E79A7",
-  "6: Naive 2 CD8"             = "#76B7B2",
-  "1c: Naive Intermediate CD8" = "#E15759",
-  "1b: Tscm CD8"               = "#59A14F",
-  "12a: Transitional CD8"      = "#FF9DA7",
-  "8: TEMRA/CTL CD8"           = "#EDC948",
-  "27: Tex CD8"                = "#9C755F",
-  "9: γδ T cell"               = "#B07AA1"
+  "1a: Naive 1 CD8"            = "#2166AC",
+  "6: Naive 2 CD8"             = "#67A9CF",
+  "1c: Naive Intermediate CD8" = "#D6604D",
+  "1b: Tscm CD8"               = "#1A9850",
+  "12a: Transitional CD8"      = "#FDAE61",
+  "8: TEMRA/CTL CD8"           = "#B2182B",
+  "27: Tex CD8"                = "#762A83",
+  "9: γδ T cell"               = "#CC79A7"
 )
-
-# ── Use full object (includes longitudinal data) ─────────────────────────────
-# TARA_ALL already has a Condition column from the annotation script.
-# For the UMAP we show HEI, HEU, HUU (HEI = all HEI timepoints combined)
 
 # ── Clone size palette ────────────────────────────────────────────────────────
 colorblind_vector <- hcl.colors(n = 7, palette = "plasma", fixup = TRUE)
@@ -72,8 +69,7 @@ clone_colors <- setNames(colorblind_vector[c(1, 3, 4, 5, 7)], clone_order)
 
 
 ################################################################################
-# FIG 2A(i) — UMAP: Clonal expansion split by condition
-#              Order: HEI, HEU, HUU. UMAP arrows on last panel only.
+# FIG 2A(i) — UMAP: Clonal expansion split by condition (IMPROVED)
 ################################################################################
 
 message("Generating Fig 2A(i)...")
@@ -85,28 +81,65 @@ for (i in seq_along(conditions)) {
   cond <- conditions[i]
   sub_obj <- subset(TARA_ALL, subset = Condition == cond)
   
-  # UMAP arrows only on HEI (first panel)
+  # Get UMAP coordinates - KEEP ALL CELLS
+  umap_coords <- as.data.frame(Embeddings(sub_obj, reduction = "wnn.umap"))
+  colnames(umap_coords) <- c("UMAP1", "UMAP2")
+  umap_coords$cloneSize <- sub_obj$cloneSize
+  
+  # Create plot color column: gray for NA, clone color otherwise
+  umap_coords <- umap_coords %>%
+    mutate(
+      cloneSize_plot = ifelse(is.na(cloneSize), "No TCR", as.character(cloneSize)),
+      cloneSize_plot = factor(cloneSize_plot, levels = c(clone_order, "No TCR"))
+    )
+  
+  # Extended color palette with gray for No TCR
+  clone_colors_ext <- c(clone_colors, "No TCR" = "#E0E0E0")
+  
+  # UMAP arrow positions - based on ALL cells
+  x_arrow <- min(umap_coords$UMAP1, na.rm = TRUE) + 1
+  y_arrow <- min(umap_coords$UMAP2, na.rm = TRUE) + 1
+  
+  # Plot gray cells first (background), then colored cells on top
+  umap_gray <- umap_coords %>% filter(cloneSize_plot == "No TCR")
+  umap_color <- umap_coords %>% filter(cloneSize_plot != "No TCR")
+  
+  p <- ggplot() +
+    # Gray cells first (background)
+    geom_point(data = umap_gray, aes(x = UMAP1, y = UMAP2),
+               color = "#E0E0E0", size = 0.6, alpha = 0.5) +
+    # Colored cells on top
+    geom_point(data = umap_color, aes(x = UMAP1, y = UMAP2, color = cloneSize_plot),
+               size = 1.2, alpha = 0.8) +
+    scale_color_manual(values = clone_colors_ext, drop = FALSE) +
+    ggtitle(cond) +
+    theme_void() +
+    theme(
+      plot.title = element_text(size = 48, face = "bold", hjust = 0.5),
+      legend.position = "none",
+      plot.margin = margin(10, 10, 10, 10)
+    ) +
+    coord_fixed()
+  
+  # Add UMAP arrows only to first panel (HEI)
   if (i == 1) {
-    theme_list <- list(NoAxes(), theme_umap_arrows(),
-                       ggtitle(cond),
-                       theme(plot.title = element_text(size = 32, face = "bold", hjust = 0.5),
-                             legend.position = "none"))
-  } else {
-    theme_list <- list(NoAxes(),
-                       ggtitle(cond),
-                       theme(plot.title = element_text(size = 32, face = "bold", hjust = 0.5),
-                             legend.position = "none"))
+    p <- p +
+      annotate("segment", 
+               x = x_arrow, xend = x_arrow + 4,
+               y = y_arrow, yend = y_arrow,
+               arrow = arrow(length = unit(0.5, "cm"), type = "closed"),
+               linewidth = 1.5, color = "black") +
+      annotate("text", x = x_arrow + 2, y = y_arrow - 1.8,
+               label = "UMAP1", size = 10, fontface = "bold") +
+      annotate("segment",
+               x = x_arrow, xend = x_arrow,
+               y = y_arrow, yend = y_arrow + 4,
+               arrow = arrow(length = unit(0.5, "cm"), type = "closed"),
+               linewidth = 1.5, color = "black") +
+      annotate("text", x = x_arrow - 1.8, y = y_arrow + 2,
+               label = "UMAP2", size = 10, fontface = "bold", angle = 90)
   }
   
-  p <- DimPlot2(
-    sub_obj,
-    reduction  = "wnn.umap",
-    group.by   = "cloneSize",
-    cols       = clone_colors,
-    pt.size    = 0.4,
-    raster     = FALSE,
-    theme      = theme_list
-  )
   umap_list[[cond]] <- p
 }
 
@@ -115,21 +148,21 @@ legend_plot <- ggplot(data.frame(x = 1:5, y = 1, cs = factor(clone_order, levels
                       aes(x = x, y = y, fill = cs)) +
   geom_tile() +
   scale_fill_manual(values = clone_colors, name = "Clone Size") +
-  theme_void(base_size = 26) +
+  theme_void(base_size = 32) +
   theme(legend.position = "bottom",
-        legend.title = element_text(face = "bold", size = 26),
-        legend.text = element_text(size = 22),
-        legend.key.size = unit(1, "cm")) +
+        legend.title = element_text(face = "bold", size = 32),
+        legend.text = element_text(size = 26),
+        legend.key.size = unit(1.5, "cm")) +
   guides(fill = guide_legend(nrow = 1))
 
 legend_grob <- cowplot::get_legend(legend_plot)
 
 fig2a_umap <- (umap_list[["HEI"]] | umap_list[["HEU"]] | umap_list[["HUU"]]) /
   wrap_elements(legend_grob) +
-  plot_layout(heights = c(1, 0.08))
+  plot_layout(heights = c(1, 0.1))
 
 ggsave(file.path(fig2_dir, "Fig2A_i_ClonalExpansion_UMAP.png"),
-       fig2a_umap, width = 28, height = 12, dpi = 300, bg = "white")
+       fig2a_umap, width = 30, height = 14, dpi = 300, bg = "white")
 
 message("✓ Fig 2A(i) saved\n")
 
@@ -201,10 +234,13 @@ message("✓ Fig 2A(ii) saved\n")
 
 
 ################################################################################
-# FIG 2B — Alluvial Plots + VL/CD4 clinical data
+# FIG 2B — Alluvial Plots + VL/CD4 clinical data (SEPARATED)
 #
-# Plot only up to the latest timepoint in the alluvial.
-# Below each alluvial: VL and CD4 trajectories from TARA_VL_CD4.xlsx
+# Save each component separately:
+#   - Individual alluvial plots per patient
+#   - Individual VL plots per patient
+#   - Individual CD4 plots per patient
+#   - Combined VL/CD4 plots per patient
 ################################################################################
 
 message("Generating Fig 2B...")
@@ -248,8 +284,7 @@ TARA.TCR             <- paste0(TARA_names, ".TCR")
 TARA.contig_list.TCR <- as.list(mget(TARA.TCR))
 combined.TCR.TARA    <- combineTCR(TARA.contig_list.TCR, samples = TARA_names)
 
-# ── Patient info: alluvial samples, max age for clinical ─────────────────────
-# Timepoint labels will be pulled from TARA_ALL$Age metadata
+# ── Patient info ─────────────────────────────────────────────────────────────
 patient_info <- list(
   CP003 = list(samples = c("CP003_entry", "CP003_V12", "CP003_V24"), max_age = 24),
   CP006 = list(samples = c("CP006_entry", "CP006_12m", "CP006_V24"), max_age = 24),
@@ -257,11 +292,6 @@ patient_info <- list(
   CP018 = list(samples = c("CP018_entry", "CP018_V24", "CP018_42m"), max_age = 42),
   CP020 = list(samples = c("CP020_V1", "CP020_V12", "CP020_V44"),    max_age = 44)
 )
-
-# ── Build labels from TARA_ALL$Age metadata ──────────────────────────────────
-# orig.ident uses names like CP003_1m, CP003_12m, CP003_24m
-# TCR/alluvial uses names like CP003_entry, CP003_V12, CP003_V24
-# Map TCR names → orig.ident names to look up ages
 
 tcr_to_orig <- c(
   "CP003_entry" = "CP003_1m",  "CP003_V12" = "CP003_12m", "CP003_V24" = "CP003_24m",
@@ -284,7 +314,7 @@ for (pt in names(patient_info)) {
   cat(pt, ":", paste(samps, "→", orig_names, "→", patient_info[[pt]]$labels), "\n")
 }
 
-# ── Custom alluvial palette — 50 distinct colors ─────────────────────────────
+# ── Custom alluvial palette ──────────────────────────────────────────────────
 alluvial_pal <- c(
   "#E63946", "#457B9D", "#2A9D8F", "#E9C46A", "#264653",
   "#F4A261", "#606C38", "#A8DADC", "#D62828", "#023E8A",
@@ -293,13 +323,19 @@ alluvial_pal <- c(
   hcl.colors(30, palette = "Dark 3")
 )
 
-# ── Generate per-patient panels: alluvial + combined VL/CD4 ──────────────────
-patient_panels <- list()
+# ── Generate SEPARATED plots per patient ─────────────────────────────────────
+alluvial_plots <- list()
+vl_plots <- list()
+cd4_plots <- list()
+clinical_combined_plots <- list()
+clinical_combined_grobs <- list()  # Store grobs to lock in variable values
 
 for (pt in names(patient_info)) {
   info <- patient_info[[pt]]
   
-  # ── Alluvial plot with custom colors ────────────────────────────────────
+  # ══════════════════════════════════════════════════════════════════════════
+  # ALLUVIAL PLOT (separate)
+  # ══════════════════════════════════════════════════════════════════════════
   p_alluv <- clonalCompare(
     combined.TCR.TARA,
     top.clones     = 20,
@@ -311,16 +347,12 @@ for (pt in names(patient_info)) {
     graph          = "alluvial"
   )
   
-  # Extract fill levels from the ggplot object and build named palette
+  # Extract fill levels and build named palette
   build <- ggplot_build(p_alluv)
-  fill_scale <- build$plot$scales$get_scales("fill")
-  # Get the levels from the data — try the fill column in the raw data
   raw_dat <- p_alluv$data
-  # Find which column is mapped to fill
   fill_col_name <- tryCatch(
     rlang::as_name(p_alluv$mapping$fill),
     error = function(e) {
-      # Fallback: find column with most unique character values
       char_cols <- names(raw_dat)[sapply(raw_dat, is.character) | sapply(raw_dat, is.factor)]
       char_cols[which.max(sapply(char_cols, function(x) length(unique(raw_dat[[x]]))))]
     }
@@ -342,66 +374,209 @@ for (pt in names(patient_info)) {
       legend.position = "none"
     )
   
-  # ── Combined VL + CD4 on same plot (dual y-axis) ───────────────────────
+  alluvial_plots[[pt]] <- p_alluv
+  
+  # Save individual alluvial
+  ggsave(file.path(fig2_dir, paste0("Fig2B_Alluvial_", pt, ".png")),
+         p_alluv, width = 14, height = 12, dpi = 300, bg = "white")
+  
+  # ══════════════════════════════════════════════════════════════════════════
+  # CLINICAL DATA - IMPROVED
+  # Filter by alluvial age range, exclude invalid Age_months
+  # ══════════════════════════════════════════════════════════════════════════
   pt_clin <- vl_cd4 %>%
-    filter(PID == pt, Age_months <= info$max_age)
+    filter(PID == pt, Age_months > 0, Age_months <= info$max_age)
   
-  pt_vl  <- pt_clin %>% filter(!is.na(VL) & VL > 0)
-  pt_cd4 <- pt_clin %>% filter(!is.na(CD4_mm3) & CD4_mm3 > 0)
+  # Only exclude NA values
+  pt_vl  <- pt_clin %>% filter(!is.na(VL))
+  pt_cd4 <- pt_clin %>% filter(!is.na(CD4_mm3))
   
-  cd4_max  <- max(pt_cd4$CD4_mm3, 5000, na.rm = TRUE)
+  # Debug: print what we have
+  message(sprintf("  %s: VL points = %d, CD4 points = %d", pt, nrow(pt_vl), nrow(pt_cd4)))
+  
+  # ── VL PLOT (separate, improved) ───────────────────────────────────────────
+  p_vl <- ggplot(pt_vl, aes(x = Age_months, y = log10(pmax(VL, 1)))) +
+    # Suppression threshold - prominent dashed line
+    geom_hline(yintercept = log10(200), linetype = "dashed",
+               color = "#666666", linewidth = 2.5) +
+    # VL line and points - THICKER
+    geom_line(color = "#B2182B", linewidth = 4) +
+    geom_point(color = "#B2182B", size = 10, shape = 16) +
+    # Scales
+    scale_y_continuous(
+      limits = c(0, 8),
+      breaks = seq(0, 8, by = 2),
+      expand = c(0.02, 0)
+    ) +
+    scale_x_continuous(
+      limits = c(0, info$max_age),
+      breaks = seq(0, info$max_age, by = ifelse(info$max_age > 30, 12, 6)),
+      expand = c(0.02, 0)
+    ) +
+    labs(
+      x = "Age (months)",
+      y = expression("Viral Load (log"[10]*" cp/mL)"),
+      title = paste0(pt, " - Viral Load")
+    ) +
+    # Complete box theme - LARGER BOLD TEXT
+    theme_bw(base_size = 40) +
+    theme(
+      plot.title       = element_text(size = 48, face = "bold", hjust = 0.5),
+      axis.text        = element_text(size = 36, color = "black", face = "bold"),
+      axis.title       = element_text(size = 40, face = "bold"),
+      axis.title.y     = element_text(color = "#B2182B"),
+      panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
+      panel.grid.minor = element_blank(),
+      panel.border     = element_rect(color = "black", linewidth = 2, fill = NA),
+      plot.margin      = margin(15, 15, 15, 15)
+    )
+  
+  vl_plots[[pt]] <- p_vl
+  
+  # Save individual VL plot
+  ggsave(file.path(fig2_dir, paste0("Fig2B_VL_", pt, ".png")),
+         p_vl, width = 10, height = 8, dpi = 300, bg = "white")
+  
+  # ── CD4 PLOT (separate, improved) ──────────────────────────────────────────
+  p_cd4 <- ggplot(pt_cd4, aes(x = Age_months, y = CD4_mm3)) +
+    # CD4 line and points - THICKER, USE DOTS
+    geom_line(color = "#2166AC", linewidth = 4) +
+    geom_point(color = "#2166AC", size = 10, shape = 16) +
+    # Scales
+    scale_y_continuous(
+      limits = c(0, max(pt_cd4$CD4_mm3, 3000, na.rm = TRUE) * 1.1),
+      expand = c(0.02, 0)
+    ) +
+    scale_x_continuous(
+      limits = c(0, info$max_age),
+      breaks = seq(0, info$max_age, by = ifelse(info$max_age > 30, 12, 6)),
+      expand = c(0.02, 0)
+    ) +
+    labs(
+      x = "Age (months)",
+      y = expression("CD4 Count (cells/"*mu*"L)"),
+      title = paste0(pt, " - CD4 Count")
+    ) +
+    # Complete box theme - LARGER BOLD TEXT
+    theme_bw(base_size = 40) +
+    theme(
+      plot.title       = element_text(size = 48, face = "bold", hjust = 0.5),
+      axis.text        = element_text(size = 36, color = "black", face = "bold"),
+      axis.title       = element_text(size = 40, face = "bold"),
+      axis.title.y     = element_text(color = "#2166AC"),
+      panel.grid.major = element_line(color = "grey90", linewidth = 0.5),
+      panel.grid.minor = element_blank(),
+      panel.border     = element_rect(color = "black", linewidth = 2, fill = NA),
+      plot.margin      = margin(15, 15, 15, 15)
+    )
+  
+  cd4_plots[[pt]] <- p_cd4
+  
+  # Save individual CD4 plot
+  ggsave(file.path(fig2_dir, paste0("Fig2B_CD4_", pt, ".png")),
+         p_cd4, width = 10, height = 8, dpi = 300, bg = "white")
+  
+  # ── COMBINED VL + CD4 (dual y-axis, improved) ──────────────────────────────
+  cd4_max  <- max(pt_cd4$CD4_mm3, 3000, na.rm = TRUE)
   vl_max_log <- 8
-  scale_factor <- cd4_max / vl_max_log
+  scale_factor_val <- cd4_max / vl_max_log
+  
+  # Pre-compute scaled values to avoid variable scoping issues when combining plots
+  pt_vl_plot <- pt_vl %>% mutate(VL_log = log10(pmax(VL, 1)))
+  pt_cd4_plot <- pt_cd4 %>% mutate(CD4_scaled = CD4_mm3 / scale_factor_val)
   
   p_clinical <- ggplot() +
+    # Suppression threshold - prominent dashed line
     geom_hline(yintercept = log10(200), linetype = "dashed",
-               color = "grey50", linewidth = 1.2) +
-    geom_line(data = pt_vl, aes(x = Age_months, y = log10(pmax(VL, 1))),
-              color = "#E15759", linewidth = 2.5) +
-    geom_point(data = pt_vl, aes(x = Age_months, y = log10(pmax(VL, 1))),
-               color = "#E15759", size = 7) +
-    geom_line(data = pt_cd4, aes(x = Age_months, y = CD4_mm3 / scale_factor),
-              color = "#4E79A7", linewidth = 2.5) +
-    geom_point(data = pt_cd4, aes(x = Age_months, y = CD4_mm3 / scale_factor),
-               color = "#4E79A7", size = 7) +
+               color = "#666666", linewidth = 2.5) +
+    # VL line and points - THICKER
+    geom_line(data = pt_vl_plot, aes(x = Age_months, y = VL_log),
+              color = "#B2182B", linewidth = 4) +
+    geom_point(data = pt_vl_plot, aes(x = Age_months, y = VL_log),
+               color = "#B2182B", size = 10, shape = 16) +
+    # CD4 line and points (pre-scaled) - USE DOTS NOT TRIANGLES
+    geom_line(data = pt_cd4_plot, aes(x = Age_months, y = CD4_scaled),
+              color = "#2166AC", linewidth = 4) +
+    geom_point(data = pt_cd4_plot, aes(x = Age_months, y = CD4_scaled),
+               color = "#2166AC", size = 10, shape = 16) +
+    # Scales - use local scale_factor_val for sec_axis
     scale_y_continuous(
       name = expression("VL (log"[10]*" cp/mL)"),
       limits = c(0, vl_max_log),
-      sec.axis = sec_axis(~ . * scale_factor,
+      breaks = seq(0, 8, by = 2),
+      sec.axis = sec_axis(~ . * scale_factor_val,
                           name = expression("CD4 (cells/"*mu*"L)"))
     ) +
-    scale_x_continuous(limits = c(0, info$max_age),
-                       breaks = seq(0, info$max_age, by = ifelse(info$max_age > 30, 12, 6))) +
-    labs(x = "Age (months)") +
-    theme_classic(base_size = 48) +
+    scale_x_continuous(
+      limits = c(0, info$max_age),
+      breaks = seq(0, info$max_age, by = ifelse(info$max_age > 30, 12, 6)),
+      expand = c(0.02, 0)
+    ) +
+    labs(x = "Age (months)", title = pt) +
+    # Complete box theme - MASSIVE BOLD TEXT FOR COMBINED PLOT
+    theme_bw(base_size = 52) +
     theme(
-      axis.text          = element_text(size = 48),
-      axis.title.x       = element_text(size = 52, face = "bold"),
-      axis.title.y.left  = element_text(size = 52, face = "bold", color = "#E15759"),
-      axis.title.y.right = element_text(size = 52, face = "bold", color = "#4E79A7"),
-      axis.text.y.left   = element_text(size = 48, color = "#E15759"),
-      axis.text.y.right  = element_text(size = 48, color = "#4E79A7"),
-      axis.text.x        = element_text(size = 48)
+      plot.title         = element_text(size = 80, face = "bold", hjust = 0.5),
+      axis.text          = element_text(size = 48, color = "black", face = "bold"),
+      axis.text.x        = element_text(size = 48, face = "bold"),
+      axis.title.x       = element_text(size = 56, face = "bold"),
+      axis.title.y.left  = element_text(size = 56, face = "bold", color = "#B2182B"),
+      axis.title.y.right = element_text(size = 56, face = "bold", color = "#2166AC"),
+      axis.text.y.left   = element_text(size = 48, color = "#B2182B", face = "bold"),
+      axis.text.y.right  = element_text(size = 48, color = "#2166AC", face = "bold"),
+      panel.grid.major   = element_line(color = "grey90", linewidth = 0.5),
+      panel.grid.minor   = element_blank(),
+      panel.border       = element_rect(color = "black", linewidth = 2, fill = NA),
+      plot.margin        = margin(20, 25, 20, 25)
     )
   
-  # Stack: alluvial on top, clinical below
-  p_combined <- p_alluv / p_clinical +
-    plot_layout(heights = c(2.5, 1))
+  clinical_combined_plots[[pt]] <- p_clinical
   
-  patient_panels[[pt]] <- p_combined
+  # Convert to grob immediately to lock in current scale_factor_val
+  # This prevents variable scoping issues when combining plots later
+  clinical_combined_grobs[[pt]] <- ggplotGrob(p_clinical)
   
-  ggsave(file.path(fig2_dir, paste0("Fig2B_", pt, ".png")),
-         p_combined, width = 20, height = 16, dpi = 300, bg = "white")
+  # Save individual combined clinical plot
+  ggsave(file.path(fig2_dir, paste0("Fig2B_Clinical_", pt, ".png")),
+         p_clinical, width = 12, height = 8, dpi = 300, bg = "white")
 }
 
-# ── Combined grid (all 5 patients side by side) ──────────────────────────────
-fig2b <- wrap_plots(patient_panels, ncol = 5)
+# ── Save combined grids ──────────────────────────────────────────────────────
 
+# All alluvial plots in a row
+alluvial_grid <- wrap_plots(alluvial_plots, ncol = 5)
 ggsave(file.path(fig2_dir, "Fig2B_Alluvial_AllPatients.png"),
-       fig2b, width = 50, height = 16, dpi = 200, bg = "white",
+       alluvial_grid, width = 60, height = 12, dpi = 200, bg = "white",
        limitsize = FALSE)
 
-message("✓ Fig 2B saved (individual + combined)\n")
+# All VL plots in a row
+vl_grid <- wrap_plots(vl_plots, ncol = 5)
+ggsave(file.path(fig2_dir, "Fig2B_VL_AllPatients.png"),
+       vl_grid, width = 50, height = 8, dpi = 300, bg = "white",
+       limitsize = FALSE)
+
+# All CD4 plots in a row
+cd4_grid <- wrap_plots(cd4_plots, ncol = 5)
+ggsave(file.path(fig2_dir, "Fig2B_CD4_AllPatients.png"),
+       cd4_grid, width = 50, height = 8, dpi = 300, bg = "white",
+       limitsize = FALSE)
+
+# All combined clinical plots - use grobs to preserve correct scaling
+clinical_grid <- cowplot::plot_grid(
+  clinical_combined_grobs[["CP003"]],
+  clinical_combined_grobs[["CP006"]],
+  clinical_combined_grobs[["CP013"]],
+  clinical_combined_grobs[["CP018"]],
+  clinical_combined_grobs[["CP020"]],
+  ncol = 5,
+  align = "h",
+  axis = "tb"
+)
+ggsave(file.path(fig2_dir, "Fig2B_Clinical_AllPatients.png"),
+       clinical_grid, width = 80, height = 14, dpi = 300, bg = "white",
+       limitsize = FALSE)
+
+message("✓ Fig 2B saved (all individual + combined grids)\n")
 
 
 ################################################################################
@@ -512,7 +687,7 @@ for (pid in hei_patients) {
          p, width = 7, height = 7, dpi = 300, bg = "white")
 }
 
-# ── Separate legend (same approach as Fig 1C legend) ──────────────────────────
+# ── Separate legend ───────────────────────────────────────────────────────────
 legend_df <- data.frame(
   Epitope = factor(epitope_order, levels = epitope_order),
   y = seq_along(epitope_order)
@@ -533,7 +708,7 @@ p_waffle_legend <- ggplot(legend_df, aes(x = 1, y = y)) +
 ggsave(file.path(fig2_dir, "Fig2C_Waffle_Legend.png"),
        p_waffle_legend, width = 14, height = 1.4, dpi = 300, bg = "white")
 
-# ── Combined waffles (no legend — legend is separate file) ───────────────────
+# ── Combined waffles ─────────────────────────────────────────────────────────
 waffle_grid <- wrap_plots(waffle_plots, ncol = 5)
 
 ggsave(file.path(fig2_dir, "Fig2C_Waffle_Combined.png"),
@@ -544,14 +719,6 @@ message("✓ Fig 2C saved (individual + combined + legend)\n")
 
 ################################################################################
 # SUPPLEMENTARY FIGURE S2 — Supporting analyses for Figure 2
-#
-# Panel order matches manuscript narrative:
-#   S2A: Clone size distribution by condition (HEI vs HEU vs HUU)
-#   S2B: Clonal persistence per patient
-#   S2C: Cross-cluster clonotype sharing (cluster span + co-occurrence)
-#   S2D: Temporal epitope specificity (stacked bars per timepoint)
-#
-# Output: ~/Documents/CD8_Longitudinal/Manuscript/Supplementary 2/
 ################################################################################
 
 s2_dir <- file.path(base_dir, "Manuscript", "Supplementary 2")
@@ -783,7 +950,7 @@ message("  ✓ S2C saved")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# S2D: Temporal epitope specificity — stacked bar per timepoint per patient
+# S2D: Temporal epitope specificity
 # ══════════════════════════════════════════════════════════════════════════════
 
 message("  S2D: Temporal epitope specificity...")
@@ -857,204 +1024,28 @@ message("  ✓ S2D saved")
 
 message("\n",
         "══════════════════════════════════════════════════════════════\n",
-        " Supplementary S2 panels saved to: ", s2_dir, "\n",
-        "══════════════════════════════════════════════════════════════\n",
-        "\n",
-        " SUPPLEMENTARY S2 (matches manuscript narrative order):\n",
-        " S2A: Clone size distribution by condition (box + bar)\n",
-        " S2B: Clonal persistence (persistent vs single-visit)\n",
-        " S2C: Cross-cluster clonotype sharing (cluster co-occurrence)\n",
-        " S2D: Temporal epitope specificity (stacked bars per timepoint)\n",
-        "══════════════════════════════════════════════════════════════\n"
-)
-
-message("\n",
-        "══════════════════════════════════════════════════════════════\n",
         " All Figure 2 panels saved to: ", fig2_dir, "\n",
         " Supplementary S2 panels saved to: ", s2_dir, "\n",
         "══════════════════════════════════════════════════════════════\n",
         "\n",
         " MAIN FIGURE 2:\n",
-        " 2A(i):  Clonal expansion UMAP (SeuratExtend, 3 panels)\n",
+        " 2A(i):  Clonal expansion UMAP (ggplot2, improved arrows)\n",
         " 2A(ii): Stacked bar — cloneSize per CD8 cluster\n",
-        " 2B:     Alluvial + VL/CD4 per patient (5 panels)\n",
+        " 2B:     SEPARATED outputs:\n",
+        "         - Fig2B_Alluvial_<PID>.png (individual alluvial)\n",
+        "         - Fig2B_VL_<PID>.png (individual VL)\n",
+        "         - Fig2B_CD4_<PID>.png (individual CD4)\n",
+        "         - Fig2B_Clinical_<PID>.png (combined VL+CD4)\n",
+        "         - Fig2B_Alluvial_AllPatients.png (grid)\n",
+        "         - Fig2B_VL_AllPatients.png (grid)\n",
+        "         - Fig2B_CD4_AllPatients.png (grid)\n",
+        "         - Fig2B_Clinical_AllPatients.png (grid)\n",
         " 2C:     Waffle charts + separate legend\n",
         "\n",
         " SUPPLEMENTARY S2:\n",
-        " S2A: Temporal epitope specificity (stacked bars per timepoint)\n",
-        " S2B: Clone size distribution by condition (box + bar)\n",
-        " S2C: Clonal persistence summary (persistent vs single-visit)\n",
-        " S2D: Cross-cluster clonotype sharing (cluster co-occurrence)\n",
+        " S2A: Clone size distribution by condition\n",
+        " S2B: Clonal persistence summary\n",
+        " S2C: Cross-cluster clonotype sharing\n",
+        " S2D: Temporal epitope specificity\n",
         "══════════════════════════════════════════════════════════════\n"
 )
-
-################ Diagonostic Outputs #############3
-################################################################################
-# CONSOLE OUTPUT BLOCK 
-################################################################################
-
-library(tidyverse)
-
-# ── 1. Clonal expansion summary by condition ─────────────────────────────────
-cat("\n\n========== 1. CLONAL EXPANSION BY CONDITION ==========\n")
-TARA_ALL@meta.data %>%
-  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
-  filter(!is.na(clonalFrequency)) %>%
-  group_by(Condition) %>%
-  summarise(
-    n_total = n(),
-    n_expanded = sum(clonalFrequency > 1),
-    pct_expanded = round(n_expanded / n_total * 100, 1),
-    n_unique_clonotypes_expanded = n_distinct(CTstrict[clonalFrequency > 1])
-  ) %>%
-  as.data.frame() %>%
-  print()
-
-# ── 2. Expanded clonotypes per CD8 cluster ───────────────────────────────────
-cat("\n\n========== 2. EXPANSION PER CD8 CLUSTER ==========\n")
-TARA_ALL@meta.data %>%
-  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
-  filter(!is.na(clonalFrequency)) %>%
-  mutate(Cluster = cd8_short_labels[as.character(Manual_Annotation_refined)]) %>%
-  group_by(Cluster) %>%
-  summarise(
-    n_total = n(),
-    n_expanded = sum(clonalFrequency > 1),
-    pct_expanded = round(n_expanded / n_total * 100, 1)
-  ) %>%
-  arrange(desc(pct_expanded)) %>%
-  as.data.frame() %>%
-  print()
-
-# ── 3. Clonal persistence summary ────────────────────────────────────────────
-cat("\n\n========== 3. CLONAL PERSISTENCE SUMMARY ==========\n")
-persistence_df <- TARA_ALL@meta.data %>%
-  filter(!is.na(CTstrict) & !is.na(clonalFrequency) & clonalFrequency > 1) %>%
-  filter(Condition == "HEI") %>%
-  mutate(PID = sub("_.*$", "", orig.ident)) %>%
-  filter(PID %in% c("CP003", "CP006", "CP013", "CP018", "CP020")) %>%
-  group_by(PID, CTstrict) %>%
-  summarise(
-    n_timepoints = n_distinct(orig.ident),
-    n_cells = n(),
-    .groups = "drop"
-  )
-
-persistence_df %>%
-  group_by(PID) %>%
-  summarise(
-    total_expanded_clones = n(),
-    clones_1_timepoint = sum(n_timepoints == 1),
-    clones_2_timepoints = sum(n_timepoints == 2),
-    clones_3_timepoints = sum(n_timepoints == 3),
-    pct_persistent = round(sum(n_timepoints >= 2) / n() * 100, 1),
-    .groups = "drop"
-  ) %>%
-  as.data.frame() %>%
-  print()
-
-# ── 4. Cross-cluster spanning ────────────────────────────────────────────────
-cat("\n\n========== 4. CROSS-CLUSTER SPANNING (HEI) ==========\n")
-expanded_meta <- TARA_ALL@meta.data %>%
-  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
-  filter(!is.na(clonalFrequency) & clonalFrequency > 1) %>%
-  filter(Condition == "HEI") %>%
-  mutate(
-    Cluster = cd8_short_labels[as.character(Manual_Annotation_refined)],
-    Cluster = factor(Cluster, levels = cd8_short_labels)
-  )
-
-clone_cluster_span <- expanded_meta %>%
-  group_by(CTstrict) %>%
-  summarise(
-    n_clusters = n_distinct(Cluster),
-    clusters = paste(sort(unique(as.character(Cluster))), collapse = " + "),
-    n_cells = n(),
-    .groups = "drop"
-  )
-
-cat("Clones in 1 cluster: ", sum(clone_cluster_span$n_clusters == 1), "\n")
-cat("Clones in 2 clusters:", sum(clone_cluster_span$n_clusters == 2), "\n")
-cat("Clones in 3+ clusters:", sum(clone_cluster_span$n_clusters >= 3), "\n")
-
-if (sum(clone_cluster_span$n_clusters >= 2) > 0) {
-  cat("\nMulti-cluster clone combinations:\n")
-  print(table(clone_cluster_span$clusters[clone_cluster_span$n_clusters >= 2]))
-}
-
-# ── 5. Trex epitope counts per patient (waffle numbers) ──────────────────────
-cat("\n\n========== 5. TREX EPITOPE COUNTS PER PATIENT ==========\n")
-waffle_counts %>%
-  filter(PID %in% c("CP003", "CP006", "CP013", "CP018", "CP020")) %>%
-  pivot_wider(names_from = Epitope_Clean, values_from = n_clones, values_fill = 0) %>%
-  mutate(Total = rowSums(across(where(is.numeric)))) %>%
-  as.data.frame() %>%
-  print()
-
-# ── 6. Expand summary by condition (from S2B) ────────────────────────────────
-cat("\n\n========== 6. EXPANSION SUMMARY BY CONDITION (S2B) ==========\n")
-TARA_ALL@meta.data %>%
-  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
-  filter(!is.na(clonalFrequency)) %>%
-  mutate(Condition = factor(Condition, levels = c("HEI", "HEU", "HUU"))) %>%
-  group_by(Condition) %>%
-  summarise(
-    n_total = n(),
-    n_expanded = sum(clonalFrequency > 1),
-    pct_expanded = round(n_expanded / n_total * 100, 1),
-    .groups = "drop"
-  ) %>%
-  as.data.frame() %>%
-  print()
-
-# ── 7. Patient timepoint labels ──────────────────────────────────────────────
-cat("\n\n========== 7. PATIENT TIMEPOINT LABELS ==========\n")
-tcr_to_orig <- c(
-  "CP003_entry" = "CP003_1m",  "CP003_V12" = "CP003_12m", "CP003_V24" = "CP003_24m",
-  "CP006_entry" = "CP006_1m",  "CP006_12m" = "CP006_12m", "CP006_V24" = "CP006_24m",
-  "CP013_1m"    = "CP013_1m",  "CP013_12m" = "CP013_12m", "CP013_24m" = "CP013_25m",
-  "CP018_entry" = "CP018_1m",  "CP018_V24" = "CP018_25m", "CP018_42m" = "CP018_42m",
-  "CP020_V1"    = "CP020_1m",  "CP020_V12" = "CP020_12m", "CP020_V44" = "CP020_44m"
-)
-
-age_lookup <- TARA_ALL@meta.data %>%
-  group_by(orig.ident) %>%
-  summarise(Age = median(Age, na.rm = TRUE), .groups = "drop") %>%
-  deframe()
-
-patient_info <- list(
-  CP003 = list(samples = c("CP003_entry", "CP003_V12", "CP003_V24")),
-  CP006 = list(samples = c("CP006_entry", "CP006_12m", "CP006_V24")),
-  CP013 = list(samples = c("CP013_1m", "CP013_12m", "CP013_24m")),
-  CP018 = list(samples = c("CP018_entry", "CP018_V24", "CP018_42m")),
-  CP020 = list(samples = c("CP020_V1", "CP020_V12", "CP020_V44"))
-)
-
-for (pt in names(patient_info)) {
-  samps <- patient_info[[pt]]$samples
-  orig_names <- tcr_to_orig[samps]
-  ages <- age_lookup[orig_names]
-  cat(pt, ":", paste0(round(ages), "m", collapse = " → "), "\n")
-}
-
-# ── 8. CD8 cluster definitions (for reference) ──────────────────────────────
-cat("\n\n========== 8. CD8 CLUSTER DEFINITIONS (v4) ==========\n")
-data.frame(
-  Full_Name = cd8_cluster_names,
-  Short_Label = cd8_short_labels
-) %>% print()
-
-# ── 9. Total cells in dataset ────────────────────────────────────────────────
-cat("\n\n========== 9. DATASET OVERVIEW ==========\n")
-cat("Total cells in TARA_ALL:", ncol(TARA_ALL), "\n")
-cat("Cells per condition:\n")
-print(table(TARA_ALL$Condition))
-cat("\nCD8 cells per condition:\n")
-TARA_ALL@meta.data %>%
-  filter(Manual_Annotation_refined %in% cd8_cluster_names) %>%
-  pull(Condition) %>%
-  table() %>%
-  print()
-cat("\nSamples (orig.ident):\n")
-print(sort(unique(TARA_ALL$orig.ident)))
-

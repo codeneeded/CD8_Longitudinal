@@ -93,15 +93,16 @@ cd8_short_labels <- setNames(
   cd8_cluster_names
 )
 
+# IMPROVED: Publication-quality distinct colors
 cluster_cols <- c(
-  "1a: Naive 1 CD8"            = "#4E79A7",
-  "6: Naive 2 CD8"             = "#76B7B2",
-  "1c: Naive Intermediate CD8" = "#E15759",
-  "1b: Tscm CD8"               = "#59A14F",
-  "12a: Transitional CD8"      = "#FF9DA7",
-  "8: TEMRA/CTL CD8"           = "#EDC948",
-  "27: Tex CD8"                = "#9C755F",
-  "9: γδ T cell"               = "#B07AA1"
+  "1a: Naive 1 CD8"            = "#2166AC",
+  "6: Naive 2 CD8"             = "#67A9CF",
+  "1c: Naive Intermediate CD8" = "#D6604D",
+  "1b: Tscm CD8"               = "#1A9850",
+  "12a: Transitional CD8"      = "#FDAE61",
+  "8: TEMRA/CTL CD8"           = "#B2182B",
+  "27: Tex CD8"                = "#762A83",
+  "9: γδ T cell"               = "#CC79A7"
 )
 
 cond_cols <- c("HUU" = "#4E79A7", "HEU" = "#F28E2B", "HEI" = "#E15759")
@@ -139,7 +140,7 @@ rename_seurat_cols <- function(mat) {
 
 
 ################################################################################
-# FIG 1A — TOTAL PBMC UMAP
+# FIG 1A — TOTAL PBMC UMAP (IMPROVED FOR PUBLICATION)
 ################################################################################
 
 message("Generating Fig 1A...")
@@ -169,79 +170,198 @@ broad_labels <- case_when(
 )
 TARA_sub$Broad_CellType <- factor(broad_labels)
 
+# IMPROVED: Publication-quality distinct colors
 broad_cols <- c(
-  "CD4 T cells"  = "#66C2A5",
-  "CD8 T cells"  = "#FC8D62",
-  "γδ T cells"   = "#8DA0CB",
-  "DN T cells"   = "#E78AC3",
-  "NK cells"     = "#A6D854",
-  "B cells"      = "#FFD92F",
-  "Plasmablasts" = "#E5C494",
-  "Monocytes"    = "#B3B3B3",
-  "pDC"          = "#1B9E77",
-  "APC"          = "#D95F02",
+  "CD4 T cells"  = "#1B9E77",
+  "CD8 T cells"  = "#D95F02",
+  "γδ T cells"   = "#7570B3",
+  "DN T cells"   = "#E7298A",
+  "NK cells"     = "#66A61E",
+  "B cells"      = "#E6AB02",
+  "Plasmablasts" = "#A6761D",
+  "Monocytes"    = "#666666",
+  "pDC"          = "#1F78B4",
+  "APC"          = "#FB9A99",
   "Other"        = "#CCCCCC"
 )
 
-p_total_umap <- DimPlot2(
-  TARA_sub,
-  reduction  = "wnn.umap",
-  group.by   = "Broad_CellType",
-  cols       = broad_cols,
-  label      = TRUE,
-  label.color = "black",
-  box        = TRUE,
-  label.size = 9,
-  repel      = TRUE,
-  pt.size    = 0.3,
-  raster     = FALSE,
-  theme      = list(NoLegend(), NoAxes(), theme_umap_arrows())
-)
+# IMPROVED: Build UMAP with ggplot2 for full control
+umap_coords <- as.data.frame(Embeddings(TARA_sub, reduction = "wnn.umap"))
+colnames(umap_coords) <- c("UMAP1", "UMAP2")
+umap_coords$CellType <- TARA_sub$Broad_CellType
 
-ggsave(file.path(fig1_dir, "Fig1A_Total_UMAP.png"),
-       p_total_umap, width = 10, height = 9, dpi = 300, bg = "white")
+# Calculate cluster centroids for labels
+centroids <- umap_coords %>%
+  group_by(CellType) %>%
+  summarise(
+    UMAP1 = median(UMAP1),
+    UMAP2 = median(UMAP2),
+    .groups = "drop"
+  ) %>%
+  filter(CellType != "Other")
 
-message("✓ Fig 1A saved\n")
+# UMAP arrow positions
+x_arrow <- min(umap_coords$UMAP1, na.rm = TRUE) + 1
+y_arrow <- min(umap_coords$UMAP2, na.rm = TRUE) + 1
+
+p_total_umap_colored <- ggplot(umap_coords, aes(x = UMAP1, y = UMAP2, color = CellType)) +
+  geom_point(size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = broad_cols) +
+  # Labels: white fill, colored text and border matching cluster
+  geom_label_repel(
+    data = centroids,
+    aes(x = UMAP1, y = UMAP2, label = CellType, color = CellType),
+    fill = "white",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  # UMAP arrows - bottom left, large
+  annotate("segment", 
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+p_total_umap_black <- ggplot(umap_coords, aes(x = UMAP1, y = UMAP2, color = CellType)) +
+  geom_point(size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = broad_cols) +
+  # Labels: white fill, black text and border
+  geom_label_repel(
+    data = centroids,
+    aes(x = UMAP1, y = UMAP2, label = CellType),
+    fill = "white",
+    color = "black",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  # UMAP arrows - bottom left, large
+  annotate("segment", 
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+ggsave(file.path(fig1_dir, "Fig1A_Total_UMAP_colored.png"),
+       p_total_umap_colored, width = 12, height = 11, dpi = 300, bg = "white")
+
+ggsave(file.path(fig1_dir, "Fig1A_Total_UMAP_black.png"),
+       p_total_umap_black, width = 12, height = 11, dpi = 300, bg = "white")
+
+message("✓ Fig 1A saved (both colored and black versions)\n")
 
 
 ################################################################################
-# FIG 1B — CD3/CD8 FEATURE PLOTS (inferno, large text)
+# FIG 1B — CD3/CD8 FEATURE PLOTS (IMPROVED - LARGER TITLES + UMAP ARROWS)
 ################################################################################
 
 message("Generating Fig 1B...")
 
+# IMPROVED: Much larger title and legend text
 feat_theme <- theme(
-  plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-  legend.key.size = unit(0.6, "cm"),
-  legend.text = element_text(size = 12)
+  plot.title = element_text(size = 48, face = "bold", hjust = 0.5),
+  legend.key.size = unit(1.5, "cm"),
+  legend.text = element_text(size = 18),
+  legend.title = element_text(size = 20, face = "bold"),
+  plot.margin = margin(10, 10, 30, 30)
+)
+
+# Get UMAP range for arrow positioning
+umap_range <- as.data.frame(Embeddings(TARA_sub, reduction = "wnn.umap"))
+x_arrow_feat <- min(umap_range[,1], na.rm = TRUE) + 2
+y_arrow_feat <- min(umap_range[,2], na.rm = TRUE) + 2
+
+# UMAP arrow annotation layer (to add to all plots)
+umap_arrows <- list(
+  annotate("segment", 
+           x = x_arrow_feat, xend = x_arrow_feat + 3,
+           y = y_arrow_feat, yend = y_arrow_feat,
+           arrow = arrow(length = unit(0.35, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black"),
+  annotate("text", x = x_arrow_feat + 1.5, y = y_arrow_feat - 1.5,
+           label = "UMAP1", size = 6, fontface = "bold"),
+  annotate("segment",
+           x = x_arrow_feat, xend = x_arrow_feat,
+           y = y_arrow_feat, yend = y_arrow_feat + 3,
+           arrow = arrow(length = unit(0.35, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black"),
+  annotate("text", x = x_arrow_feat - 1.5, y = y_arrow_feat + 1.5,
+           label = "UMAP2", size = 6, fontface = "bold", angle = 90)
 )
 
 DefaultAssay(TARA_sub) <- "RNA"
 p_cd3_rna <- FeaturePlot(TARA_sub, features = "CD3E", reduction = "wnn.umap",
-                         pt.size = 0.1, order = TRUE, raster = FALSE) +
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
   scale_color_viridis(option = "inferno") +
-  NoAxes() + ggtitle("CD3E (mRNA)") + feat_theme
+  NoAxes() + ggtitle("CD3E (mRNA)") + feat_theme + umap_arrows
 
 p_cd8_rna <- FeaturePlot(TARA_sub, features = "CD8A", reduction = "wnn.umap",
-                         pt.size = 0.1, order = TRUE, raster = FALSE) +
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
   scale_color_viridis(option = "inferno") +
-  NoAxes() + ggtitle("CD8A (mRNA)") + feat_theme
+  NoAxes() + ggtitle("CD8A (mRNA)") + feat_theme + umap_arrows
 
 DefaultAssay(TARA_sub) <- "ADT"
 p_cd3_adt <- FeaturePlot(TARA_sub, features = "CD3D", reduction = "wnn.umap",
-                         pt.size = 0.1, order = TRUE, raster = FALSE) +
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
   scale_color_viridis(option = "inferno") +
-  NoAxes() + ggtitle("CD3 (protein)") + feat_theme
+  NoAxes() + ggtitle("CD3 (protein)") + feat_theme + umap_arrows
 
 p_cd8_adt <- FeaturePlot(TARA_sub, features = "CD8A", reduction = "wnn.umap",
-                         pt.size = 0.1, order = TRUE, raster = FALSE) +
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
   scale_color_viridis(option = "inferno") +
-  NoAxes() + ggtitle("CD8a (protein)") + feat_theme
+  NoAxes() + ggtitle("CD8a (protein)") + feat_theme + umap_arrows
 
 p_features <- (p_cd3_rna | p_cd8_rna) / (p_cd3_adt | p_cd8_adt)
 
 ggsave(file.path(fig1_dir, "Fig1B_CD3_CD8_FeaturePlots.png"),
-       p_features, width = 12, height = 10, dpi = 300, bg = "white")
+       p_features, width = 16, height = 14, dpi = 300, bg = "white")
 
 message("✓ Fig 1B saved\n")
 
@@ -518,12 +638,12 @@ message("✓ Fig 1C heatmaps + legend saved\n")
 
 
 ################################################################################
-# FIG 1D — CD8 CLUSTER UMAP (all PBMC, non-CD8 grayed out)
+# FIG 1D — CD8 CLUSTER UMAP (IMPROVED FOR PUBLICATION)
 ################################################################################
 
 message("Generating Fig 1D...")
 
-# Use short labels for display (no cluster numbers since heatmap comes first)
+# Use short labels for display
 TARA_sub$CD8_highlight <- ifelse(
   TARA_sub$Manual_Annotation_refined %in% cd8_cluster_names,
   cd8_short_labels[as.character(TARA_sub$Manual_Annotation_refined)],
@@ -534,30 +654,142 @@ TARA_sub$CD8_highlight <- factor(
   levels = c(cd8_short_labels, "Other")
 )
 
-# Colors keyed by short labels
+# IMPROVED: Colors keyed by short labels - distinct and visible
 highlight_cols <- setNames(
-  c(unname(cluster_cols), "#E0E0E0"),
-  c(cd8_short_labels, "Other")
+  c("#2166AC", "#67A9CF", "#D6604D", "#1A9850", 
+    "#FDAE61", "#B2182B", "#762A83", "#CC79A7", "#E0E0E0"),
+  c("Naive 1", "Naive 2", "Naive Intermediate", "Tscm", 
+    "Transitional", "TEMRA/CTL", "Tex", "γδ T cell", "Other")
 )
 
-p_cd8_umap <- DimPlot2(
-  TARA_sub,
-  reduction  = "wnn.umap",
-  group.by   = "CD8_highlight",
-  cols       = highlight_cols,
-  label      = TRUE,
-  box        = TRUE,
-  label.size = 8,
-  repel      = TRUE,
-  pt.size    = 0.3,
-  raster     = FALSE,
-  theme      = list(NoLegend(), NoAxes(), theme_umap_arrows())
-)
+# IMPROVED: Build UMAP with ggplot2 for full control
+umap_cd8_coords <- as.data.frame(Embeddings(TARA_sub, reduction = "wnn.umap"))
+colnames(umap_cd8_coords) <- c("UMAP1", "UMAP2")
+umap_cd8_coords$Cluster <- TARA_sub$CD8_highlight
 
-ggsave(file.path(fig1_dir, "Fig1D_CD8_Cluster_UMAP.png"),
-       p_cd8_umap, width = 10, height = 9, dpi = 300, bg = "white")
+# Split into CD8 and Other for layered plotting
+umap_other <- umap_cd8_coords %>% filter(Cluster == "Other")
+umap_cd8_only <- umap_cd8_coords %>% filter(Cluster != "Other")
 
-message("✓ Fig 1D saved\n")
+# Calculate centroids for CD8 clusters only
+centroids_cd8 <- umap_cd8_only %>%
+  group_by(Cluster) %>%
+  summarise(
+    UMAP1 = median(UMAP1),
+    UMAP2 = median(UMAP2),
+    .groups = "drop"
+  )
+
+# UMAP arrow positions
+x_arrow <- min(umap_cd8_coords$UMAP1, na.rm = TRUE) + 1
+y_arrow <- min(umap_cd8_coords$UMAP2, na.rm = TRUE) + 1
+
+p_cd8_umap_colored <- ggplot() +
+  # Background: Other cells (gray)
+  geom_point(data = umap_other, 
+             aes(x = UMAP1, y = UMAP2),
+             color = "#E0E0E0", size = 0.5, alpha = 0.4) +
+  # Foreground: CD8 clusters - larger points
+  geom_point(data = umap_cd8_only,
+             aes(x = UMAP1, y = UMAP2, color = Cluster),
+             size = 1.2, alpha = 0.8) +
+  scale_color_manual(values = highlight_cols) +
+  # Labels: white fill, colored text and border matching cluster
+  geom_label_repel(
+    data = centroids_cd8,
+    aes(x = UMAP1, y = UMAP2, label = Cluster, color = Cluster),
+    fill = "white",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  # UMAP arrows - bottom left, large
+  annotate("segment", 
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+p_cd8_umap_black <- ggplot() +
+  # Background: Other cells (gray)
+  geom_point(data = umap_other, 
+             aes(x = UMAP1, y = UMAP2),
+             color = "#E0E0E0", size = 0.5, alpha = 0.4) +
+  # Foreground: CD8 clusters - larger points
+  geom_point(data = umap_cd8_only,
+             aes(x = UMAP1, y = UMAP2, color = Cluster),
+             size = 1.2, alpha = 0.8) +
+  scale_color_manual(values = highlight_cols) +
+  # Labels: white fill, black text and border
+  geom_label_repel(
+    data = centroids_cd8,
+    aes(x = UMAP1, y = UMAP2, label = Cluster),
+    fill = "white",
+    color = "black",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  # UMAP arrows - bottom left, large
+  annotate("segment", 
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+ggsave(file.path(fig1_dir, "Fig1D_CD8_Cluster_UMAP_colored.png"),
+       p_cd8_umap_colored, width = 12, height = 11, dpi = 300, bg = "white")
+
+ggsave(file.path(fig1_dir, "Fig1D_CD8_Cluster_UMAP_black.png"),
+       p_cd8_umap_black, width = 12, height = 11, dpi = 300, bg = "white")
+
+message("✓ Fig 1D saved (both colored and black versions)\n")
 
 
 ################################################################################
@@ -1148,4 +1380,3 @@ message("\n",
         "   S1E: VL correlations % PBMC (7, excl Tex)\n",
         "══════════════════════════════════════════════════════════════\n"
 )
-

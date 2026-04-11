@@ -82,194 +82,12 @@ for (d in ls(pattern = "^dir_\\d")) {
 cat("Analysis output structure created.\n")
 
 # ── Load refined object ──────────────────────────────────────────────────────
-TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_sorted_refined.qs2"))
+TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_sorted_v4.qs2"))
 
 # ── Filter to HEI only ──────────────────────────────────────────────────────
 # Remove HEU and HUU — focus on HIV-exposed infected infants across ART stages
 TARA_ALL <- subset(TARA_ALL, Condition == "HEI")
 cat("Filtered to HEI only:", ncol(TARA_ALL), "cells\n")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# METADATA CORRECTION: Timepoint_Group, Viral_Load_num, Age
-# ══════════════════════════════════════════════════════════════════════════════
-# The source object may have incorrect VL values, ages, or classifications.
-# This block enforces the correct values based on the clinical Excel
-# (TARA_VL_CD4.xlsx) cross-referenced against each orig.ident.
-#
-# Rules:
-#   - "entry" / "V1" samples = PreART_Entry
-#   - Post-ART with VL < 200 cp/mL = PostART_Suppressed
-#   - Post-ART with VL >= 200 cp/mL = PostART_Unsuppressed
-#
-# Sources of error found:
-#   - CP020_V44: Seurat had VL=158, Excel at age 44m shows VL=534,772
-#   - CP013_24m: actual age is 25m (VL=20 at month 25)
-#   - CP018_V24: actual age is 25m (VL=20 at month 25)
-#   - CP003 V12/V24: Seurat VLs differ from Excel (different draws same month)
-#     but classification unchanged (both unsuppressed)
-# ──────────────────────────────────────────────────────────────────────────────
-
-# Define per-sample ground truth: Timepoint_Group, Viral_Load_num, Age
-# Each row: orig.ident -> list(group, vl, age)
-sample_metadata <- list(
-  # CP002
-  "CP002_entry"  = list(group = "PreART_Entry",        vl = 4284389,  age = 1),
-  # CP003
-  "CP003_entry"  = list(group = "PreART_Entry",        vl = 656769,   age = 1),
-  "CP003_V12"    = list(group = "PostART_Unsuppressed", vl = 503497,   age = 12),
-  "CP003_V24"    = list(group = "PostART_Unsuppressed", vl = 489676,   age = 24),
-  # CP006
-  "CP006_entry"  = list(group = "PreART_Entry",        vl = 10000000, age = 1),
-  "CP006_12m"    = list(group = "PostART_Suppressed",   vl = 73,       age = 12),
-  "CP006_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 24),
-  # CP011
-  "CP011_entry"  = list(group = "PreART_Entry",        vl = 36965,    age = 2),
-  # CP013
-  "CP013_entry"  = list(group = "PreART_Entry",        vl = 3434,     age = 1),
-  "CP013_12m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 12),
-  "CP013_24m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
-  # CP016
-  "CP016_entry"  = list(group = "PreART_Entry",        vl = 1978332,  age = 2),
-  # CP017
-  "CP017_entry"  = list(group = "PreART_Entry",        vl = 3167384,  age = 2),
-  # CP018
-  "CP018_entry"  = list(group = "PreART_Entry",        vl = 176970,   age = 1),
-  "CP018_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
-  "CP018_42m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 42),
-  # CP020
-  "CP020_V1"     = list(group = "PreART_Entry",        vl = 414409,   age = 1),
-  "CP020_V12"    = list(group = "PostART_Unsuppressed", vl = 6293122,  age = 12),
-  "CP020_V44"    = list(group = "PostART_Unsuppressed", vl = 534772,   age = 44),  # FIXED: was 158
-  # CP022
-  "CP022_entry"  = list(group = "PreART_Entry",        vl = 5075764,  age = 1),
-  # CP042
-  "CP042_entry"  = list(group = "PreART_Entry",        vl = 6113,     age = 1)
-)
-
-# ── Print BEFORE state ──
-cat("\n=== METADATA BEFORE CORRECTION ===\n")
-cat("Timepoint_Group:\n")
-print(table(TARA_ALL$Timepoint_Group))
-
-samples_in_data <- unique(TARA_ALL$orig.ident)
-cat("\nSamples in data:", paste(sort(samples_in_data), collapse = ", "), "\n")
-cat("Samples in lookup:", paste(sort(names(sample_metadata)), collapse = ", "), "\n")
-
-# Check for mismatches between data and lookup
-missing_in_lookup <- setdiff(samples_in_data, names(sample_metadata))
-missing_in_data   <- setdiff(names(sample_metadata), samples_in_data)
-if (length(missing_in_lookup) > 0) {
-  cat("WARNING: Samples in data but NOT in lookup:", paste(missing_in_lookup, collapse = ", "), "\n")
-}
-if (length(missing_in_data) > 0) {
-  cat("NOTE: Samples in lookup but NOT in data:", paste(missing_in_data, collapse = ", "), "\n")
-}
-
-# ── Apply corrections ──
-n_group_changed <- 0
-n_vl_changed    <- 0
-n_age_changed   <- 0
-
-for (sample_name in names(sample_metadata)) {
-  mask <- TARA_ALL$orig.ident == sample_name
-  n_cells <- sum(mask)
-  if (n_cells == 0) next
-  
-  meta <- sample_metadata[[sample_name]]
-  
-  # Timepoint_Group
-  old_group <- unique(TARA_ALL$Timepoint_Group[mask])
-  if (length(old_group) != 1 || old_group != meta$group) {
-    n_group_changed <- n_group_changed + n_cells
-    TARA_ALL$Timepoint_Group[mask] <- meta$group
-    if (length(old_group) == 1 && old_group != meta$group) {
-      cat(sprintf("  CHANGED %s: %s -> %s (%d cells)\n", sample_name, old_group, meta$group, n_cells))
-    }
-  }
-  
-  # Viral_Load_num
-  old_vl <- unique(TARA_ALL$Viral_Load_num[mask])
-  if (length(old_vl) != 1 || abs(old_vl - meta$vl) > 1) {
-    n_vl_changed <- n_vl_changed + n_cells
-    TARA_ALL$Viral_Load_num[mask] <- meta$vl
-    if (length(old_vl) == 1 && abs(old_vl - meta$vl) > 1) {
-      cat(sprintf("  CHANGED VL %s: %s -> %s (%d cells)\n", sample_name, old_vl, meta$vl, n_cells))
-    }
-  }
-  
-  # Age
-  old_age <- unique(TARA_ALL$Age[mask])
-  if (length(old_age) != 1 || old_age != meta$age) {
-    n_age_changed <- n_age_changed + n_cells
-    TARA_ALL$Age[mask] <- meta$age
-    if (length(old_age) == 1 && old_age != meta$age) {
-      cat(sprintf("  CHANGED Age %s: %s -> %s (%d cells)\n", sample_name, old_age, meta$age, n_cells))
-    }
-  }
-}
-
-cat(sprintf("\nCells with Timepoint_Group changed: %d\n", n_group_changed))
-cat(sprintf("Cells with Viral_Load_num changed:  %d\n", n_vl_changed))
-cat(sprintf("Cells with Age changed:             %d\n", n_age_changed))
-
-# ── Print AFTER state ──
-cat("\n=== METADATA AFTER CORRECTION ===\n")
-cat("Timepoint_Group:\n")
-print(table(TARA_ALL$Timepoint_Group))
-
-# ── Verification table ──
-cat("\n=== PER-SAMPLE VERIFICATION ===\n")
-library(dplyr)
-verify <- TARA_ALL@meta.data %>%
-  group_by(orig.ident, Timepoint_Group) %>%
-  summarise(
-    n_cells = n(),
-    VL      = first(Viral_Load_num),
-    Age     = first(Age),
-    .groups = "drop"
-  ) %>%
-  arrange(orig.ident)
-print(as.data.frame(verify), row.names = FALSE)
-
-# ── Spot-check CP020 ──
-cat("\nCP020 verification:\n")
-print(verify %>% filter(grepl("CP020", orig.ident)))
-
-# ── Rename orig.ident to PID_AgeM format ─────────────────────────────────────
-# e.g. CP018_V24 -> CP018_25m, CP003_entry -> CP003_1m, CP020_V44 -> CP020_44m
-cat("\n=== Renaming orig.ident to PID_AgeM format ===\n")
-
-# Build rename map from sample_metadata (which has correct ages)
-ident_rename <- sapply(names(sample_metadata), function(s) {
-  pid <- sub("_.*$", "", s)
-  age <- sample_metadata[[s]]$age
-  paste0(pid, "_", age, "m")
-})
-names(ident_rename) <- names(sample_metadata)
-
-cat("Rename map:\n")
-for (old_name in sort(names(ident_rename))) {
-  cat(sprintf("  %s -> %s\n", old_name, ident_rename[old_name]))
-}
-
-# Store original ident for reference
-TARA_ALL$orig.ident_raw <- TARA_ALL$orig.ident
-
-# Apply rename
-new_idents <- ident_rename[TARA_ALL$orig.ident]
-n_renamed <- sum(!is.na(new_idents))
-n_missing <- sum(is.na(new_idents))
-
-if (n_missing > 0) {
-  cat(sprintf("WARNING: %d cells had orig.ident not in rename map — kept original\n", n_missing))
-  new_idents[is.na(new_idents)] <- TARA_ALL$orig.ident[is.na(new_idents)]
-}
-
-TARA_ALL$orig.ident <- new_idents
-cat(sprintf("Renamed %d cells to PID_AgeM format\n", n_renamed))
-
-cat("\nNew orig.ident values:\n")
-print(sort(unique(TARA_ALL$orig.ident)))
 
 ################################################################################
 # 1. SUBSET: CD8 clusters + rescue CD8+ cells from other clusters
@@ -578,6 +396,7 @@ for (res in c(0.4, 0.6, 0.8, 1.0)) {
 # ── CHECKPOINT: Save after integration ───────────────────────────────────────
 qs_save(TARA_cd8, file.path(saved_dir, "TARA_cd8_HEI_integrated.qs2"))
 cat("CHECKPOINT: Integrated object saved as TARA_cd8_HEI_integrated.qs2\n")
+#TARA_cd8 <- qs_read(file.path(saved_dir, "TARA_cd8_HEI_integrated.qs2"))
 
 ################################################################################
 # 3. ANNOTATION EXPLORATION: Average expression per cluster
@@ -701,57 +520,32 @@ print(round(avg_adt_scaled, 2))
 ################################################################################
 # 4. ANNOTATION: Inspect clusters, then annotate
 ################################################################################
-
-cat("\n=== Timepoint_Group distribution per cluster ===\n")
-print(round(prop.table(table(TARA_cd8$seurat_clusters, TARA_cd8$Timepoint_Group), margin = 1), 3))
-
-cat("\n=== Cluster sizes ===\n")
-print(table(TARA_cd8$seurat_clusters))
-
-cat("\n=== has_TCR per cluster ===\n")
-print(round(prop.table(table(TARA_cd8$seurat_clusters, TARA_cd8$has_TCR), margin = 1), 3))
-
-# ── Export avg expression CSVs for annotation ────────────────────────────────
-DefaultAssay(TARA_cd8) <- "ADT"
-avg_adt_explore <- AverageExpression(TARA_cd8, assays = "ADT",
-                                     features = rownames(TARA_cd8[["ADT"]]),
-                                     group.by = "seurat_clusters", slot = "data")$ADT
-colnames(avg_adt_explore) <- gsub("^g\\s*", "", colnames(avg_adt_explore))
-write.csv(round(avg_adt_explore, 3),
-          file.path(dir_02_clustering, "CD8_HEI_avg_ADT_ALL_by_cluster.csv"))
-
-DefaultAssay(TARA_cd8) <- "RNA"
-rna_markers_expanded <- c(
-  "CCR7", "SELL", "TCF7", "LEF1", "IL7R", "FOXP1", "KLF2", "S1PR1",
-  "CD27", "CD28", "BCL2", "BACH2", "CD44", "ID3",
-  "FAS", "IL2RB", "CXCR3", "CXCR4",
-  "GZMK", "EOMES", "GZMB", "GNLY", "PRF1", "NKG7", "TBX21", "CX3CR1",
-  "FGFBP2", "GZMA", "GZMH", "GZMM",
-  "TOX", "PDCD1", "TIGIT", "HAVCR2", "LAG3", "CTLA4", "ENTPD1",
-  "MKI67", "TOP2A", "STMN1",
-  "ITGAE", "CXCR6", "CD69", "ZNF683", "ITGA1",
-  "TRDV1", "TRDV2", "TRGV9", "TRDC",
-  "TYROBP", "KLRD1", "KLRB1", "KLRC1", "NCAM1", "FCGR3A",
-  "KIR2DL3", "KIR3DL1", "KIR3DL2",
-  "HLA-DRA", "CD38", "IFNG", "TNF",
-  "SLC4A10", "ZBTB16", "RORC", "NCR3",
-  "RUNX3", "ZEB2", "PRDM1", "ID2", "S1PR5",
-  "FOXP3", "IL2RA"
-)
-rna_markers_present <- rna_markers_expanded[rna_markers_expanded %in% rownames(TARA_cd8[["RNA"]])]
-
-avg_rna_explore <- AverageExpression(TARA_cd8, assays = "RNA",
-                                     features = rna_markers_present,
-                                     group.by = "seurat_clusters", slot = "data")$RNA
-colnames(avg_rna_explore) <- gsub("^g\\s*", "", colnames(avg_rna_explore))
-write.csv(round(avg_rna_explore, 3),
-          file.path(dir_02_clustering, "CD8_HEI_avg_RNA_expanded_by_cluster.csv"))
-
-cat("\nExploration CSVs saved. Upload these for annotation help.\n")
-
 ################################################################################
 # 4. ANNOTATION: HEI-only CD8, Resolution 0.4 (13 clusters: X0–X12)
-#    UPDATED ANNOTATIONS (v2)
+#    WITH ADT SUB-GATING OF NAÏVE CLUSTERS (Fig 1-consistent)
+#
+#    STRATEGY:
+#      Each naïve cluster (0, 1, 5) is gated INDEPENDENTLY by ADT:
+#        CD45RO+              → Naïve Intermediate CD8
+#        CD45RO- AND FAS/CD95+ → Tscm CD8
+#        CD45RO- AND FAS-     → retains original naïve identity
+#
+#      This preserves the three distinct naïve populations:
+#        Cluster 0 true naïve → "Naïve CD8"      (classical, 61% pre-ART)
+#        Cluster 1 true naïve → "Naïve CD8 2"    (KIR3DL1+, 92% pre-ART)
+#        Cluster 5 true naïve → "Naïve CD8 3"    (BACH2+, 46% suppressed)
+#
+#      While recovering two new populations pooled across clusters:
+#        "Tscm CD8"                (CD45RA+ CD45RO- FAS+, from any source)
+#        "Naïve Intermediate CD8"  (CD45RO+, from any source)
+#
+#      Thresholds: CD45RO > 0, FAS > 0 (DSB-normalized, same as Fig 1)
+#
+#    FINAL ANNOTATION SET (13 populations):
+#      Naïve CD8, Naïve CD8 2, Naïve CD8 3, Tscm CD8,
+#      Naïve Intermediate CD8, Transitional Tem CD8, TEM CD8, TEMRA CD8,
+#      KIR+ innate-like CD8, MAIT-like Trm,
+#      γδ1 T cell, Naïve γδ1 T cell, γδ2 T cell
 ################################################################################
 
 # ── Step 1: Remove contaminants ──────────────────────────────────────────────
@@ -760,23 +554,26 @@ TARA_cd8 <- subset(TARA_cd8, seurat_clusters %in% clusters_to_remove, invert = T
 cat("Removed clusters:", paste(clusters_to_remove, collapse = ", "), "\n")
 cat("Remaining cells:", ncol(TARA_cd8), "\n")
 
-# ── Step 2: Initial annotation (UPDATED v2) ─────────────────────────────────
+TARA_cd8$seurat_clusters <- droplevels(TARA_cd8$seurat_clusters)
+cat("Remaining cluster levels:", paste(levels(TARA_cd8$seurat_clusters), collapse = ", "), "\n\n")
+
+# ── Step 2: Initial annotation ───────────────────────────────────────────────
+# Each naïve cluster gets its OWN label — they will be gated independently
+# in Step 4, with Tscm and Naïve Intermediate pulled out, but true naïve
+# cells retaining their distinct cluster identity.
 cd8_annotations <- c(
   "0"  = "Naïve CD8",
-  "1"  = "TEM CD8",
-  "2"  = "Naïve CD8 2",
+  "1"  = "Naïve CD8 2",             # KIR3DL1+, 92% pre-ART, hypoxia signature
+  "2"  = "TEM CD8",                 # GZMK+, TOX+, 61% clonally expanded
   "3"  = "γδ1 T cell",
   "4"  = "TEMRA CD8",
-  "5"  = "Naïve CD8 3",
+  "5"  = "Naïve CD8 3",             # BACH2+, 46% suppressed, quiescent
   "6"  = "Transitional Tem CD8",
-  "7"  = "Naïve γδ1 T cell",          # will be split
+  "7"  = "Naïve γδ1 T cell",        # will be split by TCR
   "8"  = "KIR+ innate-like CD8",
   "9"  = "γδ2 T cell",
   "10" = "MAIT-like Trm"
 )
-
-TARA_cd8$seurat_clusters <- droplevels(TARA_cd8$seurat_clusters)
-cat("Remaining cluster levels:", paste(levels(TARA_cd8$seurat_clusters), collapse = ", "), "\n")
 
 annot_vec <- cd8_annotations[as.character(TARA_cd8$seurat_clusters)]
 names(annot_vec) <- colnames(TARA_cd8)
@@ -786,163 +583,577 @@ TARA_cd8 <- AddMetaData(TARA_cd8, metadata = annot_vec, col.name = "CD8_Annotati
 
 # X3 (γδ1 T cell): move αβ TCR contaminants → TEM CD8
 c3_ab <- TARA_cd8$seurat_clusters == "3" & TARA_cd8$has_TCR == TRUE
-cat("\nX3 clean: moving", sum(c3_ab), "αβ TCR contaminants to TEM CD8\n")
-TARA_cd8$CD8_Annotation[c3_ab] <- "TEM CD8"
+cat("X3 clean: moving", sum(c3_ab), "αβ TCR cells to TEMRA CD8 (GZMB+GNLY+ cytotoxic)\n")
+TARA_cd8$CD8_Annotation[c3_ab] <- "TEMRA CD8"
 
-# X7 (Naïve γδ1 T cell): αβ TCR cells → Naïve CD8, rest stays γδ
+# X7 (Naïve γδ1 T cell): αβ TCR cells → TEMRA CD8 (GZMB+GNLY+ cytotoxic, 82% expanded)
 c7_ab <- TARA_cd8$seurat_clusters == "7" & TARA_cd8$has_TCR == TRUE
-cat("X7 split: moving", sum(c7_ab), "αβ TCR cells to Naïve CD8\n")
-TARA_cd8$CD8_Annotation[c7_ab] <- "Naïve CD8"
+cat("X7 split: moving", sum(c7_ab), "αβ TCR cells to TEMRA CD8 (cytotoxic profile)\n\n")
+TARA_cd8$CD8_Annotation[c7_ab] <- "TEMRA CD8"
 
-# ── Step 4: Finalize ─────────────────────────────────────────────────────────
+################################################################################
+# Step 4: ADT SUB-GATING OF NAÏVE CLUSTERS
+#
+# Gate each naïve population independently. Tscm and Naïve Intermediate
+# are pooled across source clusters; true naïve cells keep their identity.
+#
+# Same thresholds as Fig 1 (Step 3):
+#   CD45RO > 0  → Naïve Intermediate CD8
+#   CD45RO ≤ 0 AND FAS > 0 → Tscm CD8
+#   CD45RO ≤ 0 AND FAS ≤ 0 → keep original naïve label
+################################################################################
+
+cat(strrep("═", 70), "\n")
+cat("  ADT SUB-GATING: Recovering Tscm from naïve clusters\n")
+cat(strrep("═", 70), "\n\n")
+
+# ── Store source cluster before any changes ──────────────────────────────────
+TARA_cd8$source_cluster <- as.character(TARA_cd8$seurat_clusters)
+
+# ── Identify all naïve-lineage cells to gate ─────────────────────────────────
+# This includes Naïve CD8 (cluster 0 + rescued C7), Naïve CD8 2 (cluster 1), Naïve CD8 3 (cluster 5)
+naive_labels <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3")
+naive_mask <- TARA_cd8$CD8_Annotation %in% naive_labels
+naive_cells <- colnames(TARA_cd8)[naive_mask]
+
+cat("Total naïve-lineage cells to sub-gate:", length(naive_cells), "\n")
+cat("  By current annotation:\n")
+print(table(TARA_cd8$CD8_Annotation[naive_mask]))
+cat("  By source cluster:\n")
+print(table(TARA_cd8$source_cluster[naive_mask]))
+cat("\n")
+
+# ── Extract ADT expression ──────────────────────────────────────────────────
+DefaultAssay(TARA_cd8) <- "ADT"
+adt_data <- GetAssayData(TARA_cd8, slot = "data")
+
+# Verify markers exist
+stopifnot("CD45RO not in ADT" = "CD45RO" %in% rownames(adt_data))
+stopifnot("FAS not in ADT"    = "FAS" %in% rownames(adt_data))
+stopifnot("CD45RA not in ADT" = "CD45RA" %in% rownames(adt_data))
+
+cd45ro_vals <- as.numeric(adt_data["CD45RO", naive_cells])
+fas_vals    <- as.numeric(adt_data["FAS", naive_cells])
+cd45ra_vals <- as.numeric(adt_data["CD45RA", naive_cells])
+current_labels <- TARA_cd8$CD8_Annotation[naive_cells]
+
+# ── Thresholds (same as Fig 1) ──────────────────────────────────────────────
+cd45ro_threshold <- 0
+fas_threshold    <- 0
+
+cat("Gating thresholds (same as Fig 1):\n")
+cat("  CD45RO:", cd45ro_threshold, "\n")
+cat("  FAS:   ", fas_threshold, "\n\n")
+
+# ── Diagnostics: print distributions per source naïve population ─────────────
+for (lbl in naive_labels) {
+  lbl_mask <- current_labels == lbl
+  if (sum(lbl_mask) == 0) next
+  lbl_ro  <- cd45ro_vals[lbl_mask]
+  lbl_fas <- fas_vals[lbl_mask]
+  cat(sprintf("  %s (%d cells):\n", lbl, sum(lbl_mask)))
+  cat(sprintf("    CD45RO: median=%.3f, %%>0=%.1f%%\n",
+              median(lbl_ro), mean(lbl_ro > 0) * 100))
+  cat(sprintf("    FAS:    median=%.3f, %%>0=%.1f%%\n",
+              median(lbl_fas), mean(lbl_fas > 0) * 100))
+}
+cat("\n")
+
+# ── Apply gating — key logic ────────────────────────────────────────────────
+# CD45RO+ → "Naïve Intermediate CD8" (regardless of source)
+# CD45RO- AND FAS+ → "Tscm CD8" (regardless of source)
+# CD45RO- AND FAS- → KEEP ORIGINAL LABEL (Naïve CD8 / Naïve CD8 2 / Naïve CD8 3)
+cd45ro_pos <- cd45ro_vals > cd45ro_threshold
+fas_pos    <- fas_vals > fas_threshold
+
+gate_result <- case_when(
+  cd45ro_pos                  ~ "Naïve Intermediate CD8",
+  !cd45ro_pos &  fas_pos      ~ "Tscm CD8",
+  !cd45ro_pos & !fas_pos      ~ as.character(current_labels),  # ← KEEP ORIGINAL
+  TRUE                        ~ as.character(current_labels)
+)
+names(gate_result) <- naive_cells
+
+# ── Print gating results ────────────────────────────────────────────────────
+cat("=== Overall gating results ===\n")
+gt <- table(gate_result)
+gp <- round(prop.table(gt) * 100, 1)
+for (g in sort(names(gt))) {
+  cat(sprintf("  %-30s %5d (%5.1f%%)\n", g, gt[g], gp[g]))
+}
+cat("\n")
+
+# ── Results per source naïve population ──────────────────────────────────────
+cat("=== Gating results per source population ===\n")
+gate_df <- data.frame(
+  cell         = naive_cells,
+  source_label = as.character(current_labels),
+  source_clust = as.character(TARA_cd8$source_cluster[naive_cells]),
+  gate         = gate_result,
+  stringsAsFactors = FALSE
+)
+
+for (lbl in naive_labels) {
+  lbl_gates <- gate_df %>% filter(source_label == lbl)
+  if (nrow(lbl_gates) == 0) next
+  cat(sprintf("  %s (%d cells):\n", lbl, nrow(lbl_gates)))
+  lbl_gt <- table(lbl_gates$gate)
+  lbl_gp <- round(prop.table(lbl_gt) * 100, 1)
+  for (g in sort(names(lbl_gt))) {
+    cat(sprintf("    %-28s %5d (%5.1f%%)\n", g, lbl_gt[g], lbl_gp[g]))
+  }
+}
+cat("\n")
+
+# ── Apply gating to metadata ────────────────────────────────────────────────
+TARA_cd8$CD8_Annotation[match(names(gate_result), colnames(TARA_cd8))] <- gate_result
+
+# ── Store ADT gate info ─────────────────────────────────────────────────────
+adt_gate_vec <- rep(NA_character_, ncol(TARA_cd8))
+names(adt_gate_vec) <- colnames(TARA_cd8)
+adt_gate_vec[names(gate_result)] <- gate_result
+TARA_cd8 <- AddMetaData(TARA_cd8, metadata = adt_gate_vec, col.name = "ADT_gate")
+
+# ── Gating results × Timepoint ───────────────────────────────────────────────
+cat("=== Gating results × Timepoint_Group ===\n")
+print(table(gate_result, TARA_cd8$Timepoint_Group[match(names(gate_result), colnames(TARA_cd8))]))
+cat("\n")
+
+# ── Step 5: Finalize ─────────────────────────────────────────────────────────
 TARA_cd8$CD8_Annotation <- factor(TARA_cd8$CD8_Annotation)
 Idents(TARA_cd8) <- "CD8_Annotation"
 
-cat("\n=== Final CD8 sub-cluster sizes (HEI only) ===\n")
-print(table(TARA_cd8$CD8_Annotation))
+cat("=== Final CD8 sub-cluster sizes ===\n")
+print(sort(table(TARA_cd8$CD8_Annotation), decreasing = TRUE))
+
+cat("\n=== CD8_Annotation × Timepoint_Group ===\n")
+print(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group))
 
 cat("\n=== αβ TCR proportions after cleanup ===\n")
 print(round(prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$has_TCR), margin = 1), 3))
 
-cat("\n=== Timepoint_Group per annotation ===\n")
-print(round(prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group), margin = 1), 3))
+cat("\n=== Tscm CD8 breakdown ===\n")
+tscm_mask <- TARA_cd8$CD8_Annotation == "Tscm CD8"
+if (sum(tscm_mask) > 0) {
+  cat("  By source cluster:\n")
+  print(table(TARA_cd8$source_cluster[tscm_mask]))
+  cat("  By timepoint:\n")
+  print(table(TARA_cd8$Timepoint_Group[tscm_mask]))
+  cat("  Timepoint proportions:\n")
+  print(round(prop.table(table(TARA_cd8$Timepoint_Group[tscm_mask])) * 100, 1))
+} else {
+  cat("  WARNING: No Tscm CD8 cells found. Check FAS ADT threshold.\n")
+}
 
+cat("\n=== Naïve Intermediate CD8 breakdown ===\n")
+naint_mask <- TARA_cd8$CD8_Annotation == "Naïve Intermediate CD8"
+if (sum(naint_mask) > 0) {
+  cat("  By source cluster:\n")
+  print(table(TARA_cd8$source_cluster[naint_mask]))
+  cat("  By timepoint:\n")
+  print(table(TARA_cd8$Timepoint_Group[naint_mask]))
+} else {
+  cat("  No Naïve Intermediate CD8 cells found.\n")
+}
 
+################################################################################
+# Step 6: GATING DIAGNOSTIC PLOTS
+################################################################################
+
+cat("\n=== Generating gating diagnostic plots ===\n")
+
+gate_plot_dir <- file.path(analysis_dir, "03B_naive_subgating")
+dir.create(gate_plot_dir, recursive = TRUE, showWarnings = FALSE)
+
+# Build plotting data frame
+gate_plot_df <- data.frame(
+  cell         = naive_cells,
+  source_label = as.character(current_labels),
+  source_clust = as.character(TARA_cd8$source_cluster[naive_cells]),
+  CD45RO       = cd45ro_vals,
+  CD45RA       = cd45ra_vals,
+  FAS          = fas_vals,
+  gate         = gate_result[naive_cells],
+  Timepoint    = TARA_cd8$Timepoint_Group[naive_cells],
+  stringsAsFactors = FALSE
+)
+
+gate_cols <- c(
+  "Naïve CD8"              = "#4E79A7",
+  "Naïve CD8 2"            = "#76B7B2",
+  "Naïve CD8 3"            = "#B07AA1",
+  "Tscm CD8"               = "#59A14F",
+  "Naïve Intermediate CD8" = "#E15759"
+)
+
+source_labels <- c("Naïve CD8"   = "Naïve CD8\n(classical, Cl.0)",
+                   "Naïve CD8 2" = "Naïve CD8 2\n(KIR+/pre-ART, Cl.2)",
+                   "Naïve CD8 3" = "Naïve CD8 3\n(BACH2+/post-ART, Cl.5)")
+
+# Plot 1: CD45RO vs FAS by source population
+p1 <- ggplot(gate_plot_df, aes(x = FAS, y = CD45RO, color = gate)) +
+  geom_point(size = 0.4, alpha = 0.4) +
+  scale_color_manual(values = gate_cols, name = "ADT Gate") +
+  geom_hline(yintercept = cd45ro_threshold, linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = fas_threshold, linetype = "dashed", color = "grey40") +
+  facet_wrap(~ source_label, nrow = 1, labeller = labeller(source_label = source_labels)) +
+  labs(title = "CD45RO vs FAS/CD95 — Tscm = CD45RO- FAS+",
+       subtitle = "True naïve cells retain source cluster identity",
+       x = "FAS/CD95 (DSB)", y = "CD45RO (DSB)") +
+  theme_cowplot(font_size = 11) +
+  theme(strip.background = element_rect(fill = "grey95", color = NA),
+        legend.position = "bottom",
+        plot.background = element_rect(fill = "white", color = NA))
+
+ggsave(file.path(gate_plot_dir, "01_Gate_CD45RO_vs_FAS.png"),
+       p1, width = 16, height = 6, dpi = 300, bg = "white")
+
+# Plot 2: FAS vs CD45RA by source population
+p2 <- ggplot(gate_plot_df, aes(x = CD45RA, y = FAS, color = gate)) +
+  geom_point(size = 0.4, alpha = 0.4) +
+  scale_color_manual(values = gate_cols, name = "ADT Gate") +
+  geom_hline(yintercept = fas_threshold, linetype = "dashed", color = "grey40") +
+  facet_wrap(~ source_label, nrow = 1, labeller = labeller(source_label = source_labels)) +
+  labs(title = "FAS/CD95 vs CD45RA — Tscm = CD45RA+ FAS+",
+       x = "CD45RA (DSB)", y = "FAS/CD95 (DSB)") +
+  theme_cowplot(font_size = 11) +
+  theme(strip.background = element_rect(fill = "grey95", color = NA),
+        legend.position = "bottom",
+        plot.background = element_rect(fill = "white", color = NA))
+
+ggsave(file.path(gate_plot_dir, "02_Gate_FAS_vs_CD45RA.png"),
+       p2, width = 16, height = 6, dpi = 300, bg = "white")
+
+# Plot 3: Histograms
+p_h1 <- ggplot(gate_plot_df, aes(x = CD45RO, fill = gate)) +
+  geom_histogram(bins = 60, alpha = 0.7, position = "identity") +
+  scale_fill_manual(values = gate_cols) +
+  geom_vline(xintercept = cd45ro_threshold, linetype = "dashed") +
+  facet_wrap(~ source_label, nrow = 1, scales = "free_y",
+             labeller = labeller(source_label = source_labels)) +
+  labs(title = "CD45RO distribution", x = "CD45RO (DSB)") +
+  theme_cowplot(font_size = 10) +
+  theme(legend.position = "none", plot.background = element_rect(fill = "white", color = NA))
+
+p_h2 <- ggplot(gate_plot_df, aes(x = FAS, fill = gate)) +
+  geom_histogram(bins = 60, alpha = 0.7, position = "identity") +
+  scale_fill_manual(values = gate_cols) +
+  geom_vline(xintercept = fas_threshold, linetype = "dashed") +
+  facet_wrap(~ source_label, nrow = 1, scales = "free_y",
+             labeller = labeller(source_label = source_labels)) +
+  labs(title = "FAS/CD95 distribution", x = "FAS (DSB)") +
+  theme_cowplot(font_size = 10) +
+  theme(legend.position = "bottom", plot.background = element_rect(fill = "white", color = NA))
+
+p_hists <- p_h1 / p_h2 + plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+ggsave(file.path(gate_plot_dir, "03_Gate_Histograms.png"),
+       p_hists, width = 16, height = 10, dpi = 300, bg = "white")
+
+# Plot 4: Gate composition by timepoint per source population
+gate_tp <- gate_plot_df %>%
+  group_by(source_label, gate, Timepoint) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(source_label, Timepoint) %>%
+  mutate(prop = n / sum(n)) %>%
+  ungroup()
+gate_tp$Timepoint <- factor(gate_tp$Timepoint,
+                            levels = c("PreART_Entry", "PostART_Suppressed",
+                                       "PostART_Unsuppressed"))
+
+p_tp <- ggplot(gate_tp, aes(x = Timepoint, y = prop, fill = gate)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.7) +
+  scale_fill_manual(values = gate_cols, name = "ADT Gate") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_discrete(labels = c("Pre-ART", "Suppressed", "Unsuppressed")) +
+  facet_wrap(~ source_label, nrow = 1, labeller = labeller(source_label = source_labels)) +
+  labs(x = NULL, y = "Proportion", title = "Gate composition by timepoint") +
+  theme_cowplot(font_size = 11) +
+  theme(axis.text.x = element_text(size = 9, angle = 30, hjust = 1),
+        strip.background = element_rect(fill = "grey95", color = NA),
+        legend.position = "bottom",
+        plot.background = element_rect(fill = "white", color = NA))
+
+ggsave(file.path(gate_plot_dir, "04_Gate_by_timepoint.png"),
+       p_tp, width = 14, height = 6, dpi = 300, bg = "white")
+
+# Export gating CSV
+write.csv(gate_plot_df %>% select(cell, source_label, source_clust, CD45RO, CD45RA, FAS, gate, Timepoint),
+          file.path(gate_plot_dir, "05_Gating_per_cell.csv"), row.names = FALSE)
+
+cat("  Gating diagnostic plots saved to:", gate_plot_dir, "\n\n")
+
+################################################################################
+# Step 7: ANNOTATION VERIFICATION — CHECK BEFORE PROCEEDING
+#
+# This block prints a comprehensive summary so you can verify every cluster
+# was annotated correctly. It also generates diagnostic UMAPs colored by
+# annotation, source cluster, ART status, and key markers.
+#
+# *** DO NOT PROCEED TO SECTION 5 UNTIL YOU HAVE VERIFIED THIS OUTPUT ***
+################################################################################
+
+cat("\n")
+cat(strrep("█", 70), "\n")
+cat("  ANNOTATION VERIFICATION — CHECK ALL VALUES BELOW\n")
+cat(strrep("█", 70), "\n\n")
+
+# ── V1: Cluster mapping table ────────────────────────────────────────────────
+# This is the most important check. Each seurat_cluster should map to the
+# correct CD8_Annotation. Cross-reference against the diagnostic data:
+#   Cluster 0: 61% pre-ART, 0.2% expanded → should be Naïve CD8
+#   Cluster 1: 92% pre-ART, 0.1% expanded → should be Naïve CD8 2
+#   Cluster 2: 29% pre-ART, 61% expanded  → should be TEM CD8
+#   Cluster 3: γδ TCR                      → should be γδ1 T cell (or TEM if αβ rescued)
+#   Cluster 4: 9% pre-ART, 69% expanded   → should be TEMRA CD8
+#   Cluster 5: 46% suppressed, 0% expanded → should be Naïve CD8 3
+#   Cluster 6: 46% suppressed, 45% expanded → should be Transitional Tem CD8
+#   Cluster 7: γδ TCR (split by αβ)        → Naïve γδ1 or gated naïve
+#   Cluster 8: KIR+                        → KIR+ innate-like CD8
+#   Cluster 9: γδ2                         → γδ2 T cell
+#   Cluster 10: MAIT                       → MAIT-like Trm
+
+cat("=== V1: seurat_clusters × CD8_Annotation cross-table ===\n")
+cat("  (Each row = one seurat_cluster, columns = assigned annotation)\n")
+cat("  CHECK: No cluster should map to a biologically wrong annotation\n\n")
+print(table(TARA_cd8$seurat_clusters, TARA_cd8$CD8_Annotation))
+
+# ── V2: Per-annotation summary with biology checks ──────────────────────────
+cat("\n=== V2: Per-annotation biological verification ===\n")
+cat("  CHECK: Naïve populations should have HIGH % pre-ART, LOW % expanded\n")
+cat("  CHECK: Effector populations should have HIGH % expanded\n")
+cat("  CHECK: Naïve CD8 3 should have HIGH % suppressed (post-ART enriched)\n\n")
+
+DefaultAssay(TARA_cd8) <- "RNA"
+verify_df <- TARA_cd8@meta.data %>%
+  group_by(CD8_Annotation) %>%
+  summarise(
+    n_cells       = n(),
+    pct_preART    = round(sum(Timepoint_Group == "PreART_Entry") / n() * 100, 1),
+    pct_suppressed = round(sum(Timepoint_Group == "PostART_Suppressed") / n() * 100, 1),
+    pct_unsuppressed = round(sum(Timepoint_Group == "PostART_Unsuppressed") / n() * 100, 1),
+    pct_expanded  = round(sum(!is.na(cloneSize) & cloneSize != "Single (0 < X <= 1)") / n() * 100, 1),
+    pct_TCR       = round(sum(has_TCR == TRUE, na.rm = TRUE) / n() * 100, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(n_cells))
+
+cat(sprintf("%-28s %7s %8s %8s %8s %8s %8s\n",
+            "Annotation", "N", "%preART", "%Sup", "%Unsup", "%Expand", "%TCR"))
+cat(strrep("-", 95), "\n")
+for (i in seq_len(nrow(verify_df))) {
+  r <- verify_df[i, ]
+  cat(sprintf("%-28s %7d %7.1f%% %7.1f%% %7.1f%% %7.1f%% %7.1f%%\n",
+              r$CD8_Annotation, r$n_cells, r$pct_preART, r$pct_suppressed,
+              r$pct_unsuppressed, r$pct_expanded, r$pct_TCR))
+}
+
+# ── V3: Key marker expression per annotation (RNA) ──────────────────────────
+cat("\n=== V3: Key marker expression (RNA) per annotation ===\n")
+cat("  CHECK: TCF7/CCR7/SELL should be HIGH in naïve, LOW in effector\n")
+cat("  CHECK: GZMK/GZMB/TOX should be HIGH in TEM/TEMRA, LOW in naïve\n")
+cat("  CHECK: BACH2/BCL2 should be HIGHEST in Naïve CD8 3\n\n")
+
+key_markers <- c("TCF7", "CCR7", "SELL", "BACH2", "BCL2", "GZMK", "GZMB",
+                 "TOX", "PDCD1", "GNLY", "PRF1", "TRDV1")
+key_markers <- key_markers[key_markers %in% rownames(TARA_cd8[["RNA"]])]
+
+avg_verify <- AverageExpression(TARA_cd8, assays = "RNA", features = key_markers,
+                                group.by = "CD8_Annotation", slot = "data")$RNA
+colnames(avg_verify) <- gsub("^g ", "", colnames(avg_verify))
+print(round(avg_verify, 2))
+
+# ── V4: Key marker expression per annotation (ADT) ──────────────────────────
+cat("\n=== V4: Key surface protein (ADT) per annotation ===\n")
+cat("  CHECK: CD45RA HIGH in naïve/TEMRA, CD45RO HIGH in TEM/Intermediate\n")
+cat("  CHECK: FAS HIGH in Tscm, LOW in true naïve\n\n")
+
+key_adt <- c("CD45RA", "CD45RO", "FAS", "CD27", "CD28", "SELL",
+             "B3GAT1", "PDCD1", "TIGIT", "CD38", "KIR3DL1")
+key_adt <- key_adt[key_adt %in% rownames(TARA_cd8[["ADT"]])]
+
+DefaultAssay(TARA_cd8) <- "ADT"
+avg_adt_verify <- AverageExpression(TARA_cd8, assays = "ADT", features = key_adt,
+                                    group.by = "CD8_Annotation", slot = "data")$ADT
+colnames(avg_adt_verify) <- gsub("^g ", "", colnames(avg_adt_verify))
+print(round(avg_adt_verify, 3))
+
+# ── V5: Source cluster composition of gated populations ──────────────────────
+cat("\n=== V5: Source cluster for Tscm and Naïve Intermediate ===\n")
+cat("  CHECK: Tscm should come mostly from cluster 1 (Naïve CD8 2, KIR+)\n")
+cat("  CHECK: Naïve Intermediate should come mostly from clusters 0 and 1\n\n")
+
+if ("source_cluster" %in% colnames(TARA_cd8@meta.data)) {
+  for (pop in c("Tscm CD8", "Naïve Intermediate CD8")) {
+    mask <- TARA_cd8$CD8_Annotation == pop
+    if (sum(mask) > 0) {
+      cat(sprintf("  %s (%d cells):\n", pop, sum(mask)))
+      cat("    Source clusters: "); print(table(TARA_cd8$source_cluster[mask]))
+      cat("    Timepoints:     "); print(table(TARA_cd8$Timepoint_Group[mask]))
+      cat("\n")
+    }
+  }
+}
+
+# ── V6: DIAGNOSTIC UMAPs ────────────────────────────────────────────────────
+cat("=== V6: Generating diagnostic UMAPs ===\n")
+
+diag_umap_dir <- file.path(analysis_dir, "04_annotation_verification")
+dir.create(diag_umap_dir, recursive = TRUE, showWarnings = FALSE)
+
+# UMAP 1: Colored by CD8_Annotation (final annotations)
+p_v1 <- DimPlot(TARA_cd8, reduction = "wnn.umap", group.by = "CD8_Annotation",
+                label = TRUE, label.size = 3.5, repel = TRUE, pt.size = 0.4) +
+  ggtitle("VERIFICATION: CD8_Annotation") +
+  NoAxes() +
+  theme(plot.background = element_rect(fill = "white", color = NA),
+        legend.text = element_text(size = 8),
+        plot.title = element_text(size = 16, face = "bold", color = "red"))
+
+ggsave(file.path(diag_umap_dir, "V1_UMAP_CD8_Annotation.png"),
+       plot = p_v1, width = 14, height = 10, dpi = 200, bg = "white")
+
+# UMAP 2: Colored by seurat_clusters (numeric cluster IDs)
+p_v2 <- DimPlot(TARA_cd8, reduction = "wnn.umap", group.by = "seurat_clusters",
+                label = TRUE, label.size = 5, pt.size = 0.4) +
+  ggtitle("VERIFICATION: seurat_clusters (numeric)") +
+  NoAxes() +
+  theme(plot.background = element_rect(fill = "white", color = NA),
+        plot.title = element_text(size = 16, face = "bold", color = "red"))
+
+ggsave(file.path(diag_umap_dir, "V2_UMAP_seurat_clusters.png"),
+       plot = p_v2, width = 12, height = 10, dpi = 200, bg = "white")
+
+# UMAP 3: Colored by ART status
+p_v3 <- DimPlot(TARA_cd8, reduction = "wnn.umap", group.by = "Timepoint_Group",
+                pt.size = 0.4) +
+  scale_color_manual(values = c("PreART_Entry" = "#4A90D9",
+                                "PostART_Suppressed" = "#52B788",
+                                "PostART_Unsuppressed" = "#E76F51")) +
+  ggtitle("VERIFICATION: ART status") +
+  NoAxes() +
+  theme(plot.background = element_rect(fill = "white", color = NA),
+        plot.title = element_text(size = 16, face = "bold", color = "red"))
+
+ggsave(file.path(diag_umap_dir, "V3_UMAP_ART_status.png"),
+       plot = p_v3, width = 12, height = 10, dpi = 200, bg = "white")
+
+# UMAP 4: Key RNA markers — TCF7 (naïve) and GZMK (effector)
+DefaultAssay(TARA_cd8) <- "RNA"
+p_v4a <- FeaturePlot(TARA_cd8, features = "TCF7", reduction = "wnn.umap",
+                     pt.size = 0.3, order = TRUE) +
+  scale_color_viridis_c(option = "magma") + NoAxes() +
+  ggtitle("TCF7 (HIGH = naïve/stem)") +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+
+p_v4b <- FeaturePlot(TARA_cd8, features = "GZMK", reduction = "wnn.umap",
+                     pt.size = 0.3, order = TRUE) +
+  scale_color_viridis_c(option = "magma") + NoAxes() +
+  ggtitle("GZMK (HIGH = TEM effector)") +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+
+p_v4c <- FeaturePlot(TARA_cd8, features = "GZMB", reduction = "wnn.umap",
+                     pt.size = 0.3, order = TRUE) +
+  scale_color_viridis_c(option = "magma") + NoAxes() +
+  ggtitle("GZMB (HIGH = TEMRA/CTL)") +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+
+p_v4d <- FeaturePlot(TARA_cd8, features = "BACH2", reduction = "wnn.umap",
+                     pt.size = 0.3, order = TRUE) +
+  scale_color_viridis_c(option = "magma") + NoAxes() +
+  ggtitle("BACH2 (HIGHEST = Naïve CD8 3)") +
+  theme(plot.background = element_rect(fill = "white", color = NA))
+
+p_v4 <- (p_v4a | p_v4b) / (p_v4c | p_v4d)
+
+ggsave(file.path(diag_umap_dir, "V4_UMAP_key_markers.png"),
+       plot = p_v4, width = 16, height = 14, dpi = 200, bg = "white")
+
+# UMAP 5: ADT markers — FAS (Tscm), CD45RO (Intermediate), KIR3DL1 (Naïve CD8 2)
+DefaultAssay(TARA_cd8) <- "ADT"
+
+adt_verify_markers <- c("FAS", "CD45RO", "KIR3DL1", "CD45RA")
+adt_verify_markers <- adt_verify_markers[adt_verify_markers %in% rownames(TARA_cd8[["ADT"]])]
+
+if (length(adt_verify_markers) >= 3) {
+  p_v5_list <- lapply(adt_verify_markers, function(feat) {
+    FeaturePlot(TARA_cd8, features = feat, reduction = "wnn.umap",
+                pt.size = 0.3, order = TRUE) +
+      scale_color_viridis_c(option = "inferno") + NoAxes() +
+      ggtitle(paste0(feat, " (ADT)")) +
+      theme(plot.background = element_rect(fill = "white", color = NA))
+  })
+  p_v5 <- wrap_plots(p_v5_list, ncol = 2)
+  
+  ggsave(file.path(diag_umap_dir, "V5_UMAP_ADT_markers.png"),
+         plot = p_v5, width = 16, height = 14, dpi = 200, bg = "white")
+}
+
+# UMAP 6: Highlight each naïve-lineage population individually
+for (pop in c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3", "Tscm CD8", "Naïve Intermediate CD8")) {
+  is_pop <- ifelse(TARA_cd8$CD8_Annotation == pop, pop, "Other")
+  names(is_pop) <- colnames(TARA_cd8)
+  TARA_cd8$highlight_pop <- is_pop
+  
+  p_hl <- DimPlot(TARA_cd8, reduction = "wnn.umap", group.by = "highlight_pop",
+                  pt.size = 0.4, order = c(pop, "Other")) +
+    scale_color_manual(values = c("Other" = "grey85", setNames("#E41A1C", pop))) +
+    ggtitle(paste0("HIGHLIGHT: ", pop)) +
+    NoAxes() +
+    theme(plot.background = element_rect(fill = "white", color = NA),
+          plot.title = element_text(size = 14, face = "bold"))
+  
+  safe_name <- gsub("[^A-Za-z0-9]", "_", pop)
+  ggsave(file.path(diag_umap_dir, paste0("V6_UMAP_highlight_", safe_name, ".png")),
+         plot = p_hl, width = 10, height = 8, dpi = 200, bg = "white")
+}
+TARA_cd8$highlight_pop <- NULL
+
+cat("  Diagnostic UMAPs saved to:", diag_umap_dir, "\n")
+
+cat("\n")
+cat(strrep("█", 70), "\n")
+cat("  VERIFICATION COMPLETE\n")
+cat("  Review V1-V6 output above and diagnostic UMAPs before proceeding.\n")
+cat("  Key checks:\n")
+cat("    1. V1 table: each cluster maps to ONE correct annotation\n")
+cat("    2. V2 table: Naïve pops have HIGH %preART + LOW %expanded\n")
+cat("    3. V2 table: TEM/TEMRA have HIGH %expanded\n")
+cat("    4. V3 RNA: TCF7 HIGH in naïve, GZMK/GZMB HIGH in effector\n")
+cat("    5. V4 ADT: FAS HIGH in Tscm, CD45RO HIGH in Intermediate\n")
+cat("    6. V6 UMAPs: each highlighted pop in correct UMAP region\n")
+cat(strrep("█", 70), "\n\n")
+
+################################################################################
+# ── Canonical cluster order (updated with Tscm + Naïve Intermediate) ─────────
+# 13 populations total: 3 distinct naïves + Tscm + Naïve Intermediate +
+#                       3 effector + 2 innate/MAIT + 3 γδ
+col_order_cd8 <- c(
+  "Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+  "Tscm CD8", "Naïve Intermediate CD8",
+  "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
+  "KIR+ innate-like CD8", "MAIT-like Trm",
+  "γδ1 T cell", "Naïve γδ1 T cell", "γδ2 T cell"
+)
+
+effector_clusters <- c("TEM CD8", "TEMRA CD8", "Transitional Tem CD8")
+
+# For section 8A naïve pairwise DGE — now 5 naïve-lineage populations
+naive_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+                    "Tscm CD8", "Naïve Intermediate CD8")
+
+# For section 8E trajectory — αβ CD8 clusters
+ab_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+                 "Tscm CD8", "Naïve Intermediate CD8",
+                 "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
+                 "KIR+ innate-like CD8")
 ################################################################################
 # 5. SAVE ANNOTATED OBJECT
 ################################################################################
 qs_save(TARA_cd8, file.path(saved_dir, "TARA_cd8_HEI_annotated.qs2"))
 cat("Annotated HEI CD8 object saved.\n")
 
-################################################################################
-# ══════════════════════════════════════════════════════════════════════════════
-# 5B. METADATA CORRECTION: Timepoint_Group, Viral_Load_num, Age, orig.ident
-# ══════════════════════════════════════════════════════════════════════════════
-# ── Canonical cluster order (biological progression) — UPDATED ───────────────
-col_order_cd8 <- c(
-  "Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
-  "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
-  "KIR+ innate-like CD8", "MAIT-like Trm",
-  "γδ1 T cell", "Naïve γδ1 T cell", "γδ2 T cell"
-)
-
-# ENTRY POINT: If skipping sections 1-5, load your annotated object here:
-#   TARA_cd8 <- qs_read(file.path(saved_dir, "TARA_cd8_HEI_annotated.qs2"))
-# Then run from this block onward.
-#
-# Fixes:
-#   - CP020_V44: VL was 158 (wrong), should be 534,772 → Unsuppressed
-#   - CP013_24m: Age was 24, should be 25
-#   - CP018_V24: Age was 24, should be 25
-#   - orig.ident renamed to PID_AgeM format (e.g. CP018_V24 → CP018_25m)
-################################################################################
-
-cat("\n", strrep("=", 70), "\n")
-cat(strrep("=", 70), "\n")
-
-sample_metadata <- list(
-  "CP002_entry"  = list(group = "PreART_Entry",        vl = 4284389,  age = 1),
-  "CP003_entry"  = list(group = "PreART_Entry",        vl = 656769,   age = 1),
-  "CP003_V12"    = list(group = "PostART_Unsuppressed", vl = 503497,   age = 12),
-  "CP003_V24"    = list(group = "PostART_Unsuppressed", vl = 489676,   age = 24),
-  "CP006_entry"  = list(group = "PreART_Entry",        vl = 10000000, age = 1),
-  "CP006_12m"    = list(group = "PostART_Suppressed",   vl = 73,       age = 12),
-  "CP006_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 24),
-  "CP011_entry"  = list(group = "PreART_Entry",        vl = 36965,    age = 2),
-  "CP013_entry"  = list(group = "PreART_Entry",        vl = 3434,     age = 1),
-  "CP013_12m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 12),
-  "CP013_24m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
-  "CP016_entry"  = list(group = "PreART_Entry",        vl = 1978332,  age = 2),
-  "CP017_entry"  = list(group = "PreART_Entry",        vl = 3167384,  age = 2),
-  "CP018_entry"  = list(group = "PreART_Entry",        vl = 176970,   age = 1),
-  "CP018_V24"    = list(group = "PostART_Suppressed",   vl = 20,       age = 25),  # actual age 25m
-  "CP018_42m"    = list(group = "PostART_Suppressed",   vl = 20,       age = 42),
-  "CP020_V1"     = list(group = "PreART_Entry",        vl = 414409,   age = 1),
-  "CP020_V12"    = list(group = "PostART_Unsuppressed", vl = 6293122,  age = 12),
-  "CP020_V44"    = list(group = "PostART_Unsuppressed", vl = 534772,   age = 44),  # FIXED: was 158/Suppressed
-  "CP022_entry"  = list(group = "PreART_Entry",        vl = 5075764,  age = 1),
-  "CP042_entry"  = list(group = "PreART_Entry",        vl = 6113,     age = 1)
-)
-
-# ── Print BEFORE ──
-cat("\nBEFORE correction:\n")
-cat("Timepoint_Group:\n")
-print(table(TARA_cd8$Timepoint_Group))
-
-samples_in_data <- unique(TARA_cd8$orig.ident)
-cat("\norig.ident values in data:\n")
-print(sort(samples_in_data))
-
-# Check for name mismatches
-missing_in_lookup <- setdiff(samples_in_data, names(sample_metadata))
-if (length(missing_in_lookup) > 0) {
-  cat("WARNING: Samples in data but NOT in lookup:", paste(missing_in_lookup, collapse = ", "), "\n")
-}
-
-# ── Save raw orig.ident ──
-TARA_cd8$orig.ident_raw <- TARA_cd8$orig.ident
-
-# ── Apply corrections + rename ──
-for (sample_name in names(sample_metadata)) {
-  mask <- TARA_cd8$orig.ident == sample_name
-  n_cells <- sum(mask)
-  if (n_cells == 0) next
-  
-  meta <- sample_metadata[[sample_name]]
-  
-  # Capture old values
-  old_group <- unique(TARA_cd8$Timepoint_Group[mask])
-  old_vl    <- unique(TARA_cd8$Viral_Load_num[mask])
-  old_age   <- unique(TARA_cd8$Age[mask])
-  
-  # Apply corrections
-  TARA_cd8$Timepoint_Group[mask] <- meta$group
-  TARA_cd8$Viral_Load_num[mask]  <- meta$vl
-  TARA_cd8$Age[mask]             <- meta$age
-  
-  # Rename orig.ident to PID_AgeM
-  pid <- sub("_.*$", "", sample_name)
-  new_ident <- paste0(pid, "_", meta$age, "m")
-  TARA_cd8$orig.ident[mask] <- new_ident
-  
-  # Report any changes
-  changes <- c()
-  if (length(old_group) == 1 && old_group != meta$group) {
-    changes <- c(changes, sprintf("Group: %s -> %s", old_group, meta$group))
-  }
-  if (length(old_vl) == 1 && abs(old_vl - meta$vl) > 1) {
-    changes <- c(changes, sprintf("VL: %s -> %s", format(old_vl, big.mark = ","), format(meta$vl, big.mark = ",")))
-  }
-  if (length(old_age) == 1 && old_age != meta$age) {
-    changes <- c(changes, sprintf("Age: %s -> %s", old_age, meta$age))
-  }
-  if (length(changes) > 0) {
-    cat(sprintf("  CHANGED %s -> %s: %s (%d cells)\n",
-                sample_name, new_ident, paste(changes, collapse = "; "), n_cells))
-  } else {
-    cat(sprintf("  OK      %s -> %s (%d cells)\n", sample_name, new_ident, n_cells))
-  }
-}
-
-# ── Print AFTER ──
-cat("\nAFTER correction:\n")
-cat("Timepoint_Group:\n")
-print(table(TARA_cd8$Timepoint_Group))
-
-cat("\nNew orig.ident values:\n")
-print(sort(unique(TARA_cd8$orig.ident)))
-
-# ── Verification table ──
-cat("\n=== PER-SAMPLE VERIFICATION ===\n")
-verify <- TARA_cd8@meta.data %>%
-  group_by(orig.ident, Timepoint_Group) %>%
-  summarise(n_cells = n(), VL = dplyr::first(Viral_Load_num), Age = dplyr::first(Age), .groups = "drop") %>%
-  arrange(orig.ident)
-print(as.data.frame(verify), row.names = FALSE)
-
-cat("\n", strrep("=", 70), "\n")
-cat("  METADATA CORRECTION COMPLETE — continue to section 8\n")
-cat(strrep("=", 70), "\n\n")
 
 ################################################################################
 # 8. DOWNSTREAM ANALYSES — organized into numbered subfolders
@@ -971,9 +1182,11 @@ effector_clusters <- c("TEM CD8", "TEMRA CD8", "Transitional Tem CD8")
 cat("\n=== Running DGE/DPE (MAST) for naïve cluster comparisons ===\n")
 
 Idents(TARA_cd8) <- "CD8_Annotation"
+# Section 8A — this line needs to STAY (not be deleted)
+naive_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+                    "Tscm CD8", "Naïve Intermediate CD8")
 
-# UPDATED naïve cluster names
-naive_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3")
+naive_pairs <- combn(naive_clusters, 2, simplify = FALSE)
 
 naive_pairs <- combn(naive_clusters, 2, simplify = FALSE)
 for (pair in naive_pairs) {
@@ -1151,7 +1364,13 @@ cat("  Proportion plots and CSVs saved to:", prop_dir, "\n")
 # 8D. CLONAL EXPANSION: UMAP overlay + per-cluster cloneSize distribution
 ################################################################################
 cat("\n=== Plotting clonal expansion ===\n")
-
+col_order_cd8 <- c(
+  "Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+  "Tscm CD8", "Naïve Intermediate CD8",
+  "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
+  "KIR+ innate-like CD8", "MAIT-like Trm",
+  "γδ1 T cell", "Naïve γδ1 T cell", "γδ2 T cell"
+)
 colorblind_vector <- hcl.colors(n = 7, palette = "plasma", fixup = TRUE)
 
 clone_size_levels <- c("Single (0 < X <= 1)", "Small (1 < X <= 5)",
@@ -1274,11 +1493,11 @@ if (!requireNamespace("tradeSeq", quietly = TRUE)) BiocManager::install("tradeSe
 library(slingshot)
 
 traj_dir <- dir_07_trajectory
-
-# ── Subset to αβ CD8 clusters (exclude γδ, MAIT — different lineage) — UPDATED
 ab_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
+                 "Tscm CD8", "Naïve Intermediate CD8",
                  "Transitional Tem CD8", "TEM CD8", "TEMRA CD8",
                  "KIR+ innate-like CD8")
+# ── Subset to αβ CD8 clusters (exclude γδ, MAIT — different lineage) — UPDATED
 traj_cells <- subset(TARA_cd8, CD8_Annotation %in% ab_clusters)
 cat("  Trajectory cells:", ncol(traj_cells), "\n")
 cat("  Clusters included:", paste(ab_clusters, collapse = ", "), "\n")
@@ -2878,3 +3097,25 @@ cat("  Expansion ctrl:   ", expansion_dir, "\n")
 cat("  Viral load:       ", vl_dir, "\n")
 sessionInfo()
 table(TARA_cd8$orig.ident,TARA_cd8$Timepoint_Group)
+
+#############
+
+# 2. Full Cohen's d + Wilcoxon table
+print(read.csv(file.path(analysis_dir, "10_module_scores", 
+                         "ModuleScore_Wilcoxon_all_comparisons.csv")))
+
+# 3. Full viral load correlations  
+print(read.csv(file.path(analysis_dir, "09_viral_load", 
+                         "ViralLoad_Spearman_correlations.csv")))
+
+# 4. Final cluster × timepoint table
+print(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group))
+
+# 5. Per-sample module scores (for checking specific values cited in text)
+print(read.csv(file.path(analysis_dir, "09_viral_load", 
+                         "PerSample_ModuleScores_and_ViralLoad.csv")))
+
+# 6. Slingshot + Monocle3 lineage output (just copy from console)
+#-> I DONT KNOW HOW TO GET THIS
+# 7. Naïve pairwise DGE — copy the full console output from 8A
+#-> I dont know how to get this

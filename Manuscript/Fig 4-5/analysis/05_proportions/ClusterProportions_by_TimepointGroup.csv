@@ -1,34 +1,40 @@
 "Cluster","Timepoint_Group","Proportion"
-"KIR+ innate-like CD8","PreART_Entry",0.00610752688172043
-"MAIT-like Trm","PreART_Entry",0.00318279569892473
-"Naïve CD8","PreART_Entry",0.365763440860215
-"Naïve CD8 2","PreART_Entry",0.310193548387097
-"Naïve CD8 3","PreART_Entry",0.032258064516129
-"Naïve γδ1 T cell","PreART_Entry",0.0143655913978495
-"TEM CD8","PreART_Entry",0.116817204301075
-"TEMRA CD8","PreART_Entry",0.0850752688172043
-"Transitional Tem CD8","PreART_Entry",0.0261505376344086
-"γδ1 T cell","PreART_Entry",0.0282150537634409
-"γδ2 T cell","PreART_Entry",0.0118709677419355
-"KIR+ innate-like CD8","PostART_Suppressed",0.0682151915632092
-"MAIT-like Trm","PostART_Suppressed",0.00667467627820051
-"Naïve CD8","PostART_Suppressed",0.23267921505807
-"Naïve CD8 2","PostART_Suppressed",0.0142838072353491
-"Naïve CD8 3","PostART_Suppressed",0.105593378721132
-"Naïve γδ1 T cell","PostART_Suppressed",0.0252302763315979
-"TEM CD8","PostART_Suppressed",0.192631157388867
-"TEMRA CD8","PostART_Suppressed",0.156721399012148
-"Transitional Tem CD8","PostART_Suppressed",0.0931784808436791
-"γδ1 T cell","PostART_Suppressed",0.0982512348151115
-"γδ2 T cell","PostART_Suppressed",0.0065411827526365
-"KIR+ innate-like CD8","PostART_Unsuppressed",0.0236786469344609
-"MAIT-like Trm","PostART_Unsuppressed",0.00775193798449612
-"Naïve CD8","PostART_Unsuppressed",0.142494714587738
-"Naïve CD8 2","PostART_Unsuppressed",0.0300211416490486
-"Naïve CD8 3","PostART_Unsuppressed",0.0646934460887949
-"Naïve γδ1 T cell","PostART_Unsuppressed",0.0153629316420014
-"TEM CD8","PostART_Unsuppressed",0.272586328400282
-"TEMRA CD8","PostART_Unsuppressed",0.123467230443975
-"Transitional Tem CD8","PostART_Unsuppressed",0.0514446793516561
-"γδ1 T cell","PostART_Unsuppressed",0.256518675123326
-"γδ2 T cell","PostART_Unsuppressed",0.0119802677942213
+"KIR+ innate-like CD8","PreART_Entry",0.0127081507449606
+"MAIT-like Trm","PreART_Entry",0.00328659070990359
+"Naïve CD8","PreART_Entry",0.272787028921998
+"Naïve CD8 2","PreART_Entry",0.174408413672217
+"Naïve CD8 3","PreART_Entry",0.0284837861524978
+"Naïve Intermediate CD8","PreART_Entry",0.217243645924628
+"Naïve γδ1 T cell","PreART_Entry",0.000876424189307625
+"TEM CD8","PreART_Entry",0.108238387379492
+"TEMRA CD8","PreART_Entry",0.104951796669588
+"Transitional Tem CD8","PreART_Entry",0.01522787028922
+"Tscm CD8","PreART_Entry",0.0417397020157756
+"γδ1 T cell","PreART_Entry",0.00635407537248028
+"γδ2 T cell","PreART_Entry",0.0136941279579316
+"KIR+ innate-like CD8","PostART_Suppressed",0.0441846641569249
+"MAIT-like Trm","PostART_Suppressed",0.00733108777491579
+"Naïve CD8","PostART_Suppressed",0.19021200713295
+"Naïve CD8 2","PostART_Suppressed",0.0148603130572617
+"Naïve CD8 3","PostART_Suppressed",0.120071329502675
+"Naïve Intermediate CD8","PostART_Suppressed",0.0376461264117297
+"Naïve γδ1 T cell","PostART_Suppressed",0.0279373885476521
+"TEM CD8","PostART_Suppressed",0.17753120665742
+"TEMRA CD8","PostART_Suppressed",0.273231622746186
+"Transitional Tem CD8","PostART_Suppressed",0.0671686150188231
+"Tscm CD8","PostART_Suppressed",0.00059441252229047
+"γδ1 T cell","PostART_Suppressed",0.0330889637408361
+"γδ2 T cell","PostART_Suppressed",0.00614226273033485
+"KIR+ innate-like CD8","PostART_Unsuppressed",0.01998199819982
+"MAIT-like Trm","PostART_Unsuppressed",0.00918091809180918
+"Naïve CD8","PostART_Unsuppressed",0.16003600360036
+"Naïve CD8 2","PostART_Unsuppressed",0.0327632763276328
+"Naïve CD8 3","PostART_Unsuppressed",0.079027902790279
+"Naïve Intermediate CD8","PostART_Unsuppressed",0.00216021602160216
+"Naïve γδ1 T cell","PostART_Unsuppressed",0.014041404140414
+"TEM CD8","PostART_Unsuppressed",0.272007200720072
+"TEMRA CD8","PostART_Unsuppressed",0.304050405040504
+"Transitional Tem CD8","PostART_Unsuppressed",0.0468046804680468
+"Tscm CD8","PostART_Unsuppressed",0.00576057605760576
+"γδ1 T cell","PostART_Unsuppressed",0.0415841584158416
+"γδ2 T cell","PostART_Unsuppressed",0.0126012601260126
