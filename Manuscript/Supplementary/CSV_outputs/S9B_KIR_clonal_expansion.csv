@@ -1,0 +1,9 @@
+"Timepoint_Group","cloneSize","n"
+"PreART_Entry","Single (0 < X <= 1)",81
+"PreART_Entry","Small (1 < X <= 5)",1
+"PostART_Suppressed","Single (0 < X <= 1)",141
+"PostART_Suppressed","Small (1 < X <= 5)",2
+"PostART_Suppressed","Medium (5 < X <= 20)",1
+"PostART_Unsuppressed","Single (0 < X <= 1)",65
+"PostART_Unsuppressed","Small (1 < X <= 5)",2
+"PostART_Unsuppressed","Medium (5 < X <= 20)",2

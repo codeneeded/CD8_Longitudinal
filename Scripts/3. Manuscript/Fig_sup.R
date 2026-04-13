@@ -28,7 +28,7 @@ base_dir     <- "~/Documents/CD8_Longitudinal"
 saved_dir    <- file.path(base_dir, "saved_R_data")
 manuscript   <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Manuscript"
 supp_base    <- file.path(manuscript, "Supplementary")
-analysis_dir <- file.path(manuscript, "analysis")
+analysis_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Manuscript/Fig 4-5/analysis"
 
 s4_dir <- file.path(supp_base, "S4_Annotation_Validation")
 s5_dir <- file.path(supp_base, "S5_Cluster_Composition")
