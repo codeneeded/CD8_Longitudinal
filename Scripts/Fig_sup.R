@@ -1,12 +1,12 @@
 ################################################################################
 # SUPPLEMENTARY FIGURES S4–S9: CD8 sub-cluster supporting data
 #
-# S4: Annotation validation (ADT heatmap, RNA heatmap, ADT gating)
-# S5: Cluster composition (row + column normalized heatmaps)
-# S6: Effector DGE (TEM + TEMRA volcanos, ADT dot plot)
-# S7: Naïve pairwise volcanos
-# S8: Additional pseudotime modules (cytotoxicity, chemokines, IFN memory)
-# S9: KIR+ innate-like CD8 analysis
+# EDITS:
+#   - Removed panel numbers (S4A, S5B, etc.) from all plot titles
+#   - S7: common legend saved separately, removed from individual volcanos
+#   - S8: all three panels combined in one row with shared legend underneath
+#   - S9: increased all font sizes
+#   - CSV outputs added for all supplementary data
 ################################################################################
 
 # ── Libraries ─────────────────────────────────────────────────────────────────
@@ -36,8 +36,9 @@ s6_dir <- file.path(supp_base, "S6_Effector_DGE")
 s7_dir <- file.path(supp_base, "S7_Naive_Volcanos")
 s8_dir <- file.path(supp_base, "S8_Pseudotime_Modules")
 s9_dir <- file.path(supp_base, "S9_KIR_Innatelike")
+csv_dir <- file.path(supp_base, "CSV_outputs")
 
-for (d in c(s4_dir, s5_dir, s6_dir, s7_dir, s8_dir, s9_dir)) {
+for (d in c(s4_dir, s5_dir, s6_dir, s7_dir, s8_dir, s9_dir, csv_dir)) {
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
 }
 
@@ -117,7 +118,6 @@ s4_group_colors <- c(
   "MAIT"                  = "#26A69A"
 )
 
-# Helper: get gap positions from annotation df (identical to Fig 1)
 get_gaps <- function(annot_df) {
   grps <- as.character(annot_df$Group)
   which(grps[-length(grps)] != grps[-1])
@@ -125,7 +125,7 @@ get_gaps <- function(annot_df) {
 
 annot_colors <- list(Group = s4_group_colors)
 
-# ── S4A: ADT heatmap — named vector (marker = group) ────────────────────────
+# ── S4A: ADT heatmap ────────────────────────────────────────────────────────
 cat("  S4A: ADT heatmap...\n")
 
 adt_heatmap_markers <- c(
@@ -150,7 +150,6 @@ adt_heatmap_markers <- c(
   "TCR-vD2"   = "TCR Identity"
 )
 
-# Remove duplicates (ITGB7 appears twice), keep first occurrence
 adt_heatmap_markers <- adt_heatmap_markers[!duplicated(names(adt_heatmap_markers))]
 
 DefaultAssay(TARA_cd8) <- "ADT"
@@ -163,17 +162,14 @@ colnames(avg_adt_s) <- gsub("^g ", "", colnames(avg_adt_s))
 co <- col_order_cd8[col_order_cd8 %in% colnames(avg_adt_s)]
 avg_adt_s <- avg_adt_s[, co]
 
-# Enforce row order to match definition order
 adt_row_order <- adt_feats[adt_feats %in% rownames(avg_adt_s)]
 avg_adt_s <- avg_adt_s[adt_row_order, , drop = FALSE]
 
-# Row annotation
 adt_annot <- data.frame(
   Group = factor(adt_heatmap_markers[rownames(avg_adt_s)], levels = names(s4_group_colors)),
   row.names = rownames(avg_adt_s)
 )
 
-# Clean numeric matrix
 adt_mat <- matrix(as.numeric(avg_adt_s), nrow = nrow(avg_adt_s), dimnames = dimnames(avg_adt_s))
 
 p_adt <- pheatmap(
@@ -183,7 +179,7 @@ p_adt <- pheatmap(
   annotation_row = adt_annot, annotation_colors = annot_colors,
   annotation_names_row = FALSE, annotation_legend = TRUE,
   gaps_row = get_gaps(adt_annot),
-  main = "S4A: Surface protein (ADT) expression — 13 CD8 sub-clusters",
+  main = "Surface protein (ADT) expression — 13 CD8 sub-clusters",
   silent = TRUE
 )
 
@@ -191,7 +187,10 @@ png(file.path(s4_dir, "S4A_ADT_heatmap.png"), width = 26, height = 20, units = "
 grid.draw(p_adt$gtable)
 dev.off()
 
-# ── S4B: RNA heatmap — named vector (gene = group) ──────────────────────────
+# CSV: ADT heatmap values
+write.csv(as.data.frame(adt_mat), file.path(csv_dir, "S4A_ADT_heatmap_scaled_values.csv"))
+
+# ── S4B: RNA heatmap ────────────────────────────────────────────────────────
 cat("  S4B: RNA heatmap...\n")
 
 rna_heatmap_markers <- c(
@@ -225,17 +224,14 @@ avg_rna_s <- scale_01(as.matrix(avg_rna))
 colnames(avg_rna_s) <- gsub("^g ", "", colnames(avg_rna_s))
 avg_rna_s <- avg_rna_s[, col_order_cd8[col_order_cd8 %in% colnames(avg_rna_s)]]
 
-# Enforce row order
 rna_row_order <- rna_feats[rna_feats %in% rownames(avg_rna_s)]
 avg_rna_s <- avg_rna_s[rna_row_order, , drop = FALSE]
 
-# Row annotation
 rna_annot <- data.frame(
   Group = factor(rna_heatmap_markers[rownames(avg_rna_s)], levels = names(s4_group_colors)),
   row.names = rownames(avg_rna_s)
 )
 
-# Clean numeric matrix
 rna_mat <- matrix(as.numeric(avg_rna_s), nrow = nrow(avg_rna_s), dimnames = dimnames(avg_rna_s))
 
 p_rna <- pheatmap(
@@ -245,7 +241,7 @@ p_rna <- pheatmap(
   annotation_row = rna_annot, annotation_colors = annot_colors,
   annotation_names_row = FALSE, annotation_legend = TRUE,
   gaps_row = get_gaps(rna_annot),
-  main = "S4B: mRNA expression — 13 CD8 sub-clusters",
+  main = "mRNA expression — 13 CD8 sub-clusters",
   silent = TRUE
 )
 
@@ -253,7 +249,10 @@ png(file.path(s4_dir, "S4B_RNA_heatmap.png"), width = 26, height = 20, units = "
 grid.draw(p_rna$gtable)
 dev.off()
 
-# ── Standalone horizontal group legend (shared for S4A + S4B) — Fig 1 pattern ──
+# CSV: RNA heatmap values
+write.csv(as.data.frame(rna_mat), file.path(csv_dir, "S4B_RNA_heatmap_scaled_values.csv"))
+
+# ── Standalone horizontal group legend ──
 cat("  Shared group legend...\n")
 
 legend_labels <- c(
@@ -287,7 +286,6 @@ ggsave(file.path(s4_dir, "S4_Group_Legend.png"),
 # ── S4C: ADT gating scatter plots ───────────────────────────────────────────
 cat("  S4C: ADT gating...\n")
 
-# Use ALL naïve-lineage cells — no dependency on ADT_gate or source_cluster
 naive_clusters <- c("Naïve CD8", "Naïve CD8 2", "Naïve CD8 3",
                     "Tscm CD8", "Naïve Intermediate CD8")
 naive_mask <- TARA_cd8$CD8_Annotation %in% naive_clusters
@@ -305,7 +303,6 @@ if (sum(naive_mask) > 0) {
     stringsAsFactors = FALSE
   )
   
-  # Classify for coloring: Tscm and Intermediate get bold colors, rest grey
   gate_plot_df$plot_group <- dplyr::case_when(
     gate_plot_df$annotation == "Tscm CD8"               ~ "Tscm CD8",
     gate_plot_df$annotation == "Naïve Intermediate CD8"  ~ "Naïve Intermediate CD8",
@@ -314,17 +311,9 @@ if (sum(naive_mask) > 0) {
   gate_plot_df$plot_group <- factor(gate_plot_df$plot_group,
                                     levels = c("Naïve (ungated)", "Tscm CD8", "Naïve Intermediate CD8"))
   
-  # Facet by the 3 parent naïve clusters (Tscm/Intermediate shown in their source)
-  # Tscm and Intermediate are distributed across parents — show all together per parent
-  # Use a "parent" assignment: each cell's original naïve identity before ADT gating
-  # Since Tscm/Intermediate were gated FROM the 3 naïve clusters, assign by source_cluster if available
   if ("source_cluster" %in% colnames(TARA_cd8@meta.data)) {
     gate_plot_df$source <- TARA_cd8$source_cluster[naive_cells]
-    # Print what source_cluster values exist
     cat("    source_cluster values:", paste(sort(unique(gate_plot_df$source)), collapse = ", "), "\n")
-    # Build facet labels from actual values
-    src_vals <- sort(unique(gate_plot_df$source[!is.na(gate_plot_df$source)]))
-    # For cells without source_cluster (the naïve cells themselves), assign by annotation
     gate_plot_df$facet <- dplyr::case_when(
       !is.na(gate_plot_df$source) ~ paste0("Source cluster ", gate_plot_df$source),
       gate_plot_df$annotation == "Naïve CD8"   ~ "Naïve CD8",
@@ -333,8 +322,6 @@ if (sum(naive_mask) > 0) {
       TRUE ~ "Other"
     )
   } else {
-    # No source_cluster — facet by annotation of the parent naïve cluster
-    # For Tscm/Intermediate, we can't know which parent — show one combined plot
     gate_plot_df$facet <- "All naïve clusters"
   }
   gate_plot_df <- gate_plot_df %>% filter(facet != "Other")
@@ -344,7 +331,6 @@ if (sum(naive_mask) > 0) {
     "Naïve Intermediate CD8" = "#1F78B4"
   )
   
-  # Only plot Tscm and Intermediate — skip naïve background
   fg_df <- gate_plot_df %>% filter(plot_group != "Naïve (ungated)")
   cat("    Gated cells to plot:", nrow(fg_df), "\n")
   
@@ -356,7 +342,7 @@ if (sum(naive_mask) > 0) {
     geom_hline(yintercept = 0, linetype = "dashed", color = "grey30", linewidth = 0.7) +
     geom_vline(xintercept = 0, linetype = "dashed", color = "grey30", linewidth = 0.7) +
     facet_wrap(~ facet, nrow = 1) +
-    labs(title = "S4C: ADT sub-gating of naïve clusters",
+    labs(title = "ADT sub-gating of naïve clusters",
          subtitle = "Tscm = CD45RO\u2212 FAS+  |  Intermediate = CD45RO+  |  True naïve = CD45RO\u2212 FAS\u2212",
          x = "FAS/CD95 (DSB)", y = "CD45RO (DSB)") +
     theme_cowplot(font_size = 22) +
@@ -377,6 +363,9 @@ if (sum(naive_mask) > 0) {
   
   ggsave(file.path(s4_dir, "S4C_ADT_gating.png"), plot = p_s4c,
          width = 24, height = 10, dpi = 300, bg = "white")
+  
+  # CSV: gating data
+  write.csv(fg_df, file.path(csv_dir, "S4C_ADT_gating_data.csv"), row.names = FALSE)
 }
 cat("  S4 done.\n")
 
@@ -401,8 +390,11 @@ pheatmap(as.matrix(comp_mat), cluster_rows=FALSE, cluster_cols=FALSE, color=prop
          border_color="white", cellwidth=100, cellheight=35, fontsize=16, fontsize_row=14,
          fontsize_col=16, angle_col=0, display_numbers=display_mat, fontsize_number=14,
          number_color=ifelse(as.matrix(comp_mat)>0.45,"white","black"),
-         main="S5A: Cluster composition by ART status\n(% of each cluster from each condition)")
+         main="Cluster composition by ART status\n(% of each cluster from each condition)")
 dev.off()
+
+# CSV: composition by ART
+write.csv(comp_mat, file.path(csv_dir, "S5A_composition_by_ART.csv"))
 
 comp_col <- as.data.frame.matrix(
   prop.table(table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group), margin = 2))
@@ -418,8 +410,12 @@ pheatmap(as.matrix(comp_col), cluster_rows=FALSE, cluster_cols=FALSE, color=prop
          border_color="white", cellwidth=100, cellheight=35, fontsize=16, fontsize_row=14,
          fontsize_col=16, angle_col=0, display_numbers=display_col, fontsize_number=14,
          number_color=ifelse(as.matrix(comp_col)>0.15,"white","black"),
-         main="S5B: Distribution of each condition across clusters")
+         main="Distribution of each condition across clusters")
 dev.off()
+
+# CSV: condition distribution
+write.csv(comp_col, file.path(csv_dir, "S5B_condition_distribution.csv"))
+
 cat("  S5 done.\n")
 
 ################################################################################
@@ -452,6 +448,7 @@ for (vf in volc_files) {
   x_lim <- quantile(abs(dge$avg_log2FC[is.finite(dge$avg_log2FC)]), 0.995) * 1.15
   y_cap <- quantile(dge$neg_log10_padj[is.finite(dge$neg_log10_padj)], 0.995) * 1.10
   
+  # TITLE WITHOUT panel number
   p <- ggplot(dge, aes(x = pmax(pmin(avg_log2FC, x_lim*0.98), -x_lim*0.98),
                        y = pmin(neg_log10_padj, y_cap), color = highlight)) +
     geom_point(data = dge %>% filter(highlight == "Other"), size = 2, alpha = 0.3) +
@@ -466,7 +463,7 @@ for (vf in volc_files) {
     scale_color_manual(values = highlight_cols, name = "Gene category", drop = FALSE) +
     scale_fill_manual(values = highlight_cols, guide = "none") +
     labs(x = expression(log[2]~fold~change), y = expression(-log[10]~adjusted~italic(p)),
-         title = paste0(vf$label, ": ", vf$title, " — expanding clones: suppressed vs unsuppressed")) +
+         title = paste0(vf$title, " — expanding clones: suppressed vs unsuppressed")) +
     theme_cowplot(font_size = 20) +
     theme(legend.position = "right", legend.text = element_text(size = 20),
           legend.title = element_text(size = 22, face = "bold"), legend.key.size = unit(1.3, "cm"),
@@ -476,7 +473,6 @@ for (vf in volc_files) {
           plot.margin = margin(10, 10, 80, 10)) +
     guides(color = guide_legend(override.aes = list(size = 8, alpha = 1)))
   
-  # Directional arrows — positioned below axis using annotation_custom + grobTree
   arrow_right <- grobTree(
     linesGrob(x = unit(c(0.52, 0.95), "npc"), y = unit(c(0.5, 0.5), "npc"),
               arrow = arrow(length = unit(0.8, "cm"), type = "closed"),
@@ -501,6 +497,10 @@ for (vf in volc_files) {
   
   ggsave(file.path(s6_dir, paste0(vf$label, "_Volcano_", gsub(" ", "_", vf$title), ".png")),
          plot = p, width = 14, height = 11, dpi = 300, bg = "white")
+  
+  # CSV: copy DGE source file
+  file.copy(fpath, file.path(csv_dir, paste0(vf$label, "_DGE_", gsub(" ", "_", vf$title), ".csv")),
+            overwrite = TRUE)
 }
 
 # ── S6C: ADT dot plot ────────────────────────────────────────────────────────
@@ -526,11 +526,12 @@ adt_df$Condition <- dplyr::recode(adt_df$Timepoint_Group, "PreART_Entry"="Pre-AR
                                   "PostART_Suppressed"="Suppressed", "PostART_Unsuppressed"="Unsuppressed")
 adt_df$Condition <- factor(adt_df$Condition, levels = c("Pre-ART","Suppressed","Unsuppressed"))
 
+# TITLE WITHOUT panel number
 p_s6c <- ggplot(adt_df, aes(x = protein, y = Condition)) +
   geom_point(aes(size = pct_pos, color = mean_expr)) +
   scale_size_continuous(name = "% expressing", range = c(2, 12), limits = c(0, 100)) +
   scale_color_viridis_c(option = "magma", name = "Mean expression\n(DSB)", direction = -1) +
-  labs(x = NULL, y = NULL, title = "S6C: Surface protein — expanding effector clones") +
+  labs(x = NULL, y = NULL, title = "Surface protein — expanding effector clones") +
   theme_cowplot(font_size = 18) +
   theme(axis.text.x = element_text(size = 14, angle = 45, hjust = 1),
         axis.text.y = element_text(size = 16),
@@ -543,10 +544,14 @@ p_s6c <- ggplot(adt_df, aes(x = protein, y = Condition)) +
 
 ggsave(file.path(s6_dir, "S6C_ADT_dotplot.png"), plot = p_s6c,
        width = 14, height = 6, dpi = 300, bg = "white")
+
+# CSV: ADT dot plot data
+write.csv(adt_df, file.path(csv_dir, "S6C_ADT_dotplot_data.csv"), row.names = FALSE)
+
 cat("  S6 done.\n")
 
 ################################################################################
-# S7: NAÏVE PAIRWISE VOLCANOS
+# S7: NAÏVE PAIRWISE VOLCANOS — common legend saved separately
 ################################################################################
 cat("\n=== S7: Naïve pairwise volcanos ===\n")
 
@@ -571,6 +576,9 @@ naive_comps <- list(
   list(label="S7C", title="Naïve CD8 2 vs Naïve CD8 3", id1="Naïve CD8 2", id2="Naïve CD8 3",
        file="DGE_MAST_RNA_NaveCD82_vs_NaveCD83.csv")
 )
+
+# Build all S7 plots in a list (legend removed from individual plots)
+s7_plots <- list()
 
 for (nc in naive_comps) {
   fpath <- file.path(analysis_dir, "03_DGE", nc$file)
@@ -598,6 +606,7 @@ for (nc in naive_comps) {
   x_lim <- quantile(abs(dge$avg_log2FC[is.finite(dge$avg_log2FC)]), 0.995) * 1.15
   y_cap <- quantile(dge$neg_log10_padj[is.finite(dge$neg_log10_padj)], 0.995) * 1.10
   
+  # TITLE WITHOUT panel number; LEGEND REMOVED (saved separately below)
   p <- ggplot(dge, aes(x = pmax(pmin(avg_log2FC, x_lim*0.98), -x_lim*0.98),
                        y = pmin(neg_log10_padj, y_cap), color = highlight)) +
     geom_point(data = dge %>% filter(highlight == "Other"), size = 2, alpha = 0.3) +
@@ -615,17 +624,17 @@ for (nc in naive_comps) {
     geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed", color = "grey40", linewidth = 0.4) +
     scale_color_manual(values = naive_cols, name = "Gene category", drop = FALSE) +
     scale_fill_manual(values = naive_cols, guide = "none") +
-    labs(x = expression(log[2]~fold~change), y = expression(-log[10]~adjusted~italic(p)), title = nc$title) +
+    labs(x = expression(log[2]~fold~change), y = expression(-log[10]~adjusted~italic(p)),
+         title = nc$title) +
     theme_cowplot(font_size = 20) +
-    theme(legend.position = "right", legend.text = element_text(size = 20),
-          legend.title = element_text(size = 22, face = "bold"), legend.key.size = unit(1.3, "cm"),
+    theme(legend.position = "none",
           axis.text = element_text(size = 16), axis.title = element_text(size = 18),
           plot.title = element_text(size = 20, face = "bold"),
           plot.background = element_rect(fill = "white", color = NA),
           plot.margin = margin(10, 10, 80, 10)) +
     guides(color = guide_legend(override.aes = list(size = 8, alpha = 1)))
   
-  # Directional arrows — positioned below axis using annotation_custom + grobTree
+  # Directional arrows
   arrow_right_s7 <- grobTree(
     linesGrob(x = unit(c(0.52, 0.95), "npc"), y = unit(c(0.5, 0.5), "npc"),
               arrow = arrow(length = unit(0.8, "cm"), type = "closed"),
@@ -648,13 +657,43 @@ for (nc in naive_comps) {
                       ymin = -y_cap * 0.24, ymax = -y_cap * 0.10) +
     coord_cartesian(ylim = c(0, y_cap), xlim = c(-x_lim, x_lim), clip = "off")
   
+  # Save individual plot (no legend)
   ggsave(file.path(s7_dir, paste0(nc$label, "_Volcano.png")),
          plot = p, width = 14, height = 11, dpi = 300, bg = "white")
+  
+  s7_plots[[nc$label]] <- p
+  
+  # CSV: copy DGE source file
+  file.copy(fpath, file.path(csv_dir, paste0(nc$label, "_DGE_Naive_pairwise.csv")),
+            overwrite = TRUE)
 }
+
+# ── S7 COMMON LEGEND (saved as separate file, horizontal, for placing under plots) ──
+cat("  S7: Saving common legend...\n")
+
+p_s7_legend_src <- ggplot(data.frame(x = 1:5, y = 1:5,
+                                     cat = factor(names(naive_cols)[1:5], levels = names(naive_cols))),
+                          aes(x = x, y = y, color = cat)) +
+  geom_point(size = 8) +
+  scale_color_manual(values = naive_cols, name = "Gene category", drop = FALSE) +
+  theme_void() +
+  theme(
+    legend.direction  = "horizontal",
+    legend.text       = element_text(size = 22),
+    legend.title      = element_text(size = 24, face = "bold"),
+    legend.key.size   = unit(1.5, "cm"),
+    legend.spacing.x  = unit(0.8, "cm")
+  ) +
+  guides(color = guide_legend(override.aes = list(size = 10, alpha = 1), nrow = 1))
+
+s7_legend <- cowplot::get_legend(p_s7_legend_src)
+ggsave(file.path(s7_dir, "S7_common_legend.png"),
+       plot = as_ggplot(s7_legend), width = 20, height = 2.5, dpi = 300, bg = "white")
+
 cat("  S7 done.\n")
 
 ################################################################################
-# S8: ADDITIONAL PSEUDOTIME MODULES (now includes S8C: Type I IFN memory)
+# S8: PSEUDOTIME MODULES — all 3 in one row, common legend underneath
 ################################################################################
 cat("\n=== S8: Additional pseudotime modules ===\n")
 
@@ -677,18 +716,25 @@ if (file.exists(m3_pt_path) & file.exists(module_path)) {
   pt_mod <- pt_mod %>% filter(!is.na(pseudotime) & is.finite(pseudotime) & !is.na(Timepoint))
   pt_mod$Timepoint <- factor(pt_mod$Timepoint, levels = names(art_colors))
   
+  # CSV: pseudotime + module scores
+  write.csv(pt_mod, file.path(csv_dir, "S8_pseudotime_module_scores.csv"), row.names = FALSE)
+  
   s8_panels <- list(
-    list(panel = "S8A", col = "Cytotoxicity", ylab = "Cytotoxicity score",
+    list(col = "Cytotoxicity", ylab = "Cytotoxicity score",
          title = "Cytotoxicity along differentiation"),
-    list(panel = "S8B", col = "Inflammatory_Chemokines", ylab = "Inflammatory chemokines score",
+    list(col = "Inflammatory_Chemokines", ylab = "Inflammatory chemokines score",
          title = "Inflammatory chemokines along differentiation"),
-    list(panel = "S8C", col = "TypeI_IFN_Memory", ylab = "Type I IFN memory score",
+    list(col = "TypeI_IFN_Memory", ylab = "Type I IFN memory score",
          title = "Type I IFN memory along differentiation")
   )
   
-  for (sp in s8_panels) {
-    if (!sp$col %in% colnames(pt_mod)) { cat("    SKIP", sp$panel, "\n"); next }
-    cat("    ", sp$panel, "...\n")
+  s8_plot_list <- list()
+  
+  for (i in seq_along(s8_panels)) {
+    sp <- s8_panels[[i]]
+    if (!sp$col %in% colnames(pt_mod)) { cat("    SKIP", sp$col, "\n"); next }
+    cat("    ", sp$title, "...\n")
+    
     p_s8 <- ggplot(pt_mod, aes(x = pseudotime, y = .data[[sp$col]], color = Timepoint)) +
       geom_point(size = 0.15, alpha = 0.1) +
       geom_smooth(method = "loess", se = TRUE, linewidth = 1.8, alpha = 0.2, span = 0.4) +
@@ -697,21 +743,48 @@ if (file.exists(m3_pt_path) & file.exists(module_path)) {
       labs(x = "Monocle3 pseudotime", y = sp$ylab, title = sp$title) +
       theme_cowplot(font_size = 20) +
       theme(axis.text = element_text(size = 16), axis.title = element_text(size = 18),
-            plot.title = element_text(size = 20, face = "bold"),
-            legend.position = "bottom",
-            legend.text = element_text(size = 16),
-            legend.title = element_text(size = 18, face = "bold"),
-            plot.background = element_rect(fill = "white", color = NA)) +
-      guides(color = guide_legend(override.aes = list(size = 5, alpha = 1)))
+            plot.title = element_text(size = 18, face = "bold"),
+            legend.position = "none",
+            plot.background = element_rect(fill = "white", color = NA))
     
-    ggsave(file.path(s8_dir, paste0(sp$panel, ".png")), plot = p_s8,
-           width = 9, height = 7, dpi = 300, bg = "white")
+    s8_plot_list[[i]] <- p_s8
   }
+  
+  # Build shared legend
+  p_s8_legend_src <- ggplot(pt_mod, aes(x = pseudotime, y = Cytotoxicity, color = Timepoint)) +
+    geom_point(size = 5) +
+    scale_color_manual(values = art_colors, name = "ART Status",
+                       labels = c("Pre-ART","Suppressed","Unsuppressed")) +
+    theme_void() +
+    theme(
+      legend.direction  = "horizontal",
+      legend.text       = element_text(size = 22),
+      legend.title      = element_text(size = 24, face = "bold"),
+      legend.key.size   = unit(1.5, "cm"),
+      legend.spacing.x  = unit(0.8, "cm")
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 10, alpha = 1), nrow = 1))
+  
+  s8_legend <- cowplot::get_legend(p_s8_legend_src)
+  
+  # Combine: 3 plots in one row + legend underneath
+  if (length(s8_plot_list) == 3) {
+    combined_s8 <- (s8_plot_list[[1]] | s8_plot_list[[2]] | s8_plot_list[[3]]) /
+      wrap_elements(full = s8_legend) +
+      plot_layout(heights = c(1, 0.08))
+    
+    ggsave(file.path(s8_dir, "S8_combined_pseudotime_modules.png"),
+           plot = combined_s8, width = 27, height = 8, dpi = 300, bg = "white")
+  }
+  
+  # Also save legend separately in case needed
+  ggsave(file.path(s8_dir, "S8_common_legend.png"),
+         plot = as_ggplot(s8_legend), width = 14, height = 2, dpi = 300, bg = "white")
 }
 cat("  S8 done.\n")
 
 ################################################################################
-# S9: KIR+ INNATE-LIKE CD8
+# S9: KIR+ INNATE-LIKE CD8 — increased fonts throughout
 ################################################################################
 cat("\n=== S9: KIR+ innate-like CD8 ===\n")
 
@@ -719,26 +792,31 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
   kir_cells <- subset(TARA_cd8, CD8_Annotation == "KIR+ innate-like CD8")
   kir_cells$Timepoint_Group <- factor(kir_cells$Timepoint_Group, levels = names(art_colors))
   
-  # S9A: Proportion
+  # S9A: Proportion — INCREASED FONTS
   prop_df <- as.data.frame(table(kir_cells$Timepoint_Group))
   colnames(prop_df) <- c("ART_Status", "Count")
   prop_df$Pct <- round(100 * prop_df$Count / sum(prop_df$Count), 1)
   
   p_s9a <- ggplot(prop_df, aes(x = ART_Status, y = Count, fill = ART_Status)) +
     geom_col(width = 0.6) +
-    geom_text(aes(label = paste0(Pct, "%")), vjust = -0.5, size = 7, fontface = "bold") +
+    geom_text(aes(label = paste0(Pct, "%")), vjust = -0.5, size = 9, fontface = "bold") +
     scale_fill_manual(values = art_colors, guide = "none") +
     scale_x_discrete(labels = c("Pre-ART","Suppressed","Unsuppressed")) +
     scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
-    labs(x = "", y = "Number of KIR+ cells", title = "S9A: KIR+ innate-like CD8 by ART status") +
-    theme_cowplot(font_size = 18) +
-    theme(axis.text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold"),
+    labs(x = "", y = "Number of KIR+ cells", title = "KIR+ innate-like CD8 by ART status") +
+    theme_cowplot(font_size = 24) +
+    theme(axis.text = element_text(size = 20),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 24, face = "bold"),
           plot.background = element_rect(fill = "white", color = NA))
   
   ggsave(file.path(s9_dir, "S9A_KIR_proportion.png"), plot = p_s9a,
-         width = 8, height = 7, dpi = 300, bg = "white")
+         width = 9, height = 8, dpi = 300, bg = "white")
   
-  # S9B: Clonal expansion
+  # CSV: KIR proportion
+  write.csv(prop_df, file.path(csv_dir, "S9A_KIR_proportion.csv"), row.names = FALSE)
+  
+  # S9B: Clonal expansion — INCREASED FONTS
   kir_clone <- kir_cells@meta.data %>%
     filter(!is.na(cloneSize)) %>%
     mutate(cloneSize = factor(cloneSize, levels = c("Single (0 < X <= 1)","Small (1 < X <= 5)",
@@ -750,16 +828,26 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
     scale_fill_viridis_d(name = "Clone size", option = "mako", direction = -1) +
     scale_x_discrete(labels = c("Pre-ART","Suppressed","Unsuppressed")) +
     scale_y_continuous(labels = scales::percent) +
-    labs(x = "", y = "Proportion", title = "S9B: Clonal expansion in KIR+ CD8") +
-    theme_cowplot(font_size = 18) +
-    theme(axis.text = element_text(size = 16), plot.title = element_text(size = 20, face = "bold"),
-          legend.text = element_text(size = 14), legend.position = "right",
+    labs(x = "", y = "Proportion", title = "Clonal expansion in KIR+ CD8") +
+    theme_cowplot(font_size = 24) +
+    theme(axis.text = element_text(size = 20),
+          axis.title = element_text(size = 22),
+          plot.title = element_text(size = 24, face = "bold"),
+          legend.text = element_text(size = 18),
+          legend.title = element_text(size = 20, face = "bold"),
+          legend.position = "right",
           plot.background = element_rect(fill = "white", color = NA))
   
   ggsave(file.path(s9_dir, "S9B_KIR_clonal_expansion.png"), plot = p_s9b,
-         width = 10, height = 7, dpi = 300, bg = "white")
+         width = 11, height = 8, dpi = 300, bg = "white")
   
-  # S9C: Volcano
+  # CSV: KIR clonal expansion counts
+  kir_clone_summary <- kir_clone %>%
+    group_by(Timepoint_Group, cloneSize) %>%
+    summarise(n = n(), .groups = "drop")
+  write.csv(kir_clone_summary, file.path(csv_dir, "S9B_KIR_clonal_expansion.csv"), row.names = FALSE)
+  
+  # S9C: Volcano — INCREASED FONTS
   cat("    S9C: KIR+ volcano...\n")
   kir_dge_path <- file.path(analysis_dir, "03_DGE", "DGE_MAST_KIR_Sup_vs_Unsup.csv")
   if (!file.exists(kir_dge_path)) {
@@ -781,7 +869,6 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
     kir_dge$gene <- rownames(kir_dge)
     kir_dge$neg_log10_padj <- -log10(kir_dge$p_val_adj + 1e-300)
     
-    # Safety: cap infinite/extreme values
     kir_dge <- kir_dge %>% filter(is.finite(avg_log2FC) & is.finite(neg_log10_padj))
     
     if (nrow(kir_dge) > 0) {
@@ -800,10 +887,10 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
       
       p_s9c <- ggplot(kir_dge, aes(x = x_plot, y = y_plot, color = highlight)) +
         geom_point(data = kir_dge %>% filter(highlight == "Other"), size = 2, alpha = 0.3) +
-        geom_point(data = kir_dge %>% filter(highlight != "Other"), size = 5, alpha = 0.85) +
+        geom_point(data = kir_dge %>% filter(highlight != "Other"), size = 6, alpha = 0.85) +
         geom_label_repel(data = kir_dge %>% filter(label != ""),
                          aes(label = label, fill = highlight), color = "white",
-                         size = 6, fontface = "bold.italic", max.overlaps = 40,
+                         size = 7, fontface = "bold.italic", max.overlaps = 40,
                          segment.size = 0.4, box.padding = 0.4, label.size = 0.2, show.legend = FALSE) +
         geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "grey40", linewidth = 0.4) +
         geom_vline(xintercept = c(-0.25, 0.25), linetype = "dashed", color = "grey40", linewidth = 0.4) +
@@ -812,27 +899,31 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
         scale_x_continuous(limits = c(-kx, kx)) +
         scale_y_continuous(limits = c(0, ky)) +
         labs(x = expression(log[2]~fold~change), y = expression(-log[10]~adjusted~italic(p)),
-             title = "S9C: KIR+ innate-like CD8 — Sup vs Unsup") +
-        theme_cowplot(font_size = 18) +
-        theme(plot.title = element_text(size = 18, face = "bold"),
-              axis.text = element_text(size = 14),
-              axis.title = element_text(size = 16),
+             title = "KIR+ innate-like CD8 — suppressed vs unsuppressed") +
+        theme_cowplot(font_size = 24) +
+        theme(plot.title = element_text(size = 22, face = "bold"),
+              axis.text = element_text(size = 18),
+              axis.title = element_text(size = 20),
               legend.position = "right",
-              legend.text = element_text(size = 14),
-              legend.title = element_text(size = 16, face = "bold"),
+              legend.text = element_text(size = 18),
+              legend.title = element_text(size = 20, face = "bold"),
+              legend.key.size = unit(1.3, "cm"),
               plot.background = element_rect(fill = "white", color = NA)) +
-        guides(color = guide_legend(override.aes = list(size = 6, alpha = 1)))
+        guides(color = guide_legend(override.aes = list(size = 8, alpha = 1)))
       
       ggsave(file.path(s9_dir, "S9C_KIR_volcano.png"), plot = p_s9c,
-             width = 12, height = 9, dpi = 300, bg = "white")
+             width = 14, height = 10, dpi = 300, bg = "white")
+      
+      # CSV: copy KIR DGE
+      file.copy(kir_dge_path, file.path(csv_dir, "S9C_KIR_DGE_Sup_vs_Unsup.csv"),
+                overwrite = TRUE)
     } else {
       cat("    WARNING: No finite DGE values for KIR+ volcano.\n")
     }
   }
   
-  # S9D: Shared clonotypes
+  # S9D: Shared clonotypes — INCREASED FONTS
   cat("    S9D: Shared clonotypes...\n")
-  # Try common scRepertoire column names for clonotype identity
   tcr_col <- NULL
   for (candidate in c("CTaa", "CTstrict", "CTgene", "CTnt", "clonotype_id")) {
     if (candidate %in% colnames(kir_cells@meta.data)) {
@@ -858,16 +949,22 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
       p_s9d <- ggplot(shared, aes(x = Clone_short, y = n, fill = CD8_Annotation)) +
         geom_col(width = 0.6) +
         scale_fill_brewer(palette = "Set2", name = "CD8 cluster") +
-        labs(x = "", y = "Number of cells", title = "S9D: Top KIR+ clonotypes across clusters") +
-        theme_cowplot(font_size = 18) +
-        theme(plot.title = element_text(size = 18, face = "bold"),
-              axis.text = element_text(size = 14),
-              legend.text = element_text(size = 14), legend.position = "right",
+        labs(x = "", y = "Number of cells", title = "Top KIR+ clonotypes across clusters") +
+        theme_cowplot(font_size = 24) +
+        theme(plot.title = element_text(size = 22, face = "bold"),
+              axis.text = element_text(size = 18),
+              axis.title = element_text(size = 20),
+              legend.text = element_text(size = 18),
+              legend.title = element_text(size = 20, face = "bold"),
+              legend.position = "right",
               plot.background = element_rect(fill = "white", color = NA)) +
         coord_flip()
       
       ggsave(file.path(s9_dir, "S9D_KIR_shared_clonotypes.png"), plot = p_s9d,
-             width = 12, height = 7, dpi = 300, bg = "white")
+             width = 14, height = 8, dpi = 300, bg = "white")
+      
+      # CSV: shared clonotypes
+      write.csv(shared, file.path(csv_dir, "S9D_KIR_shared_clonotypes.csv"), row.names = FALSE)
     } else {
       cat("      No expanded KIR+ clonotypes found.\n")
     }
@@ -886,7 +983,8 @@ cat("\n", paste(rep("=", 60), collapse = ""), "\n")
 cat("SUPPLEMENTARY COMPLETE\n")
 cat("Output:", supp_base, "\n\n")
 for (d in list(c("S4", s4_dir), c("S5", s5_dir), c("S6", s6_dir),
-               c("S7", s7_dir), c("S8", s8_dir), c("S9", s9_dir))) {
+               c("S7", s7_dir), c("S8", s8_dir), c("S9", s9_dir),
+               c("CSV", csv_dir))) {
   n <- length(list.files(d[2], "\\.png$|\\.csv$"))
   cat("  ", d[1], ":", n, "files\n")
 }

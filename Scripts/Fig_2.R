@@ -442,9 +442,10 @@ for (pt in names(patient_info)) {
     # CD4 line and points - THICKER, USE DOTS
     geom_line(color = "#2166AC", linewidth = 4) +
     geom_point(color = "#2166AC", size = 10, shape = 16) +
-    # Scales
+    # Scales - FIXED RANGE 0-6000 for all patients
     scale_y_continuous(
-      limits = c(0, max(pt_cd4$CD4_mm3, 3000, na.rm = TRUE) * 1.1),
+      limits = c(0, 6000),
+      breaks = seq(0, 6000, by = 2000),
       expand = c(0.02, 0)
     ) +
     scale_x_continuous(
@@ -477,7 +478,7 @@ for (pt in names(patient_info)) {
          p_cd4, width = 10, height = 8, dpi = 300, bg = "white")
   
   # ── COMBINED VL + CD4 (dual y-axis, improved) ──────────────────────────────
-  cd4_max  <- max(pt_cd4$CD4_mm3, 3000, na.rm = TRUE)
+  cd4_max  <- 6000  # FIXED for all patients (max in cohort is 5713)
   vl_max_log <- 8
   scale_factor_val <- cd4_max / vl_max_log
   
@@ -505,7 +506,8 @@ for (pt in names(patient_info)) {
       limits = c(0, vl_max_log),
       breaks = seq(0, 8, by = 2),
       sec.axis = sec_axis(~ . * scale_factor_val,
-                          name = expression("CD4 (cells/"*mu*"L)"))
+                          name = expression("CD4 (cells/"*mu*"L)"),
+                          breaks = seq(0, 6000, by = 2000))
     ) +
     scale_x_continuous(
       limits = c(0, info$max_age),

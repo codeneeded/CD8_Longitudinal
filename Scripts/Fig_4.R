@@ -538,8 +538,8 @@ if (file.exists(module_path)) {
   
   comparisons <- list(
     list(num = "PostART_Suppressed",   denom = "PostART_Unsuppressed", label = "Suppressed vs Unsuppressed"),
-    list(num = "PreART_Entry",         denom = "PostART_Unsuppressed", label = "Pre-ART vs Unsuppressed"),
-    list(num = "PostART_Suppressed",   denom = "PreART_Entry",         label = "Suppressed vs Pre-ART")
+    list(num = "PostART_Suppressed",   denom = "PreART_Entry",         label = "Suppressed vs Pre-ART"),
+    list(num = "PostART_Unsuppressed", denom = "PreART_Entry",         label = "Unsuppressed vs Pre-ART")
   )
   
   all_cd_results <- list()
@@ -591,8 +591,8 @@ if (file.exists(module_path)) {
                                   levels = c("Transitional Tem CD8", "TEM CD8", "TEMRA CD8"))
   cd_all$Comparison <- factor(cd_all$Comparison,
                               levels = c("Suppressed vs Unsuppressed",
-                                         "Pre-ART vs Unsuppressed",
-                                         "Suppressed vs Pre-ART"))
+                                         "Suppressed vs Pre-ART",
+                                         "Unsuppressed vs Pre-ART"))
   
   cd_all <- cd_all %>% filter(!is.na(CD8_Annotation) & !is.na(Comparison) & !is.na(Module_Label))
   
@@ -602,167 +602,121 @@ if (file.exists(module_path)) {
                           cd_all$cohens_d - x_range_all * 0.04)
   cd_all$star_hjust <- ifelse(cd_all$cohens_d > 0, 0, 1)
   
-  p_F <- ggplot(cd_all, aes(x = cohens_d, y = Module_Label, fill = Comparison)) +
-    geom_col(width = 0.75, alpha = 0.85,
+  # Cluster colors for bars — MATCHED to UMAP cluster_colors
+  effector_bar_colors <- c(
+    "Transitional Tem CD8" = "#FF9DA7",
+    "TEM CD8"              = "#F28E2B", 
+    "TEMRA CD8"            = "#EDC948"
+  )
+  
+  # Short cluster labels for cleaner legend
+  cd_all$Cluster_Short <- dplyr::recode(as.character(cd_all$CD8_Annotation),
+                                        "Transitional Tem CD8" = "Transitional Tem",
+                                        "TEM CD8" = "TEM",
+                                        "TEMRA CD8" = "TEMRA"
+  )
+  cd_all$Cluster_Short <- factor(cd_all$Cluster_Short, 
+                                 levels = c("Transitional Tem", "TEM", "TEMRA"))
+  
+  p_F <- ggplot(cd_all, aes(x = cohens_d, y = Module_Label, fill = Cluster_Short)) +
+    geom_col(width = 0.75, alpha = 0.9,
              position = position_dodge(width = 0.8)) +
-    geom_vline(xintercept = 0, linewidth = 0.5, color = "grey30") +
-    geom_text(aes(x = star_x, label = star, hjust = star_hjust, group = Comparison),
+    geom_vline(xintercept = 0, linewidth = 0.6, color = "grey30") +
+    geom_text(aes(x = star_x, label = star, hjust = star_hjust, group = Cluster_Short),
               position = position_dodge(width = 0.8),
-              size = 4.5, color = "black", vjust = 0.35) +
-    facet_wrap(~ CD8_Annotation, nrow = 1, drop = FALSE) +
-    scale_fill_manual(values = comp_colors, name = "Comparison", drop = FALSE) +
+              size = 5, color = "black", vjust = 0.35, fontface = "bold") +
+    # FACET BY COMPARISON (3 panels)
+    facet_wrap(~ Comparison, nrow = 1, drop = FALSE) +
+    scale_fill_manual(values = c(
+      "Transitional Tem" = "#FF9DA7",
+      "TEM"              = "#F28E2B", 
+      "TEMRA"            = "#EDC948"
+    ), name = "Cluster", drop = FALSE) +
     coord_cartesian(clip = "off") +
     labs(x = "Cohen's d (effect size)", y = NULL,
-         title = "Module score differences across ART conditions") +
+         title = "Module score differences: effect sizes by comparison") +
     theme_cowplot(font_size = 18) +
     theme(
-      strip.text        = element_text(size = 14, face = "bold"),
-      strip.background  = element_rect(fill = "grey95", color = NA),
-      axis.text.y       = element_text(size = 12),
-      axis.text.x       = element_text(size = 12),
-      axis.title.x      = element_text(size = 14),
+      strip.text        = element_text(size = 16, face = "bold"),
+      strip.background  = element_rect(fill = "grey92", color = NA),
+      axis.text.y       = element_text(size = 14, face = "bold"),
+      axis.text.x       = element_text(size = 13),
+      axis.title.x      = element_text(size = 15, face = "bold"),
       legend.position   = "bottom",
-      legend.text       = element_text(size = 13),
-      legend.title      = element_text(size = 14, face = "bold"),
-      plot.title        = element_text(size = 17, face = "bold"),
+      legend.text       = element_text(size = 14),
+      legend.title      = element_text(size = 15, face = "bold"),
+      legend.key.size   = unit(0.8, "cm"),
+      plot.title        = element_text(size = 20, face = "bold", hjust = 0.5),
       plot.margin       = margin(10, 30, 10, 10),
       plot.background   = element_rect(fill = "white", color = NA),
-      panel.background  = element_rect(fill = "white", color = NA)
-    )
+      panel.background  = element_rect(fill = "white", color = NA),
+      panel.spacing     = unit(1.5, "lines")
+    ) +
+    guides(fill = guide_legend(nrow = 1))
   
   ggsave(file.path(fig4_dir, "Fig4F_CohenD_AllComparisons.png"),
-         plot = p_F, width = 18, height = 9, dpi = 300, bg = "white")
+         plot = p_F, width = 20, height = 10, dpi = 300, bg = "white")
   
   write.csv(cd_all %>% select(Comparison, Module, CD8_Annotation, cohens_d, p_value, p_adj, star),
             file.path(fig4_dir, "Fig4F_CohenD_stats.csv"), row.names = FALSE)
+  
+  # ── Panel F Heatmap Version ──────────────────────────────────────────────────
+  cat("  Panel F (heatmap version)...\n")
+  
+  # Prepare data for heatmap
+  heatmap_data <- cd_all %>%
+    mutate(
+      Cluster_Short = dplyr::recode(as.character(CD8_Annotation),
+                                    "Transitional Tem CD8" = "Transitional\nTem",
+                                    "TEM CD8" = "TEM",
+                                    "TEMRA CD8" = "TEMRA"
+      ),
+      Cluster_Short = factor(Cluster_Short, levels = c("Transitional\nTem", "TEM", "TEMRA"))
+    )
+  
+  # Create heatmap — BLUE (negative) to RED (positive) diverging palette
+  p_F_heatmap <- ggplot(heatmap_data, aes(x = Cluster_Short, y = Module_Label, fill = cohens_d)) +
+    geom_tile(color = "white", linewidth = 1.5) +
+    # Add significance stars
+    geom_text(aes(label = star), color = "black", size = 5, fontface = "bold", vjust = 0.8) +
+    # Add Cohen's d values
+    geom_text(aes(label = sprintf("%.2f", cohens_d)), 
+              color = "black", size = 3.5, vjust = 2.2, alpha = 0.7) +
+    # Facet by comparison
+    facet_wrap(~ Comparison, nrow = 1) +
+    # ── UPDATED: Blue-to-Red diverging scale with refined tones ──────────────
+    scale_fill_gradient2(
+      low  = "#3A6FB0",    # Refined steel blue (negative = higher in reference)
+      mid  = "white",      # White for zero
+      high = "#C4463A",    # Refined vermillion red (positive = higher in numerator)
+      midpoint = 0,
+      limits = c(-1.0, 1.0),
+      oob = scales::squish,
+      name = "Cohen's d"
+    ) +
+    labs(x = NULL, y = NULL,
+         title = "Module score differences: effect sizes by comparison") +
+    theme_cowplot(font_size = 18) +
+    theme(
+      strip.text        = element_text(size = 16, face = "bold"),
+      strip.background  = element_rect(fill = "grey92", color = NA),
+      axis.text.y       = element_text(size = 13, face = "bold"),
+      axis.text.x       = element_text(size = 13, face = "bold", angle = 0, hjust = 0.5),
+      legend.position   = "right",
+      legend.text       = element_text(size = 12),
+      legend.title      = element_text(size = 13, face = "bold"),
+      plot.title        = element_text(size = 20, face = "bold", hjust = 0.5),
+      plot.margin       = margin(10, 10, 10, 10),
+      plot.background   = element_rect(fill = "white", color = NA),
+      panel.background  = element_rect(fill = "white", color = NA),
+      panel.spacing     = unit(1.5, "lines")
+    )
+  
+  ggsave(file.path(fig4_dir, "Fig4F_CohenD_Heatmap.png"),
+         plot = p_F_heatmap, width = 16, height = 8, dpi = 300, bg = "white")
+  
 } else {
   cat("    WARNING: Module scores file not found at", module_path, "\n")
 }
 
-################################################################################
-# SUPPLEMENTARY: ADT Gating Validation
-################################################################################
-cat("\n=== Generating supplementary panels ===\n")
 
-# ── S1: ADT gating scatter plots (FAS vs CD45RO) ────────────────────────────
-cat("  Supp: ADT gating validation...\n")
-
-if ("ADT_gate" %in% colnames(TARA_cd8@meta.data) & "source_cluster" %in% colnames(TARA_cd8@meta.data)) {
-  
-  # Get naïve-lineage cells (those that were gated)
-  gated_mask <- !is.na(TARA_cd8$ADT_gate)
-  if (sum(gated_mask) > 0) {
-    gated_cells <- colnames(TARA_cd8)[gated_mask]
-    
-    DefaultAssay(TARA_cd8) <- "ADT"
-    adt_data <- GetAssayData(TARA_cd8, slot = "data")
-    
-    gate_plot_df <- data.frame(
-      CD45RO    = as.numeric(adt_data["CD45RO", gated_cells]),
-      CD45RA    = as.numeric(adt_data["CD45RA", gated_cells]),
-      FAS       = as.numeric(adt_data["FAS", gated_cells]),
-      gate      = TARA_cd8$CD8_Annotation[gated_cells],
-      source    = TARA_cd8$source_cluster[gated_cells],
-      stringsAsFactors = FALSE
-    )
-    
-    # Map source clusters to meaningful labels
-    source_map <- c("0" = "Cluster 0\n(classical Naïve)",
-                    "2" = "Cluster 2\n(KIR+/pre-ART)",
-                    "5" = "Cluster 5\n(BACH2+/post-ART)",
-                    "7" = "Cluster 7\n(rescued αβ)")
-    gate_plot_df$source_label <- source_map[gate_plot_df$source]
-    gate_plot_df <- gate_plot_df %>% filter(!is.na(source_label))
-    
-    gate_cols_supp <- c(
-      "Naïve CD8"              = "#4E79A7",
-      "Naïve CD8 2"            = "#76B7B2",
-      "Naïve CD8 3"            = "#A0CBE8",
-      "Tscm CD8"               = "#59A14F",
-      "Naïve Intermediate CD8" = "#8CD17D"
-    )
-    
-    p_supp_gate <- ggplot(gate_plot_df, aes(x = FAS, y = CD45RO, color = gate)) +
-      geom_point(size = 0.5, alpha = 0.4) +
-      scale_color_manual(values = gate_cols_supp, name = "ADT Gate") +
-      geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
-      geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
-      facet_wrap(~ source_label, nrow = 1) +
-      labs(title = "ADT sub-gating of naïve clusters",
-           subtitle = "Tscm = CD45RO- FAS+  |  Naïve Intermediate = CD45RO+  |  True naïve = CD45RO- FAS-",
-           x = "FAS/CD95 (DSB)", y = "CD45RO (DSB)") +
-      theme_cowplot(font_size = 12) +
-      theme(
-        strip.background = element_rect(fill = "grey95", color = NA),
-        strip.text       = element_text(size = 11),
-        legend.position  = "bottom",
-        legend.text      = element_text(size = 11),
-        plot.background  = element_rect(fill = "white", color = NA)
-      ) +
-      guides(color = guide_legend(override.aes = list(size = 4, alpha = 1)))
-    
-    ggsave(file.path(supp_dir, "SuppFig_ADT_gating_validation.png"),
-           plot = p_supp_gate, width = 18, height = 6, dpi = 300, bg = "white")
-    cat("    ADT gating validation saved.\n")
-  }
-} else {
-  cat("    ADT_gate or source_cluster columns not found — skipping gating plot.\n")
-  cat("    (This is expected if running from a pre-gating saved object.)\n")
-}
-
-# ── S2: Cluster proportions by ART status ────────────────────────────────────
-cat("  Supp: Cluster proportions...\n")
-
-prop_tp <- as.data.frame(prop.table(
-  table(TARA_cd8$CD8_Annotation, TARA_cd8$Timepoint_Group), margin = 2
-))
-colnames(prop_tp) <- c("Cluster", "Timepoint_Group", "Proportion")
-prop_tp$Cluster <- factor(prop_tp$Cluster, levels = col_order_cd8)
-
-p_supp_prop <- ggplot(prop_tp, aes(x = Timepoint_Group, y = Proportion, fill = Cluster)) +
-  geom_bar(stat = "identity", position = "stack", width = 0.75) +
-  scale_fill_manual(values = cluster_colors, name = "CD8 Sub-cluster") +
-  scale_y_continuous(labels = scales::percent_format(), expand = c(0, 0)) +
-  scale_x_discrete(labels = art_labels) +
-  labs(x = NULL, y = "Proportion",
-       title = "CD8 sub-cluster composition by ART status") +
-  theme_cowplot(font_size = 14) +
-  theme(
-    axis.text.x      = element_text(size = 12),
-    legend.text      = element_text(size = 9),
-    legend.key.size  = unit(0.4, "cm"),
-    plot.background  = element_rect(fill = "white", color = NA)
-  ) +
-  guides(fill = guide_legend(ncol = 2))
-
-ggsave(file.path(supp_dir, "SuppFig_ClusterProportions_byART.png"),
-       plot = p_supp_prop, width = 10, height = 8, dpi = 300, bg = "white")
-
-# ── S3: Cluster proportions by patient ───────────────────────────────────────
-prop_pid <- as.data.frame(prop.table(
-  table(TARA_cd8$CD8_Annotation, TARA_cd8$PID), margin = 2
-))
-colnames(prop_pid) <- c("Cluster", "PID", "Proportion")
-prop_pid$Cluster <- factor(prop_pid$Cluster, levels = col_order_cd8)
-
-p_supp_pid <- ggplot(prop_pid, aes(x = PID, y = Proportion, fill = Cluster)) +
-  geom_bar(stat = "identity", position = "stack", width = 0.75) +
-  scale_fill_manual(values = cluster_colors, name = "CD8 Sub-cluster") +
-  scale_y_continuous(labels = scales::percent_format(), expand = c(0, 0)) +
-  labs(x = NULL, y = "Proportion",
-       title = "CD8 sub-cluster composition by patient") +
-  theme_cowplot(font_size = 14) +
-  theme(
-    axis.text.x      = element_text(size = 11, angle = 35, hjust = 1),
-    legend.text      = element_text(size = 9),
-    legend.key.size  = unit(0.4, "cm"),
-    plot.background  = element_rect(fill = "white", color = NA)
-  ) +
-  guides(fill = guide_legend(ncol = 2))
-
-ggsave(file.path(supp_dir, "SuppFig_ClusterProportions_byPatient.png"),
-       plot = p_supp_pid, width = 12, height = 8, dpi = 300, bg = "white")
-
-cat("\n=== Figure 4 complete ===\n")
-cat("  Main panels:", length(list.files(fig4_dir, "\\.png$")), "files in", fig4_dir, "\n")
-cat("  Supplementary:", length(list.files(supp_dir, "\\.png$")), "files in", supp_dir, "\n")
