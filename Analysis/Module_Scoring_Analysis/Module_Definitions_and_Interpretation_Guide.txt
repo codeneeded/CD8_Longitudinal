@@ -1,0 +1,220 @@
+===============================================================================
+MODULE DEFINITIONS AND INTERPRETATION GUIDE
+TARA Cohort — Module Scoring Analysis
+===============================================================================
+
+This file documents all 17 functional gene modules scored in the analysis.
+For each module: gene list, biological meaning, and interpretation guide.
+
+───────────────────────────────────────────────────────────────────────────────
+
+MODULE: IFN_Memory
+GENES: IFIT1, IFIT2, IFIT3, ISG15, MX1, MX2, OAS1, OAS2, OAS3, IFI6
+
+The 'good' IFN signature. Cells that were exposed to type I interferon
+during initial antigen encounter and retain a poised programme for rapid
+recall. These genes encode antiviral effector proteins: OAS enzymes activate
+RNase L to degrade viral RNA, MX GTPases restrict viral replication, IFIT
+proteins inhibit viral translation. Suppressed expanding CD8 clones showed
+significantly higher IFN Memory scores than unsuppressed (d = 0.25-0.43).
+Type I IFN is the critical 'third signal' for CD8 priming — without it,
+expansion and memory generation drop by 99%.
+
+INTERPRET: High = IFN-primed readiness for rapid recall upon re-encounter.
+
+MODULE: Stress_IFN_Acute
+GENES: HSPA1A, HSPA1B, HSP90AA1, DNAJB1, IFI27, IFI44L
+
+The 'bad' IFN signature. Heat shock proteins (HSPA1A/B, HSP90AA1, DNAJB1)
+indicate protein misfolding stress from active viral replication. IFI27 and
+IFI44L are acute-phase ISGs marking cells under current IFN bombardment.
+This was the DOMINANT signature distinguishing suppressed from unsuppressed
+clones (d = -0.61 to -0.68 — larger than exhaustion).
+
+INTERPRET: High = active cellular damage from ongoing viral replication.
+KEY: High Memory + Low Stress = optimally primed. High Stress + Low Memory
+= viral damage without functional priming.
+
+MODULE: IFN_Signalling
+GENES: STAT1, STAT2, IRF7, IRF9, IRF1, IRF3
+
+The signal transduction machinery downstream of IFNAR1/IFNAR2 receptor.
+These TFs activate ISG expression. Distinguishes cells that are CAPABLE of
+IFN signalling (machinery present) from those actively RESPONDING (ISGs up).
+IRF7 is the master regulator of type I IFN production.
+
+INTERPRET: High = IFN signalling machinery active / IFN-responsive cell.
+
+MODULE: IFN_Negative_Reg
+GENES: USP18, SOCS1, SOCS3
+
+Feedback inhibitors that dampen IFN signalling. USP18 blocks IFNAR2;
+SOCS1/3 inhibit JAK-STAT. Could indicate appropriate feedback control or
+IFN resistance. Context with IFN Memory and Stress scores determines
+interpretation.
+
+INTERPRET: High + High Stress = trying to shut down damaging IFN.
+High + Low Stress = effective negative regulation (healthy feedback).
+
+MODULE: Exhaustion
+GENES: TOX, PDCD1, HAVCR2, TIGIT, LAG3, CTLA4, ENTPD1
+
+Progressive loss of effector function through chronic antigen stimulation.
+TOX is the master regulator. Exhaustion correlated directly with viral load
+(rho = 0.70, p = 5.9e-4). ART actively reduced exhaustion below pre-ART.
+
+INTERPRET: High = chronic antigen-driven dysfunction. Track with viral load.
+
+MODULE: Stemness_Naive
+GENES: TCF7, LEF1, SELL, CCR7, BACH2, IL7R, BCL2, S1PR1, KLF2
+
+Self-renewal capacity and quiescent memory potential. TCF-1 (TCF7) marks
+stem-like CD8 T cells that sustain long-term antiviral immunity. Its
+frequency predicts post-intervention viral control. ART preserved stemness
+in expanding clones (d = 0.35-0.46 vs unsuppressed).
+
+INTERPRET: High = self-renewal capacity preserved, good for cure strategies.
+
+MODULE: Cytotoxicity
+GENES: GZMB, GZMA, GZMH, GNLY, PRF1, NKG7, FGFBP2
+
+Direct target cell killing through granzyme/perforin. Highest in pre-ART
+cells (maximally activated), partially resolved by ART.
+
+INTERPRET: High = active killing capacity. Context matters — high in a
+naive cell is abnormal, high in TEMRA/CTL is expected.
+
+MODULE: Inflammatory_Chemokines
+GENES: CCL3, CCL4, CCL4L2, CCL5, XCL1, XCL2
+
+Capacity to recruit other immune cells via MIP-1alpha/beta and lymphotactin.
+CCL3/CCL4 are also natural CCR5 ligands (the HIV co-receptor), so their
+expression has implications for HIV susceptibility of neighbouring cells.
+
+INTERPRET: High = actively recruiting immune cells / blocking CCR5.
+
+MODULE: Terminal_Differentiation
+GENES: ZEB2, PRDM1, TBX21, CX3CR1, S1PR5, ID2, EOMES
+
+Commitment to terminal effector fate with loss of plasticity. End-stage of
+the exhaustion trajectory where cells lose ability to respond to therapy.
+
+INTERPRET: High = terminally committed, limited therapeutic potential.
+
+MODULE: Activation
+GENES: HLA-DRA, HLA-DRB1, CD38, FAS, CD69, ICOS, TNFRSF9
+
+General immune activation. HLA-DR/CD38 co-expression is the classic measure
+of T cell activation in HIV. Persistent activation despite ART reflects
+ongoing viral replication or microbial translocation.
+
+INTERPRET: High = recently activated. Persistent high = pathological.
+
+MODULE: Inflammatory_Cytokines
+GENES: IL1B, TNF, IL6, CXCL8, IL18, CXCL10, CXCL9, CCL2, CSF2, IFNG
+
+Broad inflammatory cytokine production. Includes innate (IL-1beta, TNF,
+IL-6) and adaptive (IFN-gamma) cytokines. CXCL10 (IP-10) is used
+clinically as a biomarker of IFN-driven inflammation in HIV.
+
+INTERPRET: High = systemic inflammation. Expected in monocytes/pDCs.
+
+MODULE: Glycolysis_Hypoxia
+GENES: HIF1A, LDHA, PKM, GAPDH, ENO1, PFKFB3, PFKFB4, SLC2A1, SLC2A3,
+       ALDOA, HILPDA, EGLN3, IGFBP2, VEGFA, AK4
+
+Whether cells have switched to anaerobic glucose metabolism. T cells do
+this normally upon activation, but exhausted cells get stuck in glycolysis
+and cannot switch back to mitochondrial metabolism — this prevents memory
+formation. A pre-ART naive CD8 cluster already showed this signature
+(PFKFB4, HILPDA, EGLN3, IGFBP2 elevated).
+
+INTERPRET: High in naive cells = abnormal (viremia-driven metabolic stress).
+High in effectors = expected. High in exhausted cells = metabolic trap.
+
+MODULE: OXPHOS
+GENES: ATP5F1A, ATP5F1B, NDUFA4, NDUFB8, SDHB, UQCRB, COX7A2, COX5A,
+       CS, IDH2, OGDH, MDH2, VDAC1, SOD2
+
+Mitochondrial fitness — cells burning fuel efficiently through the electron
+transport chain and TCA cycle. This is the healthy metabolic state for
+stem-like and memory T cells. If ART preserves stemness, OXPHOS should
+track with it. Cells with high OXPHOS + high stemness have the metabolic
+capacity to survive long-term.
+
+INTERPRET: High = metabolically fit. Predict: suppressed > unsuppressed.
+The OXPHOS/Glycolysis ratio is as informative as the IFN Memory/Stress ratio.
+
+MODULE: Fatty_Acid_Oxidation
+GENES: CPT1A, ACADM, HADHA, ACADVL, PPARA, PPARGC1A, ACSL1
+
+The specific fuel source for memory T cell survival — burning fat to power
+mitochondria. CPT1A is the gatekeeper enzyme and a single-gene proxy for
+memory metabolic fitness. PGC-1alpha (PPARGC1A) is the master regulator
+of mitochondrial biogenesis.
+
+INTERPRET: High = using the memory fuel programme. Should track with TCF7.
+
+MODULE: Proliferation
+GENES: MKI67, TOP2A, PCNA, MCM7, MCM3, TYMS, CDK1, CCNB1, CCNA2, BIRC5
+
+Active cell division — S phase and G2/M markers. MKI67 is the classic
+proliferation marker. Distinguishes actively expanding populations from
+quiescent ones under different ART conditions.
+
+INTERPRET: High = actively dividing. In the context of ART, sustained
+proliferation in effector populations may indicate ongoing antigenic drive.
+
+MODULE: Apoptosis_Survival
+GENES: BCL2, BCL2L1, MCL1, BCL2A1 (pro-survival)
+       BAX, BAK1, BID, BBC3 (pro-apoptosis)
+       FAS, FASLG, CASP3, CASP8 (death pathway)
+
+Balance between cell survival and programmed cell death. Pro-survival genes
+(BCL2 family) vs pro-apoptosis effectors and death receptors. Stem-like
+cells typically have high BCL2 (survival advantage). Net interpretation
+depends on the balance — a high overall score could reflect either active
+apoptosis or strong survival signalling.
+
+INTERPRET: Check individual gene contributions. High BCL2 + low BAX = survival.
+High FAS + CASP = apoptosis-prone. Will export individual gene scores for this.
+
+MODULE: Senescence
+GENES: KLRG1, CDKN1A (p21), CDKN2A (p16), B3GAT1 (CD57),
+       TP53, RB1, LMNB1, HMGA1
+
+Replicative senescence — cells that have permanently exited the cell cycle
+but remain metabolically active. KLRG1 and CD57 (B3GAT1) are surface markers.
+p21 (CDKN1A) and p16 (CDKN2A) are the canonical cell cycle inhibitors.
+Senescence is distinct from exhaustion: senescent cells cannot proliferate
+but may retain effector function, while exhausted cells lose function but
+may still divide.
+
+INTERPRET: High = terminally arrested, no proliferative potential. Important
+for cure strategies — senescent HIV-specific cells cannot expand on demand.
+
+MODULE: Tissue_Residency
+GENES: ITGAE (CD103), ITGA1 (CD49a), CD69, ITGB7, ZNF683 (Hobit),
+       PRDM1 (Blimp-1), CXCR6, RUNX3
+
+Tissue-resident memory programme — cells anchored in tissues rather than
+circulating. CD103 and CD49a are adhesion molecules for tissue retention.
+CD69 blocks S1PR1-mediated tissue egress. Relevant because mucosal
+tissue-resident memory is key for HIV control at sites of viral replication.
+
+INTERPRET: High in PBMC = cells with tissue-homing programme (will migrate
+to tissues). The MAIT cells showed this signature (CD103+CD49a+).
+
+───────────────────────────────────────────────────────────────────────────────
+
+RATIO METRICS:
+
+IFN_Ratio = IFN_Memory - Stress_IFN_Acute
+  Positive = IFN-primed readiness (good). Negative = viral damage (bad).
+
+Metabolic_Ratio = OXPHOS - Glycolysis_Hypoxia
+  Positive = mitochondrial fitness (memory-like). Negative = glycolytic trap.
+
+Together these two ratios capture whether ART restores both immunological
+AND metabolic fitness — the two pillars of long-lived functional immunity.
+
