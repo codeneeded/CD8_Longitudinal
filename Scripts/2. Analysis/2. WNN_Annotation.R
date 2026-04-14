@@ -55,7 +55,7 @@ out_pathway  <- file.path(base_dir, "Analysis", "Pathway_Analysis")
 
 for (d in c(out_clusters, out_annot, out_gating, out_avgexpr,
             out_vln_rna, out_vln_adt, out_feat_rna, out_feat_adt,
-            lineage_base)) {
+            lineage_base, out_dge, out_pathway)) {
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
 }
 
@@ -96,17 +96,17 @@ cat("\n")
 cat("══ STEP 4: ANNOTATIONS ══\n\n")
 
 final_labels <- c(
-  # --- CD4 T cells (all naive merged into one) ---
-  "0"  = "Naive CD4",
-  "2"  = "Naive CD4",
-  "5"  = "Naive CD4",
-  "41" = "Naive CD4",
-  "55" = "Naive CD4",
-  "7"  = "Transitional Memory CD4",
-  "10" = "Th2/Th17 EM CD4",
-  "20" = "Treg",
+  # --- CD4 T cells (3 naive kept separate) ---
+  "0"  = "Naive 1 CD4",                   # CD71+CD24+TCRhi
+  "2"  = "Naive 2 CD4",                   # CD27hi quiescent
+  "41" = "Naive 2 CD4",                   # merge with 2
+  "55" = "Naive 2 CD4",                   # merge with 2
+  "5"  = "Naive 3 CD4",                   # IL4Rhi
+  "7"  = "Transitional Memory CD4",       # CD45RA+RO+ TCF7hi
+  "10" = "Th2/Th17 EM CD4",              # LAG3+PD1+CCR4+MAF+
+  "20" = "Treg",                          # CD25+FOXP3+
   
-  # --- Cluster 12: entirely removed (platelet RNA contamination) ---
+  # --- Cluster 12: entirely removed (platelet RNA contamination in both fractions) ---
   "12" = "FLAG_Platelet_cl12",
   
   # --- CD8 T cells ---
@@ -199,7 +199,7 @@ TARA_ALL$has_TCR <- !is.na(TARA_ALL@meta.data[[tcr_col]])
 # --- 5b: Cluster 9 split ---
 is_trdv1 <- TARA_ALL$Annotation == "TRDV1+ pending"
 TARA_ALL$Annotation[is_trdv1 & TARA_ALL$has_TCR == TRUE]  <- "TEMRA/CTL CD8"
-TARA_ALL$Annotation[is_trdv1 & TARA_ALL$has_TCR == FALSE] <- "gd T cell (cl9)"
+TARA_ALL$Annotation[is_trdv1 & TARA_ALL$has_TCR == FALSE] <- "Cytotoxic gd T cell"
 
 # --- 5c: Cluster 1 sub-gate ---
 is_cl1    <- TARA_ALL$Annotation == "Memory CD8 pending"
@@ -501,6 +501,61 @@ rna_markers_flat <- unique(c(
 DefaultAssay(TARA_ALL) <- "ADT"
 all_adt_markers <- sort(rownames(TARA_ALL[["ADT"]]))
 
+# Publication-quality UMAP helper
+plot_pub_umap <- function(obj, group_col, color_map, label_size = 12,
+                          pt_size = 1.0, pt_alpha = 0.7, colored_labels = TRUE) {
+  umap_df <- as.data.frame(Embeddings(obj, reduction = "wnn.umap"))
+  colnames(umap_df) <- c("UMAP1", "UMAP2")
+  umap_df$Group <- obj@meta.data[[group_col]]
+  
+  centroids <- umap_df %>%
+    group_by(Group) %>%
+    summarise(UMAP1 = median(UMAP1), UMAP2 = median(UMAP2), .groups = "drop")
+  
+  x_arrow <- min(umap_df$UMAP1, na.rm = TRUE) + 1
+  y_arrow <- min(umap_df$UMAP2, na.rm = TRUE) + 1
+  
+  p <- ggplot(umap_df, aes(x = UMAP1, y = UMAP2, color = Group)) +
+    geom_point(size = pt_size, alpha = pt_alpha, stroke = 0) +
+    scale_color_manual(values = color_map)
+  
+  if (colored_labels) {
+    p <- p + geom_label_repel(
+      data = centroids,
+      aes(x = UMAP1, y = UMAP2, label = Group, color = Group),
+      fill = "white", size = label_size, fontface = "bold",
+      label.size = 0.6, label.padding = unit(0.3, "lines"),
+      box.padding = 1.0, point.padding = 0.5,
+      segment.color = "grey40", segment.size = 0.6,
+      min.segment.length = 0, max.overlaps = 40, show.legend = FALSE)
+  } else {
+    p <- p + geom_label_repel(
+      data = centroids,
+      aes(x = UMAP1, y = UMAP2, label = Group),
+      fill = "white", color = "black", size = label_size, fontface = "bold",
+      label.size = 0.6, label.padding = unit(0.3, "lines"),
+      box.padding = 1.0, point.padding = 0.5,
+      segment.color = "grey40", segment.size = 0.6,
+      min.segment.length = 0, max.overlaps = 40, show.legend = FALSE)
+  }
+  
+  p + annotate("segment", x = x_arrow, xend = x_arrow + 3.5,
+               y = y_arrow, yend = y_arrow,
+               arrow = arrow(length = unit(0.35, "cm"), type = "closed"),
+               linewidth = 1, color = "black") +
+    annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.2,
+             label = "UMAP1", size = 6, fontface = "bold") +
+    annotate("segment", x = x_arrow, xend = x_arrow,
+             y = y_arrow, yend = y_arrow + 3.5,
+             arrow = arrow(length = unit(0.35, "cm"), type = "closed"),
+             linewidth = 1, color = "black") +
+    annotate("text", x = x_arrow - 1.2, y = y_arrow + 1.75,
+             label = "UMAP2", size = 6, fontface = "bold", angle = 90) +
+    theme_void() +
+    theme(legend.position = "none", plot.margin = margin(10, 10, 10, 10)) +
+    coord_fixed()
+}
+
 
 ################################################################################
 #
@@ -521,14 +576,17 @@ all_adt_markers <- sort(rownames(TARA_ALL[["ADT"]]))
 
 export_avg_expression(TARA_ALL, "Annotation", rna_markers_flat, all_adt_markers, out_avgexpr)
 
-p_check <- DimPlot2(
-  TARA_ALL, reduction = "wnn.umap", group.by = "Annotation",
-  label = TRUE, box = TRUE, repel = TRUE, label.color = "black",
-  cols = "default", label.size = 2.5, pt.size = 0.3
-) + ggtitle("TARA: Post-Cleanup (review)")
+# Quick checkpoint UMAP using publication helper
+annot_lvl <- sort(unique(as.character(TARA_ALL$Annotation)))
+n_a <- length(annot_lvl)
+chk_pal <- unname(createPalette(n_a, c("#FF0000","#00FF00","#0000FF"), M = 1000))
+names(chk_pal) <- annot_lvl
+
+p_check <- plot_pub_umap(TARA_ALL, "Annotation", chk_pal,
+                         label_size = 7, pt_size = 0.8, pt_alpha = 0.6)
 
 ggsave(file.path(out_clusters, "TARA_Annotation_Checkpoint.png"),
-       p_check, width = 16, height = 11, dpi = 300, bg = "white")
+       p_check, width = 16, height = 14, dpi = 300, bg = "white")
 
 qs_save(TARA_ALL, file.path(saved_dir, "TARA_ALL_checkpoint.qs2"))
 
@@ -547,23 +605,78 @@ message("\n",
 
 
 # =============================================================================
-# STEP 10: FINAL UMAPs
+# STEP 10: FINAL UMAPs (publication quality)
 # =============================================================================
 
-p_final <- DimPlot2(
-  TARA_ALL, reduction = "wnn.umap", group.by = "Annotation",
-  label = TRUE, box = TRUE, repel = TRUE, label.color = "black",
-  cols = "default", label.size = 3, pt.size = 0.5
-) + ggtitle("TARA: Final Annotation")
-ggsave(file.path(out_clusters, "TARA_Final_Annotation.png"),
-       p_final, width = 16, height = 11, dpi = 300, bg = "white")
+cat("══ STEP 10: FINAL UMAPs ══\n\n")
 
+# --- 10a: Broad lineage UMAP ---
+broad_labels <- case_when(
+  TARA_ALL$Annotation %in% c("Naive 1 CD4", "Naive 2 CD4", "Naive 3 CD4",
+                             "Transitional Memory CD4", "Th2/Th17 EM CD4", "Treg",
+                             "ISG+ CD4 T cell", "CD4dim Naive T cell") ~ "CD4 T cells",
+  TARA_ALL$Annotation %in% c("Naive 1 CD8", "Tscm CD8", "Naive Intermediate CD8",
+                             "Naive 2 CD8", "TEMRA/CTL CD8", "Tex CD8") ~ "CD8 T cells",
+  TARA_ALL$Annotation %in% c("Vd1 gd T cell", "Vg9Vd2 gd T cell",
+                             "Cytotoxic gd T cell", "CD8+ MAIT cell") ~ "\u03b3\u03b4 / MAIT",
+  TARA_ALL$Annotation %in% c("CD56dim CD122lo NK", "CD56dim CD122int NK",
+                             "CD56dim CD122hi NK", "CD56bright NK") ~ "NK cells",
+  TARA_ALL$Annotation %in% c("Follicular B cell", "Resting Naive B cell",
+                             "Transitional B cell", "Activated B cell", "TNF+ B cell") ~ "B cells",
+  TARA_ALL$Annotation %in% c("Classical Monocyte", "Non-classical Monocyte",
+                             "Intermediate Monocyte") ~ "Monocytes",
+  TARA_ALL$Annotation == "pDC" ~ "pDC",
+  TRUE ~ "Other"
+)
+TARA_ALL$Broad_CellType <- factor(broad_labels)
+
+broad_cols <- c(
+  "CD4 T cells"  = "#1B9E77",
+  "CD8 T cells"  = "#D95F02",
+  "\u03b3\u03b4 / MAIT" = "#7570B3",
+  "NK cells"     = "#66A61E",
+  "B cells"      = "#E6AB02",
+  "Monocytes"    = "#666666",
+  "pDC"          = "#1F78B4",
+  "Other"        = "#CCCCCC"
+)
+
+p_broad <- plot_pub_umap(TARA_ALL, "Broad_CellType", broad_cols,
+                         label_size = 14, pt_size = 1.2)
+ggsave(file.path(out_clusters, "TARA_Broad_UMAP.png"),
+       p_broad, width = 12, height = 11, dpi = 300, bg = "white")
+
+# --- 10c: Detailed annotation UMAP ---
+annot_levels <- sort(unique(as.character(TARA_ALL$Annotation)))
+n_annot <- length(annot_levels)
+if (n_annot <= 36) {
+  annot_pal <- unname(createPalette(n_annot, c("#FF0000","#00FF00","#0000FF"),
+                                    M = 1000))
+} else {
+  annot_pal <- rep(hue_pal()(min(n_annot, 30)), length.out = n_annot)
+}
+names(annot_pal) <- annot_levels
+
+p_detail <- plot_pub_umap(TARA_ALL, "Annotation", annot_pal,
+                          label_size = 8, pt_size = 0.9, pt_alpha = 0.7)
+ggsave(file.path(out_clusters, "TARA_Detailed_UMAP.png"),
+       p_detail, width = 16, height = 14, dpi = 300, bg = "white")
+
+# --- 10d: Black-label version of broad UMAP ---
+p_broad_bk <- plot_pub_umap(TARA_ALL, "Broad_CellType", broad_cols,
+                            label_size = 14, pt_size = 1.2, colored_labels = FALSE)
+ggsave(file.path(out_clusters, "TARA_Broad_UMAP_blacklabels.png"),
+       p_broad_bk, width = 12, height = 11, dpi = 300, bg = "white")
+
+# --- 10e: Composition bar plot ---
 p_comp <- ClusterDistrBar(
   TARA_ALL$orig.ident, TARA_ALL$Annotation,
   cols = "default", flip = FALSE, border = "black"
 ) + theme(axis.title.x = element_blank())
 ggsave(file.path(out_clusters, "TARA_Cluster_Distribution.png"),
        p_comp, width = 25, height = 14, dpi = 300, bg = "white")
+
+cat("✓ Publication UMAPs + composition plot saved\n\n")
 
 
 # =============================================================================
