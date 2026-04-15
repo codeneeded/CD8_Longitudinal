@@ -1,0 +1,1281 @@
+################################################################################
+# FIGURE 1 — MANUSCRIPT PANELS (v5 — Updated Annotations)
+#
+# Updated to match TARA Unified WNN Annotation Pipeline (Final)
+#
+# KEY CHANGES FROM v4:
+#   - Annotation column: Manual_Annotation_refined → Annotation
+#   - Data file: TARA_ALL_ModuleScored.qs2 → TARA_ALL_annotated_final.qs2
+#   - CD8 clusters: 6 (no Transitional, no γδ in CD8 set)
+#     Cluster 12 removed (platelet contamination)
+#     Cluster 9 split: TCR+ → TEMRA/CTL, TCR- → Cytotoxic gd T cell
+#   - Broad labels: DN T cells → reclassified; Plasmablasts/APC → removed
+#   - New broad category: γδ / MAIT
+#
+# LAYOUT:
+#   Fig 1A — Total PBMC UMAP (broad cell type labels)
+#   Fig 1B — CD3/CD8 feature plots (mRNA + protein, inferno)
+#   Fig 1C — ADT + RNA heatmap (horizontal, shared group legend)
+#   Fig 1D — CD8 cluster UMAP (all PBMC, non-CD8 grayed out)
+#   Fig 1E — TEMRA/CTL cluster proportion (significant only)
+#   Fig 1F — Tex VL correlation (significant only)
+#
+# SUPPLEMENTARY:
+#   S1A: Broad PBMC lineage protein dot plot
+#   S1B: CD8 sub-gating (CD45RO vs FAS)
+#   S1C: Naive 1 vs Naive 2 ADT protein differences
+#   S1D: Cluster proportions (5, excl TEMRA/CTL)
+#   S1E: VL correlations % PBMC (5, excl Tex)
+#
+# REQUIRES: TARA_ALL_annotated_final.qs2
+################################################################################
+
+
+# ── Libraries ─────────────────────────────────────────────────────────────────
+library(Seurat)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(tidyr)
+library(SeuratExtend)
+library(scCustomize)
+library(qs2)
+library(ggrepel)
+library(pheatmap)
+library(patchwork)
+library(rstatix)
+library(grid)
+library(scales)
+library(viridis)
+
+
+# ── Paths ─────────────────────────────────────────────────────────────────────
+base_dir  <- "~/Documents/CD8_Longitudinal"
+saved_dir <- file.path(base_dir, "saved_R_data")
+fig1_dir  <- file.path(base_dir, "Manuscript", "Figure 1")
+supp1_dir <- file.path(base_dir, "Manuscript", "Supplementary 1")
+
+for (d in c(fig1_dir, supp1_dir)) {
+  dir.create(d, recursive = TRUE, showWarnings = FALSE)
+}
+
+
+# ── Load data ─────────────────────────────────────────────────────────────────
+# CHANGED: now using final annotated object
+TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_annotated_final.qs2"))
+
+
+################################################################################
+# STEP 0: SUBSET TO HEI (Pre-ART) / HEU / HUU
+################################################################################
+
+# CHANGED: Condition column already exists in new annotation.
+# For HEI, restrict to PreART_Entry only (matching v4 behaviour).
+TARA_sub <- subset(TARA_ALL, subset =
+                     (Condition == "HEU") |
+                     (Condition == "HUU") |
+                     (Condition == "HEI" & Timepoint_Group == "PreART_Entry")
+)
+
+TARA_sub$Condition <- factor(TARA_sub$Condition, levels = c("HUU", "HEU", "HEI"))
+
+cat("=== Working subset ===\n")
+print(table(TARA_sub$Condition))
+cat("\n")
+
+
+################################################################################
+# STEP 1: DEFINE CD8 CLUSTERS & PALETTES
+################################################################################
+
+# CHANGED: 6 CD8 clusters (no Transitional, no γδ)
+# Names no longer have number prefixes
+cd8_cluster_names <- c(
+  "Naive 1 CD8",
+  "Naive 2 CD8",
+  "Naive Intermediate CD8",
+  "Tscm CD8",
+  "TEMRA/CTL CD8",
+  "Tex CD8"
+)
+
+cd8_short_labels <- setNames(
+  c("Naive 1", "Naive 2", "Naive Intermediate",
+    "Tscm", "TEMRA/CTL", "Tex"),
+  cd8_cluster_names
+)
+
+# CHANGED: Publication-quality distinct colors (6 clusters)
+cluster_cols <- c(
+  "Naive 1 CD8"            = "#2166AC",
+  "Naive 2 CD8"            = "#67A9CF",
+  "Naive Intermediate CD8" = "#D6604D",
+  "Tscm CD8"               = "#1A9850",
+  "TEMRA/CTL CD8"          = "#B2182B",
+  "Tex CD8"                = "#762A83"
+)
+
+cond_cols <- c("HUU" = "#4E79A7", "HEU" = "#F28E2B", "HEI" = "#E15759")
+
+# ── Subset CD8 ────────────────────────────────────────────────────────────────
+# CHANGED: uses Annotation column
+TARA_cd8 <- subset(TARA_sub,
+                   subset = Annotation %in% cd8_cluster_names)
+TARA_cd8$Annotation <- droplevels(
+  factor(TARA_cd8$Annotation, levels = cd8_cluster_names)
+)
+
+cat("=== CD8 subset ===\n")
+print(table(TARA_cd8$Annotation))
+cat("\n")
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+scale_01 <- function(mat) {
+  t(apply(mat, 1, function(x) {
+    rng <- max(x) - min(x)
+    if (rng == 0) return(rep(0.5, length(x)))
+    (x - min(x)) / rng
+  }))
+}
+
+# CHANGED: column renaming uses new annotation names (no number prefix)
+rename_seurat_cols <- function(mat) {
+  # New annotation names are already clean — just need to match Seurat output
+  # Seurat AverageExpression uses the factor levels as column suffixes
+  # Try to match column names directly to cd8_cluster_names
+  matched <- colnames(mat) %in% cd8_cluster_names
+  if (all(matched)) {
+    col_order <- cd8_cluster_names[cd8_cluster_names %in% colnames(mat)]
+    return(mat[, col_order, drop = FALSE])
+  }
+  # Fallback: strip "g " prefix if present (Seurat sometimes adds group prefix)
+  colnames(mat) <- gsub("^g ", "", colnames(mat))
+  col_order <- cd8_cluster_names[cd8_cluster_names %in% colnames(mat)]
+  mat[, col_order, drop = FALSE]
+}
+
+
+################################################################################
+# FIG 1A — TOTAL PBMC UMAP
+################################################################################
+
+message("Generating Fig 1A...")
+
+# CHANGED: Broad labels derived from new Annotation column
+# New categories: γδ / MAIT (was γδ T cells + DN T cells separate)
+# Removed: DN T cells (reclassified), Plasmablasts (flagged), APC (flagged)
+broad_labels <- case_when(
+  TARA_sub$Annotation %in% c("Naive 1 CD4", "Naive 2 CD4", "Naive 3 CD4",
+                             "Transitional Memory CD4", "Th2/Th17 EM CD4", "Treg",
+                             "ISG+ CD4 T cell", "CD4dim Naive T cell")
+  ~ "CD4 T cells",
+  TARA_sub$Annotation %in% cd8_cluster_names
+  ~ "CD8 T cells",
+  TARA_sub$Annotation %in% c("Vd1 gd T cell", "Vg9Vd2 gd T cell",
+                             "Cytotoxic gd T cell", "CD8+ MAIT cell")
+  ~ "\u03b3\u03b4 / MAIT",
+  TARA_sub$Annotation %in% c("CD56dim CD122lo NK", "CD56dim CD122int NK",
+                             "CD56dim CD122hi NK", "CD56bright NK")
+  ~ "NK cells",
+  TARA_sub$Annotation %in% c("Follicular B cell", "Resting Naive B cell",
+                             "Transitional B cell", "Activated B cell", "TNF+ B cell")
+  ~ "B cells",
+  TARA_sub$Annotation %in% c("Classical Monocyte", "Non-classical Monocyte",
+                             "Intermediate Monocyte")
+  ~ "Monocytes",
+  TARA_sub$Annotation == "pDC" ~ "pDC",
+  TRUE ~ "Other"
+)
+TARA_sub$Broad_CellType <- factor(broad_labels)
+
+# CHANGED: Updated palette (fewer categories)
+broad_cols <- c(
+  "CD4 T cells"         = "#1B9E77",
+  "CD8 T cells"         = "#D95F02",
+  "\u03b3\u03b4 / MAIT" = "#7570B3",
+  "NK cells"            = "#66A61E",
+  "B cells"             = "#E6AB02",
+  "Monocytes"           = "#666666",
+  "pDC"                 = "#1F78B4",
+  "Other"               = "#CCCCCC"
+)
+
+# Build UMAP with ggplot2
+umap_coords <- as.data.frame(Embeddings(TARA_sub, reduction = "wnn.umap"))
+colnames(umap_coords) <- c("UMAP1", "UMAP2")
+umap_coords$CellType <- TARA_sub$Broad_CellType
+
+# Calculate cluster centroids for labels
+centroids <- umap_coords %>%
+  group_by(CellType) %>%
+  summarise(
+    UMAP1 = median(UMAP1),
+    UMAP2 = median(UMAP2),
+    .groups = "drop"
+  ) %>%
+  filter(CellType != "Other")
+
+# UMAP arrow positions
+x_arrow <- min(umap_coords$UMAP1, na.rm = TRUE) + 1
+y_arrow <- min(umap_coords$UMAP2, na.rm = TRUE) + 1
+
+p_total_umap_colored <- ggplot(umap_coords, aes(x = UMAP1, y = UMAP2, color = CellType)) +
+  geom_point(size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = broad_cols) +
+  geom_label_repel(
+    data = centroids,
+    aes(x = UMAP1, y = UMAP2, label = CellType, color = CellType),
+    fill = "white",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+p_total_umap_black <- ggplot(umap_coords, aes(x = UMAP1, y = UMAP2, color = CellType)) +
+  geom_point(size = 0.8, alpha = 0.7) +
+  scale_color_manual(values = broad_cols) +
+  geom_label_repel(
+    data = centroids,
+    aes(x = UMAP1, y = UMAP2, label = CellType),
+    fill = "white",
+    color = "black",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+ggsave(file.path(fig1_dir, "Fig1A_Total_UMAP_colored.png"),
+       p_total_umap_colored, width = 12, height = 11, dpi = 300, bg = "white")
+
+ggsave(file.path(fig1_dir, "Fig1A_Total_UMAP_black.png"),
+       p_total_umap_black, width = 12, height = 11, dpi = 300, bg = "white")
+
+message("\u2713 Fig 1A saved (both colored and black versions)\n")
+
+
+################################################################################
+# FIG 1B — CD3/CD8 FEATURE PLOTS
+################################################################################
+
+message("Generating Fig 1B...")
+
+feat_theme <- theme(
+  plot.title = element_text(size = 48, face = "bold", hjust = 0.5),
+  legend.key.size = unit(1.5, "cm"),
+  legend.text = element_text(size = 18),
+  legend.title = element_text(size = 20, face = "bold"),
+  plot.margin = margin(10, 10, 30, 30)
+)
+
+# Get UMAP range for arrow positioning
+umap_range <- as.data.frame(Embeddings(TARA_sub, reduction = "wnn.umap"))
+x_arrow_feat <- min(umap_range[,1], na.rm = TRUE) + 2
+y_arrow_feat <- min(umap_range[,2], na.rm = TRUE) + 2
+
+umap_arrows <- list(
+  annotate("segment",
+           x = x_arrow_feat, xend = x_arrow_feat + 3,
+           y = y_arrow_feat, yend = y_arrow_feat,
+           arrow = arrow(length = unit(0.35, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black"),
+  annotate("text", x = x_arrow_feat + 1.5, y = y_arrow_feat - 1.5,
+           label = "UMAP1", size = 6, fontface = "bold"),
+  annotate("segment",
+           x = x_arrow_feat, xend = x_arrow_feat,
+           y = y_arrow_feat, yend = y_arrow_feat + 3,
+           arrow = arrow(length = unit(0.35, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black"),
+  annotate("text", x = x_arrow_feat - 1.5, y = y_arrow_feat + 1.5,
+           label = "UMAP2", size = 6, fontface = "bold", angle = 90)
+)
+
+DefaultAssay(TARA_sub) <- "RNA"
+p_cd3_rna <- FeaturePlot(TARA_sub, features = "CD3E", reduction = "wnn.umap",
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
+  scale_color_viridis(option = "inferno") +
+  NoAxes() + ggtitle("CD3E (mRNA)") + feat_theme + umap_arrows
+
+p_cd8_rna <- FeaturePlot(TARA_sub, features = "CD8A", reduction = "wnn.umap",
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
+  scale_color_viridis(option = "inferno") +
+  NoAxes() + ggtitle("CD8A (mRNA)") + feat_theme + umap_arrows
+
+DefaultAssay(TARA_sub) <- "ADT"
+p_cd3_adt <- FeaturePlot(TARA_sub, features = "CD3D", reduction = "wnn.umap",
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
+  scale_color_viridis(option = "inferno") +
+  NoAxes() + ggtitle("CD3 (protein)") + feat_theme + umap_arrows
+
+p_cd8_adt <- FeaturePlot(TARA_sub, features = "CD8A", reduction = "wnn.umap",
+                         pt.size = 0.3, order = TRUE, raster = FALSE) +
+  scale_color_viridis(option = "inferno") +
+  NoAxes() + ggtitle("CD8a (protein)") + feat_theme + umap_arrows
+
+p_features <- (p_cd3_rna | p_cd8_rna) / (p_cd3_adt | p_cd8_adt)
+
+ggsave(file.path(fig1_dir, "Fig1B_CD3_CD8_FeaturePlots.png"),
+       p_features, width = 16, height = 14, dpi = 300, bg = "white")
+
+message("\u2713 Fig 1B saved\n")
+
+
+################################################################################
+# FIG 1C — ADT + RNA HEATMAP (horizontal/stacked, shared group legend)
+################################################################################
+
+message("Generating Fig 1C heatmaps...")
+
+# ── ADT markers (28): no γδ TCR markers ──────────────────────────────────────
+# CHANGED: Removed TCR-vD2 and reduced TCR Identity group (no γδ cluster)
+adt_heatmap_markers <- c(
+  "CD7"       = "Naive/Quiescence",     "SELL"      = "Naive/Quiescence",
+  "CD45RA"    = "Naive/Quiescence",     "IL7R"      = "Naive/Quiescence",
+  "NT5E"      = "Memory/Stemness",      "CD45RO"    = "Memory/Stemness",
+  "FAS"       = "Memory/Stemness",      "ENTPD1"    = "Memory/Stemness",
+  "SLAMF6"    = "Memory/Stemness",
+  "CD27"      = "Co-stimulation/Homing", "CD28"     = "Co-stimulation/Homing",
+  "ICOS"      = "Co-stimulation/Homing", "ITGB7"    = "Co-stimulation/Homing",
+  "B3GAT1"    = "Effector/TEMRA",        "KLRG1"    = "Effector/TEMRA",
+  "KIR3DL1"   = "Effector/TEMRA",        "CX3CR1"   = "Effector/TEMRA",
+  "NCAM1"     = "NK-like/Innate",        "SIGLEC7"  = "NK-like/Innate",
+  "KLRD1"     = "NK-like/Innate",        "KIR2DL3"  = "NK-like/Innate",
+  "PDCD1"     = "Exhaustion",            "TIGIT"    = "Exhaustion",
+  "LAG3"      = "Exhaustion",            "CTLA4"    = "Exhaustion",
+  "CD38"      = "Activation",            "HLA-DRA"  = "Activation",
+  "CD69"      = "Activation",            "ITGA4"    = "Activation",
+  "TCR-AB"    = "TCR Identity",          "CD8A"     = "TCR Identity"
+)
+
+adt_gene_to_protein <- c(
+  "CD7" = "CD7", "SELL" = "CD62L", "CD45RA" = "CD45RA", "IL7R" = "CD127",
+  "NT5E" = "CD73", "CD45RO" = "CD45RO", "FAS" = "CD95", "ENTPD1" = "CD39",
+  "SLAMF6" = "SLAMF6",
+  "CD27" = "CD27", "CD28" = "CD28", "ICOS" = "ICOS", "ITGB7" = "Integrin b7",
+  "B3GAT1" = "CD57", "KLRG1" = "KLRG1", "KIR3DL1" = "KIR3DL1", "CX3CR1" = "CX3CR1",
+  "NCAM1" = "CD56", "SIGLEC7" = "Siglec-7", "KLRD1" = "CD94", "KIR2DL3" = "KIR2DL3",
+  "PDCD1" = "PD-1", "TIGIT" = "TIGIT", "LAG3" = "LAG-3", "CTLA4" = "CTLA-4",
+  "CD38" = "CD38", "HLA-DRA" = "HLA-DR", "CD69" = "CD69", "ITGA4" = "CD49d",
+  "TCR-AB" = "TCRab", "CD8A" = "CD8a"
+)
+
+# ── RNA markers (28): no γδ TCR genes ────────────────────────────────────────
+# CHANGED: Removed TRDV1, TRGV9, TRDC from TCR Identity
+rna_heatmap_markers <- c(
+  "CCR7"    = "Naive/Quiescence",      "SELL"    = "Naive/Quiescence",
+  "TCF7"    = "Naive/Quiescence",      "LEF1"    = "Naive/Quiescence",
+  "IL7R"    = "Memory/Stemness",       "BCL2"    = "Memory/Stemness",
+  "BACH2"   = "Memory/Stemness",       "S1PR1"   = "Memory/Stemness",
+  "FAS"     = "Memory/Stemness",
+  "CD27"    = "Co-stimulation/Homing", "CD28"    = "Co-stimulation/Homing",
+  "ICOS"    = "Co-stimulation/Homing", "ITGB7"   = "Co-stimulation/Homing",
+  "GZMB"    = "Effector/TEMRA",        "GNLY"    = "Effector/TEMRA",
+  "PRF1"    = "Effector/TEMRA",        "NKG7"    = "Effector/TEMRA",
+  "TYROBP"  = "NK-like/Innate",        "KLRD1"   = "NK-like/Innate",
+  "KIR2DL3" = "NK-like/Innate",        "FCGR3A"  = "NK-like/Innate",
+  "TOX"     = "Exhaustion",            "PDCD1"   = "Exhaustion",
+  "TIGIT"   = "Exhaustion",            "HAVCR2"  = "Exhaustion",
+  "MKI67"   = "Activation",            "HLA-DRA" = "Activation",
+  "CD69"    = "Activation",            "CD38"    = "Activation",
+  "CD8A"    = "TCR Identity"
+)
+
+# ── Shared group colors ──────────────────────────────────────────────────────
+group_colors <- c(
+  "Naive/Quiescence"      = "#74C2E1",
+  "Memory/Stemness"       = "#66BB6A",
+  "Co-stimulation/Homing" = "#AED581",
+  "Effector/TEMRA"        = "#EF5350",
+  "NK-like/Innate"        = "#F06292",
+  "Exhaustion"            = "#A1887F",
+  "Activation"            = "#FFD54F",
+  "TCR Identity"          = "#9C6FD6"
+)
+
+# ── Filter (preserve defined order) ──────────────────────────────────────────
+DefaultAssay(TARA_cd8) <- "ADT"
+adt_heatmap_feats <- names(adt_heatmap_markers)[names(adt_heatmap_markers) %in% rownames(TARA_cd8)]
+
+DefaultAssay(TARA_cd8) <- "RNA"
+rna_heatmap_feats <- names(rna_heatmap_markers)[names(rna_heatmap_markers) %in% rownames(TARA_cd8)]
+
+cat("ADT markers:", length(adt_heatmap_feats),
+    "/ RNA markers:", length(rna_heatmap_feats), "\n")
+
+# ── Average expression ───────────────────────────────────────────────────────
+# NOTE: Seurat v5 AverageExpression() applies expm1() to the data slot,
+#       assuming log-normalization. For DSB-normalized ADT this produces
+#       exponentially inflated values. Use manual rowMeans() instead.
+DefaultAssay(TARA_cd8) <- "ADT"
+adt_mat_raw <- GetAssayData(TARA_cd8, slot = "data")[adt_heatmap_feats, , drop = FALSE]
+clusters_cd8 <- TARA_cd8$Annotation
+avg_adt_hm <- sapply(levels(factor(clusters_cd8)), function(cl) {
+  cells <- which(clusters_cd8 == cl)
+  if (length(cells) == 0) return(rep(0, length(adt_heatmap_feats)))
+  rowMeans(adt_mat_raw[, cells, drop = FALSE])
+})
+rownames(avg_adt_hm) <- adt_heatmap_feats
+
+# RNA: AverageExpression is fine for log-normalized RNA
+DefaultAssay(TARA_cd8) <- "RNA"
+avg_rna_hm <- AverageExpression(
+  TARA_cd8, assays = "RNA", features = rna_heatmap_feats,
+  group.by = "Annotation", slot = "data"
+)$RNA
+
+# ADT: scale_01 directly on DSB averages (no log10 — DSB is already meaningful)
+# RNA: scale_01 on log-normalized averages
+avg_adt_hm_sc <- scale_01(as.matrix(avg_adt_hm))
+avg_rna_hm_sc <- scale_01(as.matrix(avg_rna_hm))
+
+# ── Fix columns ──────────────────────────────────────────────────────────────
+avg_adt_hm_sc <- rename_seurat_cols(avg_adt_hm_sc)
+avg_rna_hm_sc <- rename_seurat_cols(avg_rna_hm_sc)
+
+# CHANGED: Short labels for 6 clusters (no Transitional, no γδ)
+cd8_heatmap_labels <- setNames(
+  c("Naive 1", "Naive 2", "Naive\nIntermediate",
+    "Tscm", "TEMRA/\nCTL", "Tex"),
+  cd8_cluster_names
+)
+
+colnames(avg_adt_hm_sc) <- cd8_heatmap_labels[colnames(avg_adt_hm_sc)]
+colnames(avg_rna_hm_sc) <- cd8_heatmap_labels[colnames(avg_rna_hm_sc)]
+
+# ── Rename ADT rows to protein names + enforce order ─────────────────────────
+rownames(avg_adt_hm_sc) <- ifelse(
+  rownames(avg_adt_hm_sc) %in% names(adt_gene_to_protein),
+  adt_gene_to_protein[rownames(avg_adt_hm_sc)],
+  rownames(avg_adt_hm_sc)
+)
+
+adt_row_order <- ifelse(
+  adt_heatmap_feats %in% names(adt_gene_to_protein),
+  adt_gene_to_protein[adt_heatmap_feats],
+  adt_heatmap_feats
+)
+adt_row_order <- adt_row_order[adt_row_order %in% rownames(avg_adt_hm_sc)]
+avg_adt_hm_sc <- avg_adt_hm_sc[adt_row_order, , drop = FALSE]
+
+rna_row_order <- rna_heatmap_feats[rna_heatmap_feats %in% rownames(avg_rna_hm_sc)]
+avg_rna_hm_sc <- avg_rna_hm_sc[rna_row_order, , drop = FALSE]
+
+# ── Row annotations ───────────────────────────────────────────────────────────
+protein_to_group <- setNames(
+  adt_heatmap_markers[adt_heatmap_feats],
+  ifelse(adt_heatmap_feats %in% names(adt_gene_to_protein),
+         adt_gene_to_protein[adt_heatmap_feats],
+         adt_heatmap_feats)
+)
+
+adt_annot <- data.frame(
+  Group = factor(protein_to_group[rownames(avg_adt_hm_sc)],
+                 levels = names(group_colors)),
+  row.names = rownames(avg_adt_hm_sc)
+)
+
+rna_annot <- data.frame(
+  Group = factor(rna_heatmap_markers[rownames(avg_rna_hm_sc)],
+                 levels = names(group_colors)),
+  row.names = rownames(avg_rna_hm_sc)
+)
+
+get_gaps <- function(annot_df) {
+  grps <- as.character(annot_df$Group)
+  which(grps[-length(grps)] != grps[-1])
+}
+
+annot_colors <- list(Group = group_colors)
+
+heatmap_colors <- colorRampPalette(
+  c("#F7FCF5", "#C7E9C0", "#74C476", "#31A354", "#006D2C")
+)(100)
+
+# ── Clean matrices ────────────────────────────────────────────────────────────
+adt_mat <- matrix(as.numeric(avg_adt_hm_sc), nrow = nrow(avg_adt_hm_sc),
+                  dimnames = dimnames(avg_adt_hm_sc))
+rna_mat <- matrix(as.numeric(avg_rna_hm_sc), nrow = nrow(avg_rna_hm_sc),
+                  dimnames = dimnames(avg_rna_hm_sc))
+
+cat("ADT matrix:", nrow(adt_mat), "x", ncol(adt_mat),
+    "range:", range(adt_mat), "\n")
+cat("RNA matrix:", nrow(rna_mat), "x", ncol(rna_mat),
+    "range:", range(rna_mat), "\n")
+
+# ── Heatmaps ─────────────────────────────────────────────────────────────────
+p_adt <- pheatmap(
+  adt_mat, cluster_rows = FALSE, cluster_cols = FALSE, scale = "none",
+  color = heatmap_colors, border_color = "white",
+  annotation_row = adt_annot, annotation_colors = annot_colors,
+  annotation_names_row = FALSE, gaps_row = get_gaps(adt_annot),
+  cellwidth = 80, cellheight = 24, fontsize = 18, fontsize_row = 16,
+  fontsize_col = 16, angle_col = 0, main = "Protein (ADT)", silent = TRUE
+)
+
+p_rna <- pheatmap(
+  rna_mat, cluster_rows = FALSE, cluster_cols = FALSE, scale = "none",
+  color = heatmap_colors, border_color = "white",
+  annotation_row = rna_annot, annotation_colors = annot_colors,
+  annotation_names_row = FALSE, gaps_row = get_gaps(rna_annot),
+  cellwidth = 80, cellheight = 24, fontsize = 18, fontsize_row = 16,
+  fontsize_col = 16, angle_col = 0, main = "mRNA (RNA)", silent = TRUE
+)
+
+# ── Shared group legend ──────────────────────────────────────────────────────
+legend_df <- data.frame(
+  Group = factor(names(group_colors), levels = names(group_colors)),
+  x = seq_along(group_colors),
+  y = 1
+)
+
+p_legend <- ggplot(legend_df, aes(x = x, y = y, fill = Group)) +
+  geom_tile(width = 0.8, height = 0.5) +
+  scale_fill_manual(values = group_colors, name = "Functional Group") +
+  theme_void(base_size = 14) +
+  theme(legend.position = "bottom",
+        legend.title = element_text(face = "bold", size = 14),
+        legend.text = element_text(size = 12),
+        legend.key.size = unit(0.6, "cm")) +
+  guides(fill = guide_legend(nrow = 1))
+
+legend_grob <- cowplot::get_legend(p_legend)
+
+# Stacked: ADT on top, RNA below, shared legend at bottom
+png(file.path(fig1_dir, "Fig1C_Heatmap.png"),
+    width = 18, height = 38, units = "in", res = 300, bg = "white")
+grid.newpage()
+pushViewport(viewport(layout = grid.layout(3, 1, heights = unit(c(17, 17, 1.5), "in"))))
+pushViewport(viewport(layout.pos.row = 1)); grid.draw(p_adt$gtable); popViewport()
+pushViewport(viewport(layout.pos.row = 2)); grid.draw(p_rna$gtable); popViewport()
+pushViewport(viewport(layout.pos.row = 3)); grid.draw(legend_grob); popViewport()
+dev.off()
+
+# Individual panels
+png(file.path(fig1_dir, "Fig1C_ADT_Heatmap.png"),
+    width = 16, height = 20, units = "in", res = 300, bg = "white")
+grid.draw(p_adt$gtable)
+dev.off()
+
+png(file.path(fig1_dir, "Fig1C_RNA_Heatmap.png"),
+    width = 16, height = 20, units = "in", res = 300, bg = "white")
+grid.draw(p_rna$gtable)
+dev.off()
+
+# ── Standalone group legend ───────────────────────────────────────────────────
+legend_labels <- c(
+  "Naive/\nQuiescence", "Memory/\nStemness", "Co-stimulation/\nHoming",
+  "Effector/\nTEMRA", "NK-like/\nInnate", "Exhaustion",
+  "Activation", "TCR\nIdentity"
+)
+
+legend_df <- data.frame(
+  Group = factor(names(group_colors), levels = names(group_colors)),
+  y = seq(1, by = 0.7, length.out = length(group_colors)),
+  label = legend_labels
+)
+
+p_legend_only <- ggplot(legend_df, aes(x = 1, y = y)) +
+  geom_point(aes(fill = Group), shape = 22, size = 10, stroke = 0) +
+  geom_text(aes(x = 0.82, label = label), size = 5.5, fontface = "bold",
+            lineheight = 0.8, vjust = 0.5) +
+  scale_fill_manual(values = group_colors) +
+  scale_x_continuous(limits = c(0.6, 1.1)) +
+  scale_y_continuous(expand = expansion(add = 0.5)) +
+  coord_flip() +
+  theme_void() +
+  theme(legend.position = "none",
+        plot.margin = margin(0, 2, 0, 2))
+
+ggsave(file.path(fig1_dir, "Fig1C_Group_Legend.png"),
+       p_legend_only, width = 14, height = 1.4, dpi = 300, bg = "white")
+
+message("\u2713 Fig 1C heatmaps + legend saved\n")
+
+
+################################################################################
+# FIG 1D — CD8 CLUSTER UMAP (non-CD8 grayed out)
+################################################################################
+
+message("Generating Fig 1D...")
+
+# CHANGED: uses Annotation column
+TARA_sub$CD8_highlight <- ifelse(
+  TARA_sub$Annotation %in% cd8_cluster_names,
+  cd8_short_labels[as.character(TARA_sub$Annotation)],
+  "Other"
+)
+TARA_sub$CD8_highlight <- factor(
+  TARA_sub$CD8_highlight,
+  levels = c(cd8_short_labels, "Other")
+)
+
+# CHANGED: 6 CD8 clusters + Other
+highlight_cols <- setNames(
+  c("#2166AC", "#67A9CF", "#D6604D", "#1A9850",
+    "#B2182B", "#762A83", "#E0E0E0"),
+  c("Naive 1", "Naive 2", "Naive Intermediate", "Tscm",
+    "TEMRA/CTL", "Tex", "Other")
+)
+
+umap_cd8_coords <- as.data.frame(Embeddings(TARA_sub, reduction = "wnn.umap"))
+colnames(umap_cd8_coords) <- c("UMAP1", "UMAP2")
+umap_cd8_coords$Cluster <- TARA_sub$CD8_highlight
+
+umap_other <- umap_cd8_coords %>% filter(Cluster == "Other")
+umap_cd8_only <- umap_cd8_coords %>% filter(Cluster != "Other")
+
+centroids_cd8 <- umap_cd8_only %>%
+  group_by(Cluster) %>%
+  summarise(
+    UMAP1 = median(UMAP1),
+    UMAP2 = median(UMAP2),
+    .groups = "drop"
+  )
+
+x_arrow <- min(umap_cd8_coords$UMAP1, na.rm = TRUE) + 1
+y_arrow <- min(umap_cd8_coords$UMAP2, na.rm = TRUE) + 1
+
+p_cd8_umap_colored <- ggplot() +
+  geom_point(data = umap_other,
+             aes(x = UMAP1, y = UMAP2),
+             color = "#E0E0E0", size = 0.5, alpha = 0.4) +
+  geom_point(data = umap_cd8_only,
+             aes(x = UMAP1, y = UMAP2, color = Cluster),
+             size = 1.2, alpha = 0.8) +
+  scale_color_manual(values = highlight_cols) +
+  geom_label_repel(
+    data = centroids_cd8,
+    aes(x = UMAP1, y = UMAP2, label = Cluster, color = Cluster),
+    fill = "white",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+p_cd8_umap_black <- ggplot() +
+  geom_point(data = umap_other,
+             aes(x = UMAP1, y = UMAP2),
+             color = "#E0E0E0", size = 0.5, alpha = 0.4) +
+  geom_point(data = umap_cd8_only,
+             aes(x = UMAP1, y = UMAP2, color = Cluster),
+             size = 1.2, alpha = 0.8) +
+  scale_color_manual(values = highlight_cols) +
+  geom_label_repel(
+    data = centroids_cd8,
+    aes(x = UMAP1, y = UMAP2, label = Cluster),
+    fill = "white",
+    color = "black",
+    size = 12,
+    fontface = "bold",
+    label.size = 0.8,
+    label.padding = unit(0.4, "lines"),
+    box.padding = 1.2,
+    point.padding = 0.5,
+    segment.color = "grey40",
+    segment.size = 0.8,
+    min.segment.length = 0,
+    max.overlaps = 25,
+    show.legend = FALSE
+  ) +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow + 3.5,
+           y = y_arrow, yend = y_arrow,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow + 1.75, y = y_arrow - 1.3,
+           label = "UMAP1", size = 7, fontface = "bold") +
+  annotate("segment",
+           x = x_arrow, xend = x_arrow,
+           y = y_arrow, yend = y_arrow + 3.5,
+           arrow = arrow(length = unit(0.4, "cm"), type = "closed"),
+           linewidth = 1.2, color = "black") +
+  annotate("text", x = x_arrow - 1.3, y = y_arrow + 1.75,
+           label = "UMAP2", size = 7, fontface = "bold", angle = 90) +
+  theme_void() +
+  theme(
+    legend.position = "none",
+    plot.margin = margin(10, 10, 10, 10)
+  ) +
+  coord_fixed()
+
+ggsave(file.path(fig1_dir, "Fig1D_CD8_Cluster_UMAP_colored.png"),
+       p_cd8_umap_colored, width = 12, height = 11, dpi = 300, bg = "white")
+
+ggsave(file.path(fig1_dir, "Fig1D_CD8_Cluster_UMAP_black.png"),
+       p_cd8_umap_black, width = 12, height = 11, dpi = 300, bg = "white")
+
+message("\u2713 Fig 1D saved (both colored and black versions)\n")
+
+
+################################################################################
+# FIG 1E — TEMRA/CTL PROPORTION (significant cluster only)
+# FIG 1F — Tex VL CORRELATION (significant cluster only)
+#
+# Full versions → Supplementary 1
+################################################################################
+
+message("Generating Fig 1E-F + Supplementary...")
+
+# ── Build frequency tables ────────────────────────────────────────────────────
+# CHANGED: uses Annotation column
+meta_sub <- as.data.frame(TARA_sub@meta.data)
+
+sample_totals <- meta_sub %>%
+  group_by(orig.ident, Condition) %>%
+  summarise(total_pbmc = n(), .groups = "drop")
+
+cluster_freq <- meta_sub %>%
+  filter(Annotation %in% cd8_cluster_names) %>%
+  group_by(orig.ident, Condition, Annotation) %>%
+  summarise(cluster_cells = n(), .groups = "drop") %>%
+  group_by(orig.ident, Condition) %>%
+  complete(
+    Annotation = cd8_cluster_names,
+    fill = list(cluster_cells = 0)
+  ) %>%
+  ungroup() %>%
+  left_join(sample_totals, by = c("orig.ident", "Condition")) %>%
+  mutate(
+    percent = 100 * cluster_cells / total_pbmc,
+    Facet_Label = factor(
+      cd8_short_labels[as.character(Annotation)],
+      levels = cd8_short_labels
+    )
+  )
+
+# ── Statistics (all clusters) ─────────────────────────────────────────────────
+facet_max <- cluster_freq %>%
+  group_by(Facet_Label) %>%
+  summarise(max_percent = max(percent, na.rm = TRUE), .groups = "drop")
+
+stat_df_all <- cluster_freq %>%
+  group_by(Facet_Label) %>%
+  wilcox_test(percent ~ Condition) %>%
+  left_join(facet_max, by = "Facet_Label") %>%
+  mutate(
+    xmin = case_when(
+      group1 == "HUU" & group2 == "HEU" ~ 1,
+      group1 == "HUU" & group2 == "HEI" ~ 1,
+      group1 == "HEU" & group2 == "HEI" ~ 2
+    ),
+    xmax = case_when(
+      group1 == "HUU" & group2 == "HEU" ~ 2,
+      group1 == "HUU" & group2 == "HEI" ~ 3,
+      group1 == "HEU" & group2 == "HEI" ~ 3
+    ),
+    y.position = case_when(
+      group1 == "HUU" & group2 == "HEU" ~ max_percent * 1.10,
+      group1 == "HUU" & group2 == "HEI" ~ max_percent * 1.22,
+      group1 == "HEU" & group2 == "HEI" ~ max_percent * 1.16
+    ),
+    p.signif = case_when(
+      p <= 0.0001 ~ "****", p <= 0.001 ~ "***",
+      p <= 0.01   ~ "**",   p <= 0.05  ~ "*",
+      TRUE        ~ "ns"
+    )
+  ) %>%
+  ungroup()
+
+stat_df_sig <- stat_df_all %>% filter(p.signif != "ns")
+
+# ── Fig 1E: TEMRA/CTL only ───────────────────────────────────────────────────
+temra_freq <- cluster_freq %>% filter(Facet_Label == "TEMRA/CTL")
+temra_stat <- stat_df_sig %>% filter(Facet_Label == "TEMRA/CTL")
+
+p_temra <- ggplot(temra_freq, aes(x = Condition, y = percent,
+                                  fill = Condition, color = Condition)) +
+  geom_boxplot(width = 0.65, outlier.shape = NA, alpha = 0.25, linewidth = 0.7) +
+  geom_jitter(width = 0.12, size = 3, alpha = 0.8) +
+  stat_pvalue_manual(temra_stat, label = "p.signif", tip.length = 0.01,
+                     bracket.size = 0.6, size = 6) +
+  scale_fill_manual(values = cond_cols) +
+  scale_color_manual(values = cond_cols) +
+  labs(x = NULL, y = "% of total PBMC", title = "TEMRA/CTL CD8") +
+  theme_classic(base_size = 18) +
+  theme(
+    legend.position = "none",
+    plot.title   = element_text(face = "bold", size = 18, hjust = 0.5),
+    axis.text.x  = element_text(face = "bold", size = 14),
+    axis.text.y  = element_text(size = 14),
+    axis.title.y = element_text(face = "bold", size = 16)
+  )
+
+ggsave(file.path(fig1_dir, "Fig1E_TEMRA_Proportion.png"),
+       p_temra, width = 5, height = 6, dpi = 600, bg = "white")
+
+message("\u2713 Fig 1E saved\n")
+
+
+################################################################################
+# FIG 1F — Tex VL CORRELATION (significant cluster only)
+################################################################################
+
+message("Generating Fig 1F...")
+
+# CHANGED: uses Annotation column
+meta_hei <- meta_sub %>%
+  filter(Condition == "HEI", !is.na(Viral_Load_num), Viral_Load_num > 0)
+
+sample_totals_hei <- meta_hei %>%
+  group_by(orig.ident) %>%
+  summarise(total_pbmc = n(), .groups = "drop")
+
+sample_vl <- meta_hei %>%
+  group_by(orig.ident) %>%
+  summarise(Viral_Load_num = first(Viral_Load_num), .groups = "drop") %>%
+  mutate(log10_VL = log10(Viral_Load_num))
+
+cluster_vl_df <- meta_hei %>%
+  filter(Annotation %in% cd8_cluster_names) %>%
+  group_by(orig.ident, Annotation) %>%
+  summarise(cluster_cells = n(), .groups = "drop") %>%
+  group_by(orig.ident) %>%
+  complete(
+    Annotation = cd8_cluster_names,
+    fill = list(cluster_cells = 0)
+  ) %>%
+  ungroup() %>%
+  left_join(sample_totals_hei, by = "orig.ident") %>%
+  left_join(sample_vl, by = "orig.ident") %>%
+  mutate(
+    pct_pbmc = 100 * cluster_cells / total_pbmc,
+    Facet_Label = factor(
+      cd8_short_labels[as.character(Annotation)],
+      levels = cd8_short_labels
+    )
+  )
+
+# ── Fig 1F: Tex only ─────────────────────────────────────────────────────────
+tex_vl <- cluster_vl_df %>% filter(Facet_Label == "Tex")
+
+tex_cor <- tex_vl %>%
+  cor_test(log10_VL, pct_pbmc, method = "spearman")
+
+p_tex_vl <- ggplot(tex_vl, aes(x = log10_VL, y = pct_pbmc)) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8,
+              color = "grey40", fill = "grey85", alpha = 0.3) +
+  geom_point(shape = 21, size = 4, stroke = 0.5,
+             fill = "#C44E52", color = "white") +
+  annotate("text", x = -Inf, y = Inf,
+           label = paste0("rho = ", sprintf("%.2f", tex_cor$cor),
+                          "\np = ", signif(tex_cor$p, 2)),
+           hjust = -0.1, vjust = 1.3, size = 6, fontface = "bold",
+           color = "grey15", lineheight = 1.2) +
+  labs(x = expression(log[10] ~ "viral load"),
+       y = "% of total PBMC",
+       title = "Tex CD8") +
+  theme_classic(base_size = 18) +
+  theme(
+    plot.title   = element_text(face = "bold", size = 18, hjust = 0.5),
+    axis.text    = element_text(size = 14, color = "black"),
+    axis.title.x = element_text(face = "bold", size = 16, margin = margin(t = 6)),
+    axis.title.y = element_text(face = "bold", size = 16, margin = margin(r = 6)),
+    legend.position = "none"
+  )
+
+ggsave(file.path(fig1_dir, "Fig1F_Tex_VL_Correlation.png"),
+       p_tex_vl, width = 6, height = 6, dpi = 600, bg = "white")
+
+cat("=== Fig 1F: Tex VL correlation ===\n")
+print(tex_cor[, c("cor", "statistic", "p")])
+cat("\n")
+
+message("\u2713 Fig 1F saved\n")
+
+
+################################################################################
+# SUPPLEMENTARY FIGURE S1A — BROAD PBMC ANNOTATION VALIDATION
+################################################################################
+
+message("Generating Supplementary S1A...")
+
+DefaultAssay(TARA_sub) <- "ADT"
+
+lineage_markers_adt <- c(
+  "CD3D", "CD4", "CD8A",
+  "CD19", "MS4A1", "CD79B", "IGHM", "IGHD",
+  "NCAM1", "KLRF1", "KLRD1",
+  "CD14", "FCGR3A", "ITGAM",
+  "FCER1A", "CD1C", "CLEC4C",
+  "HLA-DRA", "CD38", "IL7R",
+  "TCR-AB", "TCR-vD2",
+  "CD56", "PDCD1", "TIGIT",
+  "CD45RA", "CD45RO",
+  "CD27", "CD28",
+  "ITGB7", "FAS"
+)
+
+lineage_adt_available <- lineage_markers_adt[lineage_markers_adt %in% rownames(TARA_sub)]
+
+adt_display <- c(
+  "CD3D" = "CD3", "CD4" = "CD4", "CD8A" = "CD8a",
+  "CD19" = "CD19", "MS4A1" = "CD20", "CD79B" = "CD79b", "IGHM" = "IgM", "IGHD" = "IgD",
+  "NCAM1" = "CD56", "KLRF1" = "NKp80", "KLRD1" = "CD94",
+  "CD14" = "CD14", "FCGR3A" = "CD16", "ITGAM" = "CD11b",
+  "FCER1A" = "FcER1a", "CD1C" = "CD1c", "CLEC4C" = "BDCA-2",
+  "HLA-DRA" = "HLA-DR", "CD38" = "CD38", "IL7R" = "CD127",
+  "TCR-AB" = "TCRab", "TCR-vD2" = "TCR Vd2",
+  "CD56" = "CD56", "PDCD1" = "PD-1", "TIGIT" = "TIGIT",
+  "CD45RA" = "CD45RA", "CD45RO" = "CD45RO",
+  "CD27" = "CD27", "CD28" = "CD28",
+  "ITGB7" = "Integrin b7", "FAS" = "CD95"
+)
+
+# CHANGED: Updated broad order to match new categories
+broad_order <- c("CD4 T cells", "CD8 T cells", "\u03b3\u03b4 / MAIT",
+                 "NK cells", "B cells", "Monocytes", "pDC", "Other")
+TARA_sub$Broad_CellType <- factor(TARA_sub$Broad_CellType, levels = broad_order)
+
+p_s1a <- DotPlot(
+  TARA_sub, features = lineage_adt_available,
+  group.by = "Broad_CellType",
+  cols = c("lightgrey", "#08519C"), dot.scale = 8
+) + RotatedAxis() +
+  scale_x_discrete(labels = function(x) ifelse(x %in% names(adt_display),
+                                               adt_display[x], x)) +
+  labs(title = "S1A: Broad PBMC annotation \u2014 surface protein markers (ADT)",
+       y = NULL) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 13, face = "bold")
+  )
+
+ggsave(file.path(supp1_dir, "S1A_PBMC_Lineage_DotPlot.png"),
+       p_s1a, width = 18, height = 8, dpi = 300, bg = "white")
+
+message("\u2713 S1A saved\n")
+
+
+################################################################################
+# SUPPLEMENTARY FIGURE S1B — CD8 SUB-GATING: CD45RO vs FAS
+################################################################################
+
+message("Generating Supplementary S1B...")
+
+# CHANGED: uses Annotation column, updated cluster names
+cl1_clusters <- c("Naive 1 CD8", "Tscm CD8", "Naive Intermediate CD8")
+TARA_cl1 <- subset(TARA_cd8,
+                   subset = Annotation %in% cl1_clusters)
+
+DefaultAssay(TARA_cl1) <- "ADT"
+adt_cl1 <- GetAssayData(TARA_cl1, slot = "data")
+
+gate_df <- data.frame(
+  CD45RO = as.numeric(adt_cl1["CD45RO", ]),
+  CD45RA = as.numeric(adt_cl1["CD45RA", ]),
+  FAS    = as.numeric(adt_cl1["FAS",    ]),
+  Gate   = as.character(TARA_cl1$Annotation),
+  stringsAsFactors = FALSE
+)
+# CHANGED: short labels from Annotation names directly
+gate_df$Gate <- cd8_short_labels[gate_df$Gate]
+gate_df$Gate <- factor(gate_df$Gate, levels = c("Naive 1", "Tscm", "Naive Intermediate"))
+
+gate_cols_short <- c(
+  "Naive 1"            = cluster_cols[["Naive 1 CD8"]],
+  "Tscm"               = cluster_cols[["Tscm CD8"]],
+  "Naive Intermediate" = cluster_cols[["Naive Intermediate CD8"]]
+)
+
+p_s1b_1 <- ggplot(gate_df, aes(x = FAS, y = CD45RO, color = Gate)) +
+  geom_point(size = 1.2, alpha = 0.5) +
+  scale_color_manual(values = gate_cols_short) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey40") +
+  labs(title = "CD45RO vs CD95",
+       x = "CD95/FAS (DSB)", y = "CD45RO (DSB)") +
+  theme_classic(base_size = 28) +
+  theme(legend.position = "bottom", legend.title = element_blank(),
+        legend.text = element_text(size = 22),
+        plot.title = element_text(face = "bold", size = 28, hjust = 0.5),
+        axis.text = element_text(size = 22),
+        axis.title = element_text(size = 24, face = "bold"))
+
+p_s1b_2 <- ggplot(gate_df, aes(x = CD45RA, y = CD45RO, color = Gate)) +
+  geom_point(size = 1.2, alpha = 0.5) +
+  scale_color_manual(values = gate_cols_short) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey40") +
+  labs(title = "CD45RO vs CD45RA",
+       x = "CD45RA (DSB)", y = "CD45RO (DSB)") +
+  theme_classic(base_size = 28) +
+  theme(legend.position = "bottom", legend.title = element_blank(),
+        legend.text = element_text(size = 22),
+        plot.title = element_text(face = "bold", size = 28, hjust = 0.5),
+        axis.text = element_text(size = 22),
+        axis.title = element_text(size = 24, face = "bold"))
+
+p_s1b <- p_s1b_1 | p_s1b_2
+p_s1b <- p_s1b + plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+ggsave(file.path(supp1_dir, "S1B_CD8_SubGating.png"),
+       p_s1b, width = 18, height = 9, dpi = 300, bg = "white")
+
+message("\u2713 S1B saved\n")
+
+
+################################################################################
+# SUPPLEMENTARY FIGURE S1C — NAIVE 1 vs NAIVE 2: PROTEIN DIFFERENCES
+################################################################################
+
+message("Generating Supplementary S1C...")
+
+DefaultAssay(TARA_cd8) <- "ADT"
+adt_cd8_data <- GetAssayData(TARA_cd8, slot = "data")
+
+# CHANGED: uses Annotation column
+n1_cells <- WhichCells(TARA_cd8,
+                       expression = Annotation == "Naive 1 CD8")
+n2_cells <- WhichCells(TARA_cd8,
+                       expression = Annotation == "Naive 2 CD8")
+
+pct_n1 <- rowMeans(adt_cd8_data[, n1_cells] > 0) * 100
+pct_n2 <- rowMeans(adt_cd8_data[, n2_cells] > 0) * 100
+
+naive_diff <- data.frame(
+  Marker = names(pct_n1),
+  Naive_1 = round(pct_n1, 1),
+  Naive_2 = round(pct_n2, 1),
+  Diff = round(pct_n1 - pct_n2, 1),
+  stringsAsFactors = FALSE
+)
+naive_diff <- naive_diff[order(-abs(naive_diff$Diff)), ]
+
+top20 <- head(naive_diff, 20)
+
+top20$Protein <- ifelse(
+  top20$Marker %in% names(adt_gene_to_protein),
+  adt_gene_to_protein[top20$Marker],
+  top20$Marker
+)
+
+top20$Protein <- factor(top20$Protein, levels = rev(top20$Protein))
+top20$Direction <- ifelse(top20$Diff > 0, "Higher in Naive 1", "Higher in Naive 2")
+
+p_s1c <- ggplot(top20, aes(x = Diff, y = Protein, fill = Direction)) +
+  geom_col(width = 0.7) +
+  scale_fill_manual(values = c("Higher in Naive 1" = cluster_cols[["Naive 1 CD8"]],
+                               "Higher in Naive 2" = cluster_cols[["Naive 2 CD8"]])) +
+  geom_vline(xintercept = 0, linewidth = 0.5) +
+  labs(x = "Difference in % expressing (Naive 1 - Naive 2)",
+       y = NULL) +
+  theme_classic(base_size = 28) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 22),
+    axis.text.y = element_text(size = 22),
+    axis.text.x = element_text(size = 22),
+    axis.title.x = element_text(size = 24, face = "bold")
+  )
+
+ggsave(file.path(supp1_dir, "S1C_Naive1_vs_Naive2_ADT.png"),
+       p_s1c, width = 14, height = 14, dpi = 300, bg = "white")
+
+message("\u2713 S1C saved\n")
+
+
+################################################################################
+# SUPPLEMENTARY FIGURE S1D — CLUSTER PROPORTIONS (5, excl TEMRA/CTL, 1 row)
+################################################################################
+
+message("Generating Supplementary S1D...")
+
+# CHANGED: 5 clusters remaining (was 7)
+cluster_freq_noTEMRA <- cluster_freq %>%
+  filter(Facet_Label != "TEMRA/CTL")
+
+stat_df_noTEMRA <- stat_df_all %>%
+  filter(Facet_Label != "TEMRA/CTL", p.signif != "ns")
+
+p_s1d <- ggplot(cluster_freq_noTEMRA, aes(x = Condition, y = percent,
+                                          fill = Condition, color = Condition)) +
+  geom_boxplot(width = 0.65, outlier.shape = NA, alpha = 0.25, linewidth = 0.7) +
+  geom_jitter(width = 0.12, size = 3.5, alpha = 0.8) +
+  facet_wrap(~ Facet_Label, scales = "free_y", nrow = 1) +
+  {if (nrow(stat_df_noTEMRA) > 0)
+    stat_pvalue_manual(stat_df_noTEMRA, label = "p.signif", tip.length = 0.01,
+                       bracket.size = 0.8, size = 8)} +
+  scale_fill_manual(values = cond_cols) +
+  scale_color_manual(values = cond_cols) +
+  labs(x = NULL, y = "% of total PBMC") +
+  theme_classic(base_size = 28) +
+  theme(
+    legend.position = "none",
+    strip.text   = element_text(face = "bold", size = 22),
+    axis.text.x  = element_text(face = "bold", size = 20),
+    axis.text.y  = element_text(size = 20),
+    axis.title.y = element_text(face = "bold", size = 24)
+  )
+
+ggsave(file.path(supp1_dir, "S1D_Cluster_Proportions.png"),
+       p_s1d, width = 28, height = 9, dpi = 600, bg = "white")
+
+message("\u2713 S1D saved\n")
+
+
+################################################################################
+# SUPPLEMENTARY FIGURE S1E — VL CORRELATIONS % PBMC (5, excl Tex, 1 row)
+################################################################################
+
+message("Generating Supplementary S1E...")
+
+# CHANGED: 5 clusters (was 7)
+cluster_vl_noTex <- cluster_vl_df %>% filter(Facet_Label != "Tex")
+
+cor_stats_s1e <- cluster_vl_noTex %>%
+  group_by(Facet_Label) %>%
+  cor_test(log10_VL, pct_pbmc, method = "spearman") %>%
+  mutate(
+    stat_label = paste0("rho = ", sprintf("%.2f", cor),
+                        "\np = ", signif(p, 2)),
+    x = -Inf, y = Inf
+  ) %>%
+  ungroup()
+
+p_s1e <- ggplot(cluster_vl_noTex, aes(x = log10_VL, y = pct_pbmc)) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8,
+              color = "grey40", fill = "grey85", alpha = 0.3) +
+  geom_point(shape = 21, size = 4.5, stroke = 0.5,
+             fill = "#C44E52", color = "white") +
+  geom_text(data = cor_stats_s1e,
+            aes(x = x, y = y, label = stat_label),
+            inherit.aes = FALSE, hjust = -0.05, vjust = 1.2,
+            size = 7, lineheight = 1.2, color = "grey15",
+            fontface = "bold") +
+  facet_wrap(~ Facet_Label, scales = "free", nrow = 1) +
+  scale_x_continuous(breaks = pretty_breaks(n = 3)) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.20))) +
+  labs(x = expression(log[10] ~ "viral load"), y = "% of total PBMC") +
+  theme_classic(base_size = 28) +
+  theme(
+    strip.background = element_rect(fill = "grey92", color = NA),
+    strip.text       = element_text(face = "bold", size = 22),
+    axis.text        = element_text(size = 20, color = "black"),
+    axis.title.x     = element_text(face = "bold", size = 24,
+                                    margin = margin(t = 6)),
+    axis.title.y     = element_text(face = "bold", size = 24,
+                                    margin = margin(r = 6)),
+    legend.position  = "none",
+    panel.spacing    = unit(0.8, "lines")
+  )
+
+ggsave(file.path(supp1_dir, "S1E_VL_vs_PctPBMC.png"),
+       p_s1e, width = 28, height = 9, dpi = 600, bg = "white")
+
+cat("=== S1E VL correlations ===\n")
+print(cor_stats_s1e[, c("Facet_Label", "cor", "p")])
+cat("\n")
+
+message("\u2713 S1E saved\n")
+
+
+################################################################################
+# SUMMARY
+################################################################################
+
+message("\n",
+        "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+        " All panels saved.\n",
+        "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+        "\n",
+        " MAIN FIGURE 1:  ", fig1_dir, "\n",
+        "   1A: Total PBMC UMAP (broad cell types)\n",
+        "   1B: CD3/CD8 feature plots (mRNA + protein)\n",
+        "   1C: ADT + RNA heatmap (30 markers each)\n",
+        "   1D: CD8 cluster UMAP (non-CD8 grayed)\n",
+        "   1E: TEMRA/CTL proportion (significant)\n",
+        "   1F: Tex VL correlation (significant)\n",
+        "\n",
+        " SUPPLEMENTARY S1:  ", supp1_dir, "\n",
+        "   S1A: Broad PBMC lineage protein dot plot\n",
+        "   S1B: CD8 sub-gating (CD45RO vs FAS)\n",
+        "   S1C: Naive 1 vs Naive 2 ADT protein differences\n",
+        "   S1D: Cluster proportions (5, excl TEMRA/CTL)\n",
+        "   S1E: VL correlations % PBMC (5, excl Tex)\n",
+        "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n"
+)
