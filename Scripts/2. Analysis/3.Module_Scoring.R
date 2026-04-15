@@ -772,7 +772,7 @@ message("\n",
 # stop("PHASE 1 CHECKPOINT — review CSVs before continuing")
 
 # To resume:
-##TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_ModuleScored.qs2"))
+# TARA_ALL <- qs_read(file.path(saved_dir, "TARA_ALL_ModuleScored.qs2"))
 
 
 ################################################################################
@@ -957,24 +957,27 @@ plot_module_heatmap <- function(data, group_col, out_path, title_text) {
     summarise(Score = mean(Score, na.rm = TRUE), .groups = "drop")
   mat$Module <- gsub("^MS_", "", mat$Module)
   
+  n_mod <- length(unique(mat$Module))
+  n_grp <- length(unique(mat[[group_col]]))
+  ncol_facet <- ceiling(n_mod / 2)  # 2 rows of facets
+  
   p <- ggplot(mat, aes(x = .data[[group_col]], y = Annotation, fill = Score)) +
     geom_tile(color = "white", linewidth = 0.3) +
-    facet_wrap(~ Module, scales = "free_x", nrow = 1) +
+    facet_wrap(~ Module, scales = "free_x", ncol = ncol_facet) +
     scale_fill_gradient2(low = "#2166AC", mid = "white", high = "#B2182B",
                          midpoint = 0, name = "Mean\nScore") +
     labs(title = title_text, x = "", y = "") +
     theme_minimal(base_size = 11) +
     theme(
-      axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
-      axis.text.y = element_text(size = 8),
+      axis.text.x = element_text(angle = 45, hjust = 1, size = 7),
+      axis.text.y = element_text(size = 7),
       strip.text = element_text(size = 7, face = "bold"),
       panel.grid = element_blank(),
       plot.background = element_rect(fill = "white", color = NA))
   
-  ggsave(out_path, p,
-         width = max(24, 2.5 * length(unique(mat$Module))),
-         height = max(8, 0.4 * length(unique(mat$Annotation))),
-         dpi = 300, bg = "white")
+  w <- min(48, 1.8 * ncol_facet + 2)
+  h <- min(20, 0.35 * length(unique(mat$Annotation)) * 2 + 2)
+  ggsave(out_path, p, width = w, height = h, dpi = 300, bg = "white")
 }
 
 ea_meta <- TARA_ALL@meta.data[!is.na(TARA_ALL$Exposure_ART), ]
@@ -994,52 +997,70 @@ cat("══ STEP 7: VIOLINS ══\n\n")
 
 plot_module_violin <- function(obj, module_col, group_col, groups, group_colors,
                                title_text, out_path) {
-  md <- obj@meta.data
-  md <- md[md[[group_col]] %in% groups & !is.na(md[[module_col]]), ]
-  md[[group_col]] <- factor(md[[group_col]], levels = groups)
-  if (nrow(md) < 20) return(invisible(NULL))
+  # Skip if file already exists
+  if (file.exists(out_path)) return(invisible(NULL))
   
-  if (length(groups) == 2) {
-    pw <- md %>%
-      group_by(Annotation) %>%
-      filter(n_distinct(.data[[group_col]]) == 2) %>%
-      wilcox_test(as.formula(paste(module_col, "~", group_col))) %>%
-      adjust_pvalue(method = "BH") %>%
-      add_significance("p.adj") %>%
-      add_xy_position(x = group_col)
-  } else { pw <- NULL }
-  
-  p <- ggplot(md, aes(x = .data[[group_col]], y = .data[[module_col]],
-                      fill = .data[[group_col]])) +
-    geom_violin(alpha = 0.7, scale = "width", linewidth = 0.3, trim = TRUE) +
-    geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.9,
-                 fill = "white", linewidth = 0.4) +
-    stat_summary(fun = mean, geom = "point", shape = 18, size = 2.5, color = "black") +
-    facet_wrap(~ Annotation, scales = "free_y", ncol = 5) +
-    scale_fill_manual(values = group_colors, name = "") +
-    labs(title = title_text, y = gsub("^MS_", "", module_col), x = "") +
-    theme_minimal(base_size = 13) +
-    theme(
-      strip.text = element_text(size = 10, face = "bold"),
-      axis.text.x = element_text(angle = 35, hjust = 1, size = 9),
-      legend.position = "top", legend.text = element_text(size = 12),
-      panel.spacing = unit(0.8, "lines"),
-      panel.grid.major.x = element_blank(),
-      plot.background = element_rect(fill = "white", color = NA))
-  
-  if (!is.null(pw) && nrow(pw) > 0) {
-    pw_sig <- pw[pw$p.adj.signif != "ns", ]
-    if (nrow(pw_sig) > 0) {
-      p <- p + stat_pvalue_manual(pw_sig, label = "p.adj.signif",
-                                  tip.length = 0.02, size = 3.5, hide.ns = TRUE)
+  tryCatch({
+    md <- obj@meta.data
+    md <- md[md[[group_col]] %in% groups & !is.na(md[[module_col]]) & is.finite(md[[module_col]]), ]
+    md[[group_col]] <- factor(md[[group_col]], levels = groups)
+    if (nrow(md) < 20) return(invisible(NULL))
+    
+    # Drop cluster×group combos with <3 cells or zero variance (crashes geom_violin)
+    valid <- md %>%
+      group_by(Annotation, .data[[group_col]]) %>%
+      summarise(n = n(), sd = sd(.data[[module_col]], na.rm = TRUE), .groups = "drop") %>%
+      filter(n >= 3 & !is.na(sd) & sd > 0)
+    # Keep only clusters where ALL groups pass
+    valid_cl <- valid %>% group_by(Annotation) %>%
+      filter(n() == length(groups)) %>% pull(Annotation) %>% unique()
+    if (length(valid_cl) == 0) return(invisible(NULL))
+    md <- md[md$Annotation %in% valid_cl, ]
+    
+    if (length(groups) == 2) {
+      pw <- tryCatch({
+        md %>%
+          group_by(Annotation) %>%
+          filter(n_distinct(.data[[group_col]]) == 2) %>%
+          wilcox_test(as.formula(paste(module_col, "~", group_col))) %>%
+          adjust_pvalue(method = "BH") %>%
+          add_significance("p.adj") %>%
+          add_xy_position(x = group_col)
+      }, error = function(e) NULL)
+    } else { pw <- NULL }
+    
+    p <- ggplot(md, aes(x = .data[[group_col]], y = .data[[module_col]],
+                        fill = .data[[group_col]])) +
+      geom_violin(alpha = 0.7, scale = "width", linewidth = 0.3, trim = TRUE) +
+      geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.9,
+                   fill = "white", linewidth = 0.4) +
+      stat_summary(fun = mean, geom = "point", shape = 18, size = 2.5, color = "black") +
+      facet_wrap(~ Annotation, scales = "free_y", ncol = 5) +
+      scale_fill_manual(values = group_colors, name = "") +
+      labs(title = title_text, y = gsub("^MS_|^PS_", "", module_col), x = "") +
+      theme_minimal(base_size = 13) +
+      theme(
+        strip.text = element_text(size = 10, face = "bold"),
+        axis.text.x = element_text(angle = 35, hjust = 1, size = 9),
+        legend.position = "top", legend.text = element_text(size = 12),
+        panel.spacing = unit(0.8, "lines"),
+        panel.grid.major.x = element_blank(),
+        plot.background = element_rect(fill = "white", color = NA))
+    
+    if (!is.null(pw) && nrow(pw) > 0) {
+      pw_sig <- pw[pw$p.adj.signif != "ns", ]
+      if (nrow(pw_sig) > 0) {
+        p <- p + stat_pvalue_manual(pw_sig, label = "p.adj.signif",
+                                    tip.length = 0.02, size = 3.5, hide.ns = TRUE)
+      }
     }
-  }
-  
-  n_cl <- length(unique(md$Annotation))
-  ggsave(out_path, p,
-         width = min(22, 4.5 * min(5, n_cl)),
-         height = max(5, 3.5 * ceiling(n_cl / 5)),
-         dpi = 300, bg = "white")
+    
+    n_cl <- length(unique(md$Annotation))
+    ggsave(out_path, p,
+           width = min(22, 4.5 * min(5, n_cl)),
+           height = max(5, 3.5 * ceiling(n_cl / 5)),
+           dpi = 300, bg = "white")
+  }, error = function(e) cat("  WARN violin:", title_text, ":", conditionMessage(e), "\n"))
 }
 
 tp_cols  <- c("PreART_Entry" = "#E76F51", "PostART_Suppressed" = "#2A9D8F",
@@ -1320,8 +1341,9 @@ cat("✓ IFNAR done\n\n")
 qs_save(TARA_ALL, file.path(saved_dir, "TARA_ALL_ModuleScored.qs2"))
 
 
+
 # =============================================================================
-# STEP 12: STORY FIGURES (targeted subsets for report)
+# STEP 12: STORY FIGURES — compact panels with letter tags for PPT
 # =============================================================================
 
 cat("══ STEP 12: STORY FIGURES ══\n\n")
@@ -1329,374 +1351,316 @@ cat("══ STEP 12: STORY FIGURES ══\n\n")
 out_story <- file.path(out_base, "Story_Figures")
 dir.create(out_story, recursive = TRUE, showWarnings = FALSE)
 
-# --- Colour palettes ---
 ea5_cols <- c("HUU" = "#457B9D", "HEU" = "#264653", "PreART_Entry" = "#E76F51",
               "PostART_Suppressed" = "#2A9D8F", "PostART_Unsuppressed" = "#E9C46A")
 ea5_ord <- c("HUU", "HEU", "PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed")
 hei3_cols <- c("PreART_Entry" = "#E76F51", "PostART_Suppressed" = "#2A9D8F",
                "PostART_Unsuppressed" = "#E9C46A")
 hei3_ord <- c("PreART_Entry", "PostART_Suppressed", "PostART_Unsuppressed")
-pre_heu <- c("PreART_Entry" = "#E76F51", "HEU" = "#264653")
 heu_huu <- c("HEU" = "#264653", "HUU" = "#457B9D")
 
-# --- Helper: subset-then-violin WITH significance ---
-story_violin <- function(obj, clusters, module_col, group_col, groups, colours,
-                         title_text, out_path, ncol = NULL,
-                         pairs = NULL) {
-  # pairs: list of length-2 character vectors for pairwise tests
-  #   NULL = auto-detect: 2 groups → single pair
-  #                       3 groups (HEI) → all 3 pairs
-  #                       5 groups → key pairs (HEU-HUU, PreART-HEU, Sup-Uns)
-  sub <- subset(obj, Annotation %in% clusters)
-  sub$Annotation <- factor(sub$Annotation, levels = clusters)
-  md <- sub@meta.data
-  md <- md[md[[group_col]] %in% groups & !is.na(md[[module_col]]), ]
-  md[[group_col]] <- factor(md[[group_col]], levels = groups)
-  if (nrow(md) < 20) { cat("  SKIP (n<20):", title_text, "\n"); return(invisible(NULL)) }
-  
-  nc <- if (!is.null(ncol)) ncol else min(5, length(clusters))
-  
-  # Auto-detect pairs
-  if (is.null(pairs)) {
-    if (length(groups) == 2) {
-      pairs <- list(groups)
-    } else if (length(groups) == 3) {
-      pairs <- list(groups[c(1,2)], groups[c(1,3)], groups[c(2,3)])
-    } else if (length(groups) == 5) {
-      # Key biologically meaningful comparisons only
-      pairs <- list(
-        c("HEU", "HUU"),                                    # exposure effect
-        c("PreART_Entry", "HEU"),                            # infection effect
-        c("PostART_Suppressed", "PostART_Unsuppressed")      # ART effect
-      )
-      # Filter to pairs where both groups are actually in the data
-      pairs <- pairs[sapply(pairs, function(pr) all(pr %in% groups))]
-    }
-  }
-  
-  # Run pairwise Wilcoxon per cluster — iterate over pairs manually
-  pw <- NULL
-  if (length(pairs) > 0) {
-    pw <- tryCatch({
-      pw_list <- list()
-      for (cl_name in clusters) {
-        cl_md <- md[md$Annotation == cl_name, ]
-        for (pr in pairs) {
-          pr_md <- cl_md[cl_md[[group_col]] %in% pr, ]
-          # Need at least 3 cells per group
-          grp_n <- table(droplevels(pr_md[[group_col]]))
-          if (length(grp_n) < 2 || any(grp_n < 3)) next
-          
-          res <- tryCatch(
-            wilcox_test(pr_md, as.formula(paste(module_col, "~", group_col))),
-            error = function(e) NULL
-          )
-          if (!is.null(res)) {
-            res$Annotation <- cl_name
-            pw_list[[length(pw_list) + 1]] <- res
-          }
-        }
-      }
-      if (length(pw_list) == 0) NULL
-      else {
-        pw_all <- bind_rows(pw_list) %>%
-          adjust_pvalue(method = "BH") %>%
-          add_significance("p.adj") %>%
-          add_xy_position(x = group_col, step.increase = 0.08)
-        pw_all
-      }
-    }, error = function(e) {
-      cat("  WARN: stats failed for", title_text, ":", conditionMessage(e), "\n")
-      NULL
-    })
-  }
-  
-  p <- ggplot(md, aes(x = .data[[group_col]], y = .data[[module_col]],
-                      fill = .data[[group_col]])) +
-    geom_violin(alpha = 0.7, scale = "width", linewidth = 0.3, trim = TRUE) +
-    geom_boxplot(width = 0.15, outlier.shape = NA, alpha = 0.9,
-                 fill = "white", linewidth = 0.4) +
-    stat_summary(fun = mean, geom = "point", shape = 18, size = 2.5, color = "black") +
-    facet_wrap(~ Annotation, scales = "free_y", ncol = nc) +
-    scale_fill_manual(values = colours, name = "") +
-    labs(title = title_text, y = gsub("^MS_|^PS_", "", module_col), x = "") +
-    theme_minimal(base_size = 13) +
-    theme(
-      strip.text = element_text(size = 11, face = "bold"),
-      axis.text.x = element_text(angle = 40, hjust = 1, size = 9),
-      legend.position = "top", legend.text = element_text(size = 11),
-      panel.spacing = unit(0.8, "lines"),
-      panel.grid.major.x = element_blank(),
-      plot.background = element_rect(fill = "white", color = NA))
-  
-  # Add significance brackets (only significant ones)
-  if (!is.null(pw) && nrow(pw) > 0) {
-    pw_sig <- pw[pw$p.adj.signif != "ns", ]
-    if (nrow(pw_sig) > 0) {
-      p <- p + stat_pvalue_manual(pw_sig, label = "p.adj.signif",
-                                  tip.length = 0.015, size = 3.2,
-                                  hide.ns = TRUE, bracket.size = 0.4)
-    }
-  }
-  
-  nr <- ceiling(length(clusters) / nc)
-  h <- max(5, 3.5 * nr)
-  # Add extra height if significance brackets are present (they need room)
-  if (!is.null(pw) && nrow(pw) > 0 && any(pw$p.adj.signif != "ns")) {
-    h <- h + 0.5 * length(pairs)
-  }
-  
-  tryCatch(
-    ggsave(out_path, p,
-           width = min(24, 4.5 * nc), height = h,
-           dpi = 300, bg = "white"),
-    error = function(e) cat("  WARN: ggsave failed for", title_text, ":", conditionMessage(e), "\n")
-  )
+guide <- data.frame(Figure=character(), Panel=character(), File=character(),
+                    Cluster=character(), Module=character(), Comparison=character(),
+                    Description=character(), stringsAsFactors=FALSE)
+add_guide <- function(fig, pan, fname, cluster, module, comp, desc) {
+  guide[nrow(guide)+1, ] <<- list(fig, pan, fname, cluster, module, comp, desc)
 }
 
-# --- Helper: divergence dot plot (PreART -> Sup vs PreART -> Uns) ---
-story_divergence <- function(obj, clusters, module_col, title_text, out_path) {
+# ─── Panel: tag in corner, stat_compare_means for reliable brackets ───
+panel <- function(obj, clusters, module_col, group_col, groups, colours,
+                  tag, out_path, w=NULL, h=NULL, pairs=NULL) {
+  if (file.exists(out_path)) { cat("  exists:", basename(out_path), "\n"); return(invisible(NULL)) }
+  tryCatch({
+    sub <- subset(obj, Annotation %in% clusters)
+    sub$Annotation <- factor(sub$Annotation, levels = clusters)
+    md <- sub@meta.data
+    md <- md[md[[group_col]] %in% groups & !is.na(md[[module_col]]) & is.finite(md[[module_col]]), ]
+    md[[group_col]] <- factor(md[[group_col]], levels = groups)
+    if (nrow(md) < 10) { cat("  SKIP (n<10):", tag, "\n"); return(invisible(NULL)) }
+    # Drop cluster x group combos with <3 cells or zero variance
+    valid_cl <- md %>% group_by(Annotation, .data[[group_col]]) %>%
+      summarise(n=n(), sd=sd(.data[[module_col]], na.rm=TRUE), .groups="drop") %>%
+      filter(n >= 3 & !is.na(sd) & sd > 0) %>%
+      group_by(Annotation) %>% filter(n() == length(groups)) %>%
+      pull(Annotation) %>% unique()
+    if (length(valid_cl) == 0) { cat("  SKIP (variance):", tag, "\n"); return(invisible(NULL)) }
+    md <- md[md$Annotation %in% valid_cl, ]
+    md$Annotation <- factor(md$Annotation, levels = intersect(clusters, valid_cl))
+    nc <- length(valid_cl)
+    ylab <- gsub("_", " ", gsub("^MS_|^PS_", "", module_col))
+    xlabs <- gsub("PostART_", "", gsub("PreART_Entry", "PreART", groups))
+    
+    # Auto-detect pairs if not provided
+    if (is.null(pairs)) {
+      pairs <- if (length(groups)==2) list(groups)
+      else if (length(groups)==3) list(groups[c(1,2)], groups[c(2,3)])
+      else list(c("PreART_Entry","HEU"),
+                c("PostART_Suppressed","PostART_Unsuppressed"))
+      pairs <- pairs[sapply(pairs, function(pr) all(pr %in% groups))]
+    }
+    
+    p <- ggplot(md, aes(x=.data[[group_col]], y=.data[[module_col]], fill=.data[[group_col]])) +
+      geom_violin(alpha=0.7, scale="width", linewidth=0.3, trim=TRUE) +
+      geom_boxplot(width=0.18, outlier.shape=NA, alpha=0.9, fill="white", linewidth=0.4) +
+      stat_summary(fun=mean, geom="point", shape=18, size=2, color="black") +
+      scale_fill_manual(values=colours, name="") + scale_x_discrete(labels=xlabs) +
+      scale_y_continuous(expand=expansion(mult=c(0.05, 0.15 + 0.08*length(pairs)))) +
+      coord_cartesian(clip="off") +
+      labs(tag=tag, y=ylab, x="") +
+      theme_minimal(base_size=11) +
+      theme(strip.text=element_text(size=10, face="bold"),
+            axis.text.x=element_text(angle=45, hjust=1, size=8),
+            legend.position="none", panel.grid.major.x=element_blank(),
+            plot.tag=element_text(size=14, face="bold"), plot.tag.position=c(0,1),
+            plot.margin=margin(t=15, r=5, b=5, l=5),
+            plot.background=element_rect(fill="white", color=NA))
+    
+    if (nc > 1) p <- p + facet_wrap(~Annotation, ncol=nc, scales="free_y")
+    
+    # Add significance via stat_compare_means (reliable, data-aware)
+    if (length(pairs) > 0) {
+      p <- p + stat_compare_means(comparisons=pairs, method="wilcox.test",
+                                  label="p.signif", size=3.5, tip.length=0.015,
+                                  bracket.size=0.4, step.increase=0.08)
+    }
+    
+    if (is.null(w)) w <- if (nc==1) 2.8 else nc*2.5+0.5
+    if (is.null(h)) h <- 3.5 + 0.3*length(pairs)
+    ggsave(out_path, p, width=w, height=h, dpi=300, bg="white")
+  }, error=function(e) cat("  WARN panel", tag, ":", conditionMessage(e), "\n"))
+}
+
+divergence <- function(obj, clusters, module_col, tag, out_path) {
+  if (file.exists(out_path)) { cat("  exists:", basename(out_path), "\n"); return(invisible(NULL)) }
   md <- obj@meta.data
   md <- md[md$Annotation %in% clusters & md$Exposure_ART %in% hei3_ord &
              !is.na(md[[module_col]]), ]
-  
-  summ <- md %>%
-    group_by(Annotation, Exposure_ART) %>%
-    summarise(mean_val = mean(.data[[module_col]], na.rm = TRUE), .groups = "drop") %>%
-    pivot_wider(names_from = Exposure_ART, values_from = mean_val) %>%
-    mutate(d_sup = PostART_Suppressed - PreART_Entry,
-           d_uns = PostART_Unsuppressed - PreART_Entry)
-  summ$Annotation <- factor(summ$Annotation, levels = rev(clusters))
-  
-  long <- summ %>%
-    select(Annotation, d_sup, d_uns) %>%
-    pivot_longer(c(d_sup, d_uns), names_to = "Trajectory", values_to = "Delta") %>%
-    mutate(Trajectory = ifelse(Trajectory == "d_sup", "Suppressed", "Unsuppressed"))
-  
-  p <- ggplot(long, aes(x = Delta, y = Annotation, color = Trajectory, shape = Trajectory)) +
-    geom_vline(xintercept = 0, linewidth = 0.5, linetype = "dashed", color = "grey50") +
-    geom_point(size = 4) +
-    geom_line(aes(group = Annotation), color = "grey70", linewidth = 0.4) +
-    scale_color_manual(values = c("Suppressed" = "#2A9D8F", "Unsuppressed" = "#E9C46A")) +
-    scale_shape_manual(values = c("Suppressed" = 16, "Unsuppressed" = 17)) +
-    labs(title = title_text,
-         x = paste0("Delta from PreART (", gsub("^MS_", "", module_col), ")"),
-         y = "") +
-    theme_minimal(base_size = 13) +
-    theme(legend.position = "top",
-          plot.background = element_rect(fill = "white", color = NA))
-  
-  ggsave(out_path, p, width = 9, height = max(4, 0.45 * length(clusters)),
-         dpi = 300, bg = "white")
+  summ <- md %>% group_by(Annotation, Exposure_ART) %>%
+    summarise(mean_val=mean(.data[[module_col]], na.rm=TRUE), .groups="drop") %>%
+    pivot_wider(names_from=Exposure_ART, values_from=mean_val) %>%
+    mutate(d_sup=PostART_Suppressed-PreART_Entry, d_uns=PostART_Unsuppressed-PreART_Entry)
+  summ$Annotation <- factor(summ$Annotation, levels=rev(clusters))
+  long <- summ %>% select(Annotation, d_sup, d_uns) %>%
+    pivot_longer(c(d_sup, d_uns), names_to="Trajectory", values_to="Delta") %>%
+    mutate(Trajectory=ifelse(Trajectory=="d_sup","Suppressed","Unsuppressed"))
+  p <- ggplot(long, aes(x=Delta, y=Annotation, color=Trajectory, shape=Trajectory)) +
+    geom_vline(xintercept=0, linewidth=0.5, linetype="dashed", color="grey50") +
+    geom_point(size=3.5) +
+    geom_line(aes(group=Annotation), color="grey70", linewidth=0.4) +
+    scale_color_manual(values=c("Suppressed"="#2A9D8F","Unsuppressed"="#E9C46A")) +
+    scale_shape_manual(values=c("Suppressed"=16,"Unsuppressed"=17)) +
+    labs(tag=tag, x="\u0394 from PreART", y="") +
+    theme_minimal(base_size=11) +
+    theme(legend.position="top", legend.key.size=unit(0.4,"cm"),
+          plot.tag=element_text(size=14, face="bold"), plot.tag.position=c(0,1),
+          plot.background=element_rect(fill="white", color=NA))
+  ggsave(out_path, p, width=4.5, height=max(2.5, 0.35*length(clusters)), dpi=300, bg="white")
 }
 
-# ═══════════════════════════════════════════════════════════════
-# FIGURE 1: CD8 T CELLS
-# ═══════════════════════════════════════════════════════════════
-cat("  Section 1: CD8 T cells...\n")
-cd8_cls <- c("Naive 1 CD8", "Naive Intermediate CD8", "Tscm CD8",
-             "TEMRA/CTL CD8", "Tex CD8")
+# ══ FIGURE 1: CD8 — ART reshapes exhausted and stem-like CD8 ══
+cat("  Fig 1: CD8...\n")
 
-for (mod in c("MS_Exhaustion", "MS_Stemness_Naive", "MS_Cytotoxicity")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, cd8_cls, mod, "Exposure_ART", ea5_ord, ea5_cols,
-               paste0("Fig 1A \u2014 CD8 ", ms, " (5-way)"),
-               file.path(out_story, paste0("Fig1A_CD8_", ms, "_5way.png")))
-}
+# 1A: Tex Exhaustion — 3-way HEI (the ART rescue story)
+panel(TARA_ALL,"Tex CD8","MS_Exhaustion","Exposure_ART",hei3_ord,hei3_cols,"A",
+      file.path(out_story,"Fig1A_Tex_Exhaustion.png"))
+add_guide("1","A","Fig1A_Tex_Exhaustion.png","Tex CD8","Exhaustion","3-way HEI",
+          "ART reduces exhaustion below pre-ART (0.318->0.147)")
 
-for (mod in c("MS_Glycolysis_Hypoxia", "Metabolic_Ratio")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, cd8_cls, mod, "Exposure_ART", hei3_ord, hei3_cols,
-               paste0("Fig 1B \u2014 CD8 ", ms, " (HEI 3-way)"),
-               file.path(out_story, paste0("Fig1B_CD8_", ms, "_3way.png")))
-}
+# 1B: Tex Stemness — 3-way HEI (stemness preservation)
+panel(TARA_ALL,"Tex CD8","MS_Stemness_Naive","Exposure_ART",hei3_ord,hei3_cols,"B",
+      file.path(out_story,"Fig1B_Tex_Stemness.png"))
+add_guide("1","B","Fig1B_Tex_Stemness.png","Tex CD8","Stemness","3-way HEI",
+          "Stemness partially rescued by ART (-0.676->-0.471)")
 
-story_violin(TARA_ALL, cd8_cls, "IFN_Ratio", "Exposure_ART", ea5_ord, ea5_cols,
-             "Fig 1C \u2014 CD8 IFN Ratio (5-way)",
-             file.path(out_story, "Fig1C_CD8_IFNRatio_5way.png"))
-story_violin(TARA_ALL, cd8_cls, "IFN_Ratio", "Exposure_ART",
-             c("PreART_Entry", "HEU"), pre_heu,
-             "Fig 1C \u2014 CD8 IFN Ratio (PreART vs HEU)",
-             file.path(out_story, "Fig1C_CD8_IFNRatio_PreART_vs_HEU.png"))
-story_divergence(TARA_ALL, cd8_cls, "IFN_Ratio",
-                 "Fig 1C \u2014 CD8 IFN Ratio: Divergence from PreART",
-                 file.path(out_story, "Fig1C_CD8_IFNRatio_Divergence.png"))
+# 1C: TEMRA Cytotoxicity — PreART vs HEU (infection drives effectors)
+panel(TARA_ALL,"TEMRA/CTL CD8","MS_Cytotoxicity","Exposure_ART",
+      c("PreART_Entry","HEU"), c("PreART_Entry"="#E76F51","HEU"="#264653"), "C",
+      file.path(out_story,"Fig1C_TEMRA_Cytotox_PrevsHEU.png"))
+add_guide("1","C","Fig1C_TEMRA_Cytotox_PrevsHEU.png","TEMRA/CTL","Cytotoxicity","PreART vs HEU",
+          "Massive effector expansion: HEU -0.05 -> PreART 1.98")
 
-# ═══════════════════════════════════════════════════════════════
-# FIGURE 2: CD4 T CELLS
-# ═══════════════════════════════════════════════════════════════
-cat("  Section 2: CD4 T cells...\n")
-cd4_cls <- c("Naive 1 CD4", "Naive 2 CD4", "Naive 3 CD4",
-             "Transitional Memory CD4", "Th2/Th17 EM CD4", "Treg")
+# 1D: Tscm Glycolysis — 3-way HEI (metabolic rescue)
+panel(TARA_ALL,"Tscm CD8","MS_Glycolysis_Hypoxia","Exposure_ART",hei3_ord,hei3_cols,"D",
+      file.path(out_story,"Fig1D_Tscm_Glycolysis.png"))
+add_guide("1","D","Fig1D_Tscm_Glycolysis.png","Tscm CD8","Glycolysis","3-way HEI",
+          "Largest metabolic rescue: 0.77->-0.09")
 
-story_violin(TARA_ALL, cd4_cls, "MS_Glycolysis_Hypoxia", "Exposure_ART", ea5_ord, ea5_cols,
-             "Fig 2A \u2014 CD4 Glycolysis (5-way)",
-             file.path(out_story, "Fig2A_CD4_Glycolysis_5way.png"))
-story_violin(TARA_ALL, cd4_cls, "MS_Glycolysis_Hypoxia", "Exposure_ART",
-             c("HEU", "HUU"), heu_huu,
-             "Fig 2A \u2014 CD4 Glycolysis (HEU vs HUU)",
-             file.path(out_story, "Fig2A_CD4_Glycolysis_HEU_vs_HUU.png"))
+# 1E: Tscm MetRatio — 3-way HEI
+panel(TARA_ALL,"Tscm CD8","Metabolic_Ratio","Exposure_ART",hei3_ord,hei3_cols,"E",
+      file.path(out_story,"Fig1E_Tscm_MetRatio.png"))
+add_guide("1","E","Fig1E_Tscm_MetRatio.png","Tscm CD8","Met Ratio","3-way HEI",
+          "MetRatio normalises: -0.84->-0.01")
 
-cd4_naive <- c("Naive 1 CD4", "Naive 2 CD4", "Naive 3 CD4")
-for (mod in c("MS_Stemness_Naive", "MS_Stress_IFN_Acute")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, cd4_naive, mod, "Exposure_ART", ea5_ord, ea5_cols,
-               paste0("Fig 2B \u2014 CD4 Naive ", ms, " (5-way)"),
-               file.path(out_story, paste0("Fig2B_CD4naive_", ms, "_5way.png")), ncol = 3)
-}
+# 1F: IFN Ratio — 3-way HEI, Tex vs TEMRA side by side
+panel(TARA_ALL,c("Tex CD8","TEMRA/CTL CD8"),"IFN_Ratio","Exposure_ART",hei3_ord,hei3_cols,"F",
+      file.path(out_story,"Fig1F_TexTEMRA_IFNRatio.png"))
+add_guide("1","F","Fig1F_TexTEMRA_IFNRatio.png","Tex+TEMRA","IFN Ratio","3-way HEI",
+          "Sup positive, Uns negative — IFN divergence")
 
-isg_cls <- c("ISG+ CD4 T cell")
-for (mod in c("IFN_Ratio", "MS_Stress_IFN_Acute")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, isg_cls, mod, "Exposure_ART", ea5_ord, ea5_cols,
-               paste0("Fig 2C \u2014 ISG+ CD4 ", ms, " (5-way)"),
-               file.path(out_story, paste0("Fig2C_ISG_CD4_", ms, "_5way.png")), ncol = 1)
-}
+# 1G: CD8 IFN divergence dot plot
+divergence(TARA_ALL, c("Naive 1 CD8","Naive Intermediate CD8","Tscm CD8","TEMRA/CTL CD8","Tex CD8"),
+           "IFN_Ratio","G",file.path(out_story,"Fig1G_CD8_Divergence.png"))
+add_guide("1","G","Fig1G_CD8_Divergence.png","5 CD8","IFN Ratio","Divergence","All diverge")
 
-# ═══════════════════════════════════════════════════════════════
-# FIGURE 3: NK CELLS
-# ═══════════════════════════════════════════════════════════════
-cat("  Section 3: NK cells...\n")
-nk_cls <- c("CD56dim CD122lo NK", "CD56dim CD122int NK",
-            "CD56dim CD122hi NK", "CD56bright NK")
+# ══ FIGURE 2: CD4 — Glycolysis bomb + ISG sentinel ══
+cat("  Fig 2: CD4...\n")
 
-for (mod in c("MS_IFN_Memory", "IFN_Ratio", "MS_Exhaustion", "MS_Cytotoxicity")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, nk_cls, mod, "Exposure_ART", ea5_ord, ea5_cols,
-               paste0("Fig 3A \u2014 NK ", ms, " (5-way)"),
-               file.path(out_story, paste0("Fig3A_NK_", ms, "_5way.png")), ncol = 4)
-}
+# 2A: Naive 1 Glycolysis — HEU vs HUU (the bomb)
+panel(TARA_ALL,"Naive 1 CD4","MS_Glycolysis_Hypoxia","Exposure_ART",
+      c("HEU","HUU"),heu_huu,"A",
+      file.path(out_story,"Fig2A_Naive1_Glycolysis_HEUvsHUU.png"),w=2.5,h=3.5)
+add_guide("2","A","Fig2A_Naive1_Glycolysis_HEUvsHUU.png","Naive 1 CD4","Glycolysis","HEU vs HUU",
+          "The glycolysis bomb: HEU=0.70 vs HUU=-0.01")
 
-cd56b <- c("CD56bright NK")
-for (mod in c("MS_Cytotoxicity", "MS_Inflammatory_Chemokines")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, cd56b, mod, "Exposure_ART", hei3_ord, hei3_cols,
-               paste0("Fig 3B \u2014 CD56bright ", ms, " (HEI 3-way)"),
-               file.path(out_story, paste0("Fig3B_CD56bright_", ms, "_3way.png")), ncol = 1)
-}
+# 2B: 3 naive subsets Glycolysis — HEU vs HUU
+panel(TARA_ALL,c("Naive 1 CD4","Naive 2 CD4","Naive 3 CD4"),
+      "MS_Glycolysis_Hypoxia","Exposure_ART",c("HEU","HUU"),heu_huu,"B",
+      file.path(out_story,"Fig2B_Naive123_Glyc_HEUvsHUU.png"),w=6.5,h=3.5)
+add_guide("2","B","Fig2B_Naive123_Glyc_HEUvsHUU.png","Naive 1/2/3","Glycolysis","HEU vs HUU",
+          "Universal across all naive subsets")
 
-story_divergence(TARA_ALL, nk_cls, "IFN_Ratio",
-                 "Fig 3 \u2014 NK IFN Ratio: Divergence from PreART",
-                 file.path(out_story, "Fig3_NK_IFNRatio_Divergence.png"))
+# 2C: Naive 1 Glycolysis — 3-way HEI (ART resolves it)
+panel(TARA_ALL,"Naive 1 CD4","MS_Glycolysis_Hypoxia","Exposure_ART",hei3_ord,hei3_cols,"C",
+      file.path(out_story,"Fig2C_Naive1_Glycolysis_3way.png"))
+add_guide("2","C","Fig2C_Naive1_Glycolysis_3way.png","Naive 1 CD4","Glycolysis","3-way HEI",
+          "ART resolves glycolysis in both arms")
 
-# ═══════════════════════════════════════════════════════════════
-# FIGURE 4: TYPE I IFN - PAN-IMMUNE
-# ═══════════════════════════════════════════════════════════════
-cat("  Section 4: Type I IFN...\n")
-ifn_top <- c("ISG+ CD4 T cell", "TEMRA/CTL CD8", "CD56dim CD122hi NK",
-             "Transitional Memory CD4", "Treg", "CD8+ MAIT cell",
-             "Activated B cell", "Vd1 gd T cell")
+# 2D: ISG+ Stress — HEU vs HUU (sentinel discovery)
+panel(TARA_ALL,"ISG+ CD4 T cell","MS_Stress_IFN_Acute","Exposure_ART",
+      c("HEU","HUU"),c("HEU"="#264653","HUU"="#457B9D"),"D",
+      file.path(out_story,"Fig2D_ISG_Stress_HEUvsHUU.png"),w=2.5,h=3.5)
+add_guide("2","D","Fig2D_ISG_Stress_HEUvsHUU.png","ISG+ CD4","Stress","HEU vs HUU",
+          "HEU stress=1.47 (10x any other cluster)")
 
-story_violin(TARA_ALL, ifn_top, "IFN_Ratio", "Exposure_ART", ea5_ord, ea5_cols,
-             "Fig 4A \u2014 Top IFN Ratio clusters (5-way)",
-             file.path(out_story, "Fig4A_IFNRatio_TopClusters_5way.png"))
-story_divergence(TARA_ALL, ifn_top, "IFN_Ratio",
-                 "Fig 4A \u2014 IFN Ratio: Divergence from PreART (top clusters)",
-                 file.path(out_story, "Fig4A_IFNRatio_Divergence.png"))
+# 2E: ISG+ IFN Ratio — 3-way HEI (ART rescue)
+panel(TARA_ALL,"ISG+ CD4 T cell","IFN_Ratio","Exposure_ART",hei3_ord,hei3_cols,"E",
+      file.path(out_story,"Fig2E_ISG_IFNRatio_3way.png"))
+add_guide("2","E","Fig2E_ISG_IFNRatio_3way.png","ISG+ CD4","IFN Ratio","3-way HEI",
+          "Largest ART rescue: Sup-Uns=+0.880")
 
-stress_top <- c("ISG+ CD4 T cell", "Naive Intermediate CD8", "Transitional Memory CD4",
-                "CD56dim CD122hi NK", "Treg", "Th2/Th17 EM CD4",
-                "Classical Monocyte", "Tex CD8")
+# 2F: Naive 1 vs 3 Stemness — 3-way HEI (differential resilience)
+panel(TARA_ALL,c("Naive 1 CD4","Naive 3 CD4"),"MS_Stemness_Naive","Exposure_ART",
+      hei3_ord,hei3_cols,"F",
+      file.path(out_story,"Fig2F_Naive1v3_Stemness_3way.png"))
+add_guide("2","F","Fig2F_Naive1v3_Stemness_3way.png","Naive 1 vs 3","Stemness","3-way HEI",
+          "Naive 3 (IL4R+) most resilient under viremia")
 
-story_violin(TARA_ALL, stress_top, "MS_Stress_IFN_Acute", "Exposure_ART", hei3_ord, hei3_cols,
-             "Fig 4B \u2014 Stress/IFN: Top divergent clusters (HEI 3-way)",
-             file.path(out_story, "Fig4B_Stress_TopClusters_3way.png"))
-story_violin(TARA_ALL, stress_top, "MS_Stress_IFN_Acute", "Exposure_ART", ea5_ord, ea5_cols,
-             "Fig 4B \u2014 Stress/IFN: Top divergent clusters (5-way)",
-             file.path(out_story, "Fig4B_Stress_TopClusters_5way.png"))
+# 2G: Treg IFN Ratio — 3-way HEI
+panel(TARA_ALL,"Treg","IFN_Ratio","Exposure_ART",hei3_ord,hei3_cols,"G",
+      file.path(out_story,"Fig2G_Treg_IFNRatio_3way.png"))
+add_guide("2","G","Fig2G_Treg_IFNRatio_3way.png","Treg","IFN Ratio","3-way HEI",
+          "Treg IFN flips under ART")
 
-ifn_sig_cls <- c("Naive Intermediate CD8", "Transitional Memory CD4", "Tscm CD8",
-                 "CD56dim CD122hi NK", "CD56dim CD122lo NK",
-                 "Treg", "Naive 1 CD4", "Naive 1 CD8")
+# ══ FIGURE 3: NK — CD122 gradient ══
+cat("  Fig 3: NK...\n")
 
-for (mod in c("MS_IFN_Signalling", "MS_IFN_Negative_Reg")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, ifn_sig_cls, mod, "Exposure_ART", ea5_ord, ea5_cols,
-               paste0("Fig 4C \u2014 ", ms, " (5-way, key clusters)"),
-               file.path(out_story, paste0("Fig4C_", ms, "_5way.png")))
-}
+# 3A: CD122lo vs hi IFN Ratio — 3-way HEI
+panel(TARA_ALL,c("CD56dim CD122lo NK","CD56dim CD122hi NK"),"IFN_Ratio",
+      "Exposure_ART",hei3_ord,hei3_cols,"A",
+      file.path(out_story,"Fig3A_CD122_IFNRatio_3way.png"))
+add_guide("3","A","Fig3A_CD122_IFNRatio_3way.png","CD122lo vs hi","IFN Ratio","3-way HEI",
+          "CD122hi best IFN responders under ART")
 
-mono_cls <- c("Classical Monocyte", "Non-classical Monocyte", "pDC")
-story_violin(TARA_ALL, mono_cls, "IFN_Ratio", "Exposure_ART", ea5_ord, ea5_cols,
-             "Fig 4 \u2014 Myeloid IFN Ratio (5-way)",
-             file.path(out_story, "Fig4_Myeloid_IFNRatio_5way.png"), ncol = 3)
+# 3B: CD122 IFN Memory — 3-way HEI
+panel(TARA_ALL,c("CD56dim CD122lo NK","CD56dim CD122hi NK"),"MS_IFN_Memory",
+      "Exposure_ART",hei3_ord,hei3_cols,"B",
+      file.path(out_story,"Fig3B_CD122_IFNMemory_3way.png"))
+add_guide("3","B","Fig3B_CD122_IFNMemory_3way.png","CD122lo vs hi","IFN Memory","3-way HEI",
+          "IFN Memory scales with CD122")
 
-# ═══════════════════════════════════════════════════════════════
-# FIGURE 5: VL CORRELATIONS & TWO-AXIS MODEL
-# ═══════════════════════════════════════════════════════════════
-cat("  Section 5: VL correlations...\n")
+# 3C: CD122hi Exhaustion — PreART vs HEU
+panel(TARA_ALL,"CD56dim CD122hi NK","MS_Exhaustion","Exposure_ART",
+      c("PreART_Entry","HEU"),c("PreART_Entry"="#E76F51","HEU"="#264653"),"C",
+      file.path(out_story,"Fig3C_CD122hi_Exhaust_PrevsHEU.png"))
+add_guide("3","C","Fig3C_CD122hi_Exhaust_PrevsHEU.png","CD122hi","Exhaustion","PreART vs HEU",
+          "Infection drives NK exhaustion")
 
-# Ratio scatters
-plot_ratio_scatter(
-  TARA_ALL@meta.data, "MS_Stress_IFN_Acute", "MS_IFN_Memory", "Exposure_ART",
-  ea5_cols, "Mean Stress/IFN Acute", "Mean IFN Memory",
-  "Fig 5B \u2014 IFN Memory vs Stress (All Groups)",
-  file.path(out_story, "Fig5B_IFN_Scatter_AllGroups.png"),
-  c("IFN-primed (good)", "Stressed (bad)"))
-plot_ratio_scatter(
-  TARA_ALL@meta.data, "MS_Glycolysis_Hypoxia", "MS_OXPHOS", "Exposure_ART",
-  ea5_cols, "Mean Glycolysis/Hypoxia", "Mean OXPHOS",
-  "Fig 5B \u2014 Metabolic Fitness (All Groups)",
-  file.path(out_story, "Fig5B_Metabolic_Scatter_AllGroups.png"),
-  c("Metabolically fit", "Glycolytic trap"))
+# 3D: CD56bright Cytotox — 3-way HEI
+panel(TARA_ALL,"CD56bright NK","MS_Cytotoxicity","Exposure_ART",hei3_ord,hei3_cols,"D",
+      file.path(out_story,"Fig3D_CD56bright_Cytotox_3way.png"))
+add_guide("3","D","Fig3D_CD56bright_Cytotox_3way.png","CD56bright","Cytotoxicity","3-way HEI",
+          "Aberrant activation normalises under ART")
 
-# Sample-level VL scatter
+# 3E: NK divergence
+divergence(TARA_ALL,c("CD56dim CD122lo NK","CD56dim CD122int NK","CD56dim CD122hi NK","CD56bright NK"),
+           "IFN_Ratio","E",file.path(out_story,"Fig3E_NK_Divergence.png"))
+add_guide("3","E","Fig3E_NK_Divergence.png","4 NK","IFN Ratio","Divergence","CD122hi largest separation")
+
+# ══ FIGURE 4: PAN-IMMUNE IFN ══
+cat("  Fig 4: IFN...\n")
+
+# 4A: 3 lineages IFN Ratio — 3-way HEI
+panel(TARA_ALL,c("TEMRA/CTL CD8","Transitional Memory CD4","CD56dim CD122hi NK"),
+      "IFN_Ratio","Exposure_ART",hei3_ord,hei3_cols,"A",
+      file.path(out_story,"Fig4A_3lineages_IFNRatio_3way.png"),w=7,h=4)
+add_guide("4","A","Fig4A_3lineages_IFNRatio_3way.png","CD8+CD4+NK","IFN Ratio","3-way HEI",
+          "Pan-immune IFN flip under ART")
+
+# 4B: 3 lineages Stress — 3-way HEI
+panel(TARA_ALL,c("TEMRA/CTL CD8","Transitional Memory CD4","CD56dim CD122hi NK"),
+      "MS_Stress_IFN_Acute","Exposure_ART",hei3_ord,hei3_cols,"B",
+      file.path(out_story,"Fig4B_3lineages_Stress_3way.png"),w=7,h=4)
+add_guide("4","B","Fig4B_3lineages_Stress_3way.png","CD8+CD4+NK","Stress","3-way HEI",
+          "Unsuppressed stress worsens from PreART")
+
+# 4C: Monocytes — 3-way HEI
+panel(TARA_ALL,c("Classical Monocyte","Non-classical Monocyte"),"IFN_Ratio",
+      "Exposure_ART",hei3_ord,hei3_cols,"C",
+      file.path(out_story,"Fig4C_Monocytes_IFNRatio_3way.png"))
+add_guide("4","C","Fig4C_Monocytes_IFNRatio_3way.png","Classical vs NC Mono","IFN Ratio","3-way HEI",
+          "Only NC achieves positive ratio")
+
+# 4D-E: Grand divergence
+divergence(TARA_ALL, sort(unique(TARA_ALL$Annotation)),
+           "IFN_Ratio","D",file.path(out_story,"Fig4D_Grand_IFN_Divergence.png"))
+add_guide("4","D","Fig4D_Grand_IFN_Divergence.png","All 31","IFN Ratio","Divergence","22/31 diverge")
+divergence(TARA_ALL, sort(unique(TARA_ALL$Annotation)),
+           "MS_Glycolysis_Hypoxia","E",file.path(out_story,"Fig4E_Grand_Glyc_Divergence.png"))
+add_guide("4","E","Fig4E_Grand_Glyc_Divergence.png","All 31","Glycolysis","Divergence","0/31 diverge")
+
+# ══ FIGURE 5: VL ══
+cat("  Fig 5: VL...\n")
 sample_meta <- TARA_ALL@meta.data %>%
   filter(!is.na(Exposure_ART) & Exposure_ART %in% hei3_ord) %>%
   group_by(orig.ident, Exposure_ART) %>%
-  summarise(
-    VL = first(Viral_Load_num),
-    IFN_Ratio = mean(IFN_Ratio, na.rm = TRUE),
-    Exhaustion = mean(MS_Exhaustion, na.rm = TRUE),
-    Stress = mean(MS_Stress_IFN_Acute, na.rm = TRUE),
-    Stemness = mean(MS_Stemness_Naive, na.rm = TRUE),
-    MetRatio = mean(Metabolic_Ratio, na.rm = TRUE),
-    n = n(), .groups = "drop") %>%
+  summarise(VL=first(Viral_Load_num), IFN_Ratio=mean(IFN_Ratio,na.rm=TRUE),
+            Exhaustion=mean(MS_Exhaustion,na.rm=TRUE), Stress=mean(MS_Stress_IFN_Acute,na.rm=TRUE),
+            Stemness=mean(MS_Stemness_Naive,na.rm=TRUE), n=n(), .groups="drop") %>%
   filter(!is.na(VL) & VL > 0)
 
-for (yvar in c("IFN_Ratio", "Exhaustion", "Stress", "Stemness")) {
-  p_samp <- ggplot(sample_meta, aes(x = log10(VL), y = .data[[yvar]],
-                                    color = Exposure_ART)) +
-    geom_point(aes(size = n), alpha = 0.8) +
-    geom_smooth(method = "lm", se = FALSE, linewidth = 0.6, linetype = "dashed",
-                color = "grey40") +
-    ggrepel::geom_text_repel(aes(label = orig.ident), size = 3,
-                             max.overlaps = 15, show.legend = FALSE) +
-    scale_color_manual(values = hei3_cols, name = "ART Status") +
-    scale_size_continuous(range = c(3, 8), name = "n cells") +
-    labs(title = paste0("Fig 5C \u2014 Sample-level: log10(VL) vs ", yvar),
-         x = "log10(Viral Load)", y = yvar) +
-    theme_cowplot(font_size = 13) +
-    theme(legend.position = "top",
-          plot.background = element_rect(fill = "white", color = NA))
-  ggsave(file.path(out_story, paste0("Fig5C_Sample_VL_vs_", yvar, ".png")),
-         p_samp, width = 10, height = 8, dpi = 300, bg = "white")
+vl_tags <- c(IFN_Ratio="A", Exhaustion="B", Stress="C", Stemness="D")
+vl_labels <- c("PreART_Entry"="PreART", "PostART_Suppressed"="Suppressed",
+               "PostART_Unsuppressed"="Unsuppressed")
+for (yvar in names(vl_tags)) {
+  ylab <- gsub("_"," ",yvar)
+  p_s <- ggplot(sample_meta, aes(x=log10(VL), y=.data[[yvar]], color=Exposure_ART)) +
+    geom_point(size=3, alpha=0.85) +
+    geom_smooth(method="lm", se=FALSE, linewidth=0.6, linetype="dashed", color="grey40") +
+    ggrepel::geom_text_repel(aes(label=orig.ident), size=2.5, max.overlaps=15, show.legend=FALSE) +
+    scale_color_manual(values=hei3_cols, labels=vl_labels, name="") +
+    labs(tag=vl_tags[yvar], x="log10(VL)", y=ylab) +
+    theme_minimal(base_size=11) +
+    theme(legend.position="top", legend.key.size=unit(0.3,"cm"),
+          plot.tag=element_text(size=14,face="bold"), plot.tag.position=c(0,1),
+          plot.background=element_rect(fill="white",color=NA))
+  fname <- paste0("Fig5",vl_tags[yvar],"_VL_",yvar,".png")
+  ggsave(file.path(out_story,fname), p_s, width=4, height=3.5, dpi=300, bg="white")
+  add_guide("5",vl_tags[yvar],fname,"Per-sample",yvar,"VL scatter",paste0("VL vs ",ylab))
 }
+panel(TARA_ALL,c("Tscm CD8","Naive 1 CD4","CD56dim CD122hi NK","Treg"),
+      "MS_Glycolysis_Hypoxia","Exposure_ART",hei3_ord,hei3_cols,"E",
+      file.path(out_story,"Fig5E_TwoAxis_Glycolysis.png"),w=8.5,h=3.5)
+add_guide("5","E","Fig5E_TwoAxis_Glycolysis.png","4 key","Glycolysis","3-way","Both arms resolve (ART-intrinsic)")
+panel(TARA_ALL,c("Tscm CD8","Naive 1 CD4","CD56dim CD122hi NK","Treg"),
+      "IFN_Ratio","Exposure_ART",hei3_ord,hei3_cols,"F",
+      file.path(out_story,"Fig5F_TwoAxis_IFNRatio.png"),w=8.5,h=3.5)
+add_guide("5","F","Fig5F_TwoAxis_IFNRatio.png","4 key","IFN Ratio","3-way","Only Sup improves (requires suppression)")
 
-# Two-axis model clusters
-twoaxis_cls <- c("Tscm CD8", "Naive 1 CD4", "Naive Intermediate CD8",
-                 "Treg", "CD56dim CD122hi NK", "Transitional Memory CD4")
-for (mod in c("MS_Glycolysis_Hypoxia", "IFN_Ratio")) {
-  ms <- gsub("MS_", "", mod)
-  story_violin(TARA_ALL, twoaxis_cls, mod, "Exposure_ART", ea5_ord, ea5_cols,
-               paste0("Fig 5 \u2014 Two-Axis: ", ms, " (5-way)"),
-               file.path(out_story, paste0("Fig5_TwoAxis_", ms, "_5way.png")))
-}
+# ── Assembly guide ──
+write.csv(guide, file.path(out_story,"ASSEMBLY_GUIDE.csv"), row.names=FALSE)
+cat("\n\u2713 Story Figures:", nrow(guide), "panels across 5 figures\n")
+cat("  ASSEMBLY_GUIDE.csv = PPT layout order\n\n")
 
-# Grand divergence plots (all 31 clusters)
-cat("  Grand divergence summaries...\n")
-all_cls <- sort(unique(TARA_ALL$Annotation))
-story_divergence(TARA_ALL, all_cls, "IFN_Ratio",
-                 "IFN Ratio: Divergence from PreART (all clusters)",
-                 file.path(out_story, "Grand_IFNRatio_Divergence_AllClusters.png"))
-story_divergence(TARA_ALL, all_cls, "MS_Stress_IFN_Acute",
-                 "Stress/IFN: Divergence from PreART (all clusters)",
-                 file.path(out_story, "Grand_Stress_Divergence_AllClusters.png"))
-story_divergence(TARA_ALL, all_cls, "MS_Glycolysis_Hypoxia",
-                 "Glycolysis: Divergence from PreART (all clusters)",
-                 file.path(out_story, "Grand_Glycolysis_Divergence_AllClusters.png"))
-
-cat("\n\u2713 Story Figures complete: ", out_story, "\n\n")
 
 message("\n",
         "══════════════════════════════════════════════════════════════\n",
