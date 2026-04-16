@@ -1,0 +1,31 @@
+"Cluster","Timepoint_Group","Proportion"
+"CD16+ Effector CD8","PostART_Suppressed",0.0758354755784062
+"KIR+ innate-like CD8","PostART_Suppressed",0.0591259640102828
+"Naïve CD8","PostART_Suppressed",0.201248622842453
+"Naïve CD8 2","PostART_Suppressed",0.0235034887991186
+"Naïve CD8 3","PostART_Suppressed",0.126882115313992
+"Naïve CD8 4","PostART_Suppressed",0.0602276900477415
+"Naïve Intermediate CD8","PostART_Suppressed",0.036907822254866
+"TEM CD8","PostART_Suppressed",0.139001101726037
+"TEMRA CD8","PostART_Suppressed",0.274880646345942
+"Tscm CD8","PostART_Suppressed",0.00238707308116048
+"CD16+ Effector CD8","PostART_Unsuppressed",0.0857554648090319
+"KIR+ innate-like CD8","PostART_Unsuppressed",0.0374729762190728
+"Naïve CD8","PostART_Unsuppressed",0.186884458323325
+"Naïve CD8 2","PostART_Unsuppressed",0.0509248138361758
+"Naïve CD8 3","PostART_Unsuppressed",0.0987268796540956
+"Naïve CD8 4","PostART_Unsuppressed",0.0156137400912803
+"Naïve Intermediate CD8","PostART_Unsuppressed",0.00336295940427576
+"TEM CD8","PostART_Unsuppressed",0.168388181599808
+"TEMRA CD8","PostART_Unsuppressed",0.344463127552246
+"Tscm CD8","PostART_Unsuppressed",0.00840739851068941
+"CD16+ Effector CD8","PreART_Entry",0.00974658869395711
+"KIR+ innate-like CD8","PreART_Entry",0.00151613601906
+"Naïve CD8","PreART_Entry",0.314814814814815
+"Naïve CD8 2","PreART_Entry",0.167208143816331
+"Naïve CD8 3","PreART_Entry",0.0239332900151614
+"Naïve CD8 4","PreART_Entry",0.0232835174355642
+"Naïve Intermediate CD8","PreART_Entry",0.216157678145982
+"TEM CD8","PreART_Entry",0.0477582846003899
+"TEMRA CD8","PreART_Entry",0.153346328784925
+"Tscm CD8","PreART_Entry",0.0422352176738142
