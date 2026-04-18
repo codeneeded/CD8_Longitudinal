@@ -779,15 +779,15 @@ cat("\n=== Clonal persistence summary (expanded clones, HEI) ===\n")
 print(as.data.frame(persistence_summary))
 
 persist_long <- persistence_df %>%
-  mutate(Persistence = ifelse(n_timepoints >= 2, "Persistent (2+ visits)", "Single visit")) %>%
+  mutate(Persistence = ifelse(n_timepoints >= 2, "Persistent (2+ timepoints)", "Single timepoint")) %>%
   group_by(PID, Persistence) %>%
   summarise(n_clones = n(), .groups = "drop") %>%
   mutate(PID = factor(PID, levels = hei_5))
 
 p_s2b <- ggplot(persist_long, aes(x = PID, y = n_clones, fill = Persistence)) +
   geom_col(position = "stack", width = 0.6, color = "white", linewidth = 0.3) +
-  scale_fill_manual(values = c("Persistent (2+ visits)" = "#E63946",
-                               "Single visit" = "#A8DADC"),
+  scale_fill_manual(values = c("Persistent (2+ timepoints)" = "#E63946",
+                               "Single timepoint" = "#A8DADC"),
                     name = NULL) +
   scale_y_continuous(expand = c(0, 0)) +
   labs(x = NULL, y = "N Expanded Clonotypes",
@@ -979,6 +979,8 @@ message("  \u2713 S2D saved")
 
 ################################################################################
 # MANUSCRIPT STATS EXTRACTION — Figure 2
+#
+# Prints all values needed to update the manuscript text
 ################################################################################
 
 cat("\n")
@@ -1052,3 +1054,30 @@ epitope_by_patient <- waffle_data %>%
 
 print(as.data.frame(epitope_by_patient))
 
+cat("\n================================================================\n")
+cat("  DONE — Copy/paste output above for manuscript revisions\n")
+cat("================================================================\n")
+
+
+################################################################################
+# SUMMARY
+################################################################################
+
+message("\n",
+        "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+        " All panels saved.\n",
+        "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n",
+        "\n",
+        " MAIN FIGURE 2:  ", fig2_dir, "\n",
+        "   2A(i):  Clonal expansion UMAP (HEI / HEU / HUU)\n",
+        "   2A(ii): Stacked bar \u2014 cloneSize per CD8 cluster (6 clusters)\n",
+        "   2B:     Alluvial + VL + CD4 + Clinical (per patient + grids)\n",
+        "   2C:     Waffle charts + legend\n",
+        "\n",
+        " SUPPLEMENTARY S2:  ", supp2_dir, "\n",
+        "   S2A: Clone size distribution by condition\n",
+        "   S2B: Clonal persistence per patient\n",
+        "   S2C: Cross-cluster clonotype sharing (6 clusters)\n",
+        "   S2D: Temporal epitope specificity\n",
+        "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n"
+)
