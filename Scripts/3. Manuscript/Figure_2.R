@@ -1067,12 +1067,15 @@ print(as.data.frame(epitope_by_patient))
 # descriptive n=2 comparison.
 #
 # OUTPUTS (saved to supp2_dir):
-#   - ReservoirExtension_Table.csv         per-participant reservoir+TCR table
+#   - ReservoirExtension_Table.csv         per-participant reservoir+VL/CD4+TCR
 #   - ReservoirExtension_LongitudinalResv.csv  longitudinal reservoir values
+#   - ReservoirExtension_VL_CD4.csv        longitudinal VL/CD4 values
 #   - S2E_Reservoir_vs_Persistence.png     scatter (intact 12m / LTR 12m)
 #   - S2F_Reservoir_vs_HIV_Clones.png      scatter
 #   - S2G_Reservoir_vs_ModuleScores.png    only if module scores found
 #   - S2H_Longitudinal_IntactFraction.png  longitudinal intact fraction curves
+#   - S2I_Longitudinal_VL_CD4_Reservoir.png combined VL/CD4/reservoir tracks
+#   - S2J_VL_AUC_vs_Persistence.png        cumulative antigen vs persistence
 #   - Jaccard_Consecutive_Timepoints.csv   per-patient, per-transition Jaccard
 #
 # USAGE:
@@ -1161,6 +1164,174 @@ reservoir_summary <- tribble(
 write.csv(reservoir_long,
           file.path(supp2_dir, "ReservoirExtension_LongitudinalResv.csv"),
           row.names = FALSE)
+
+
+################################################################################
+# 1b. VL + CD4 LONGITUDINAL DATA (from TARA_VL_CD4.xlsx)
+#
+# Hardcoded so the script runs without re-reading the xlsx. Numbers extracted
+# from rows matching CP003/CP006/CP013/CP018/CP020 in Sheet1 of
+# TARA_VL_CD4.xlsx. Only visits with at least one of VL/CD4 recorded are kept.
+# "days_to_supp" fields copied from columns E/F (per-participant, same on every
+# row for a given PID).
+################################################################################
+
+vl_cd4_long <- tribble(
+  ~PID,    ~Age_m,   ~VL_cpmL,   ~VL_log10, ~CD4_mm3,  ~CD4_pct,
+  # CP003
+  "CP003",    1,    656769,      5.82,       NA,        NA,
+  "CP003",    2,      2621,      3.42,       NA,        NA,
+  "CP003",    3,        NA,        NA,     2212,      43.0,
+  "CP003",    5,        70,      1.85,       NA,        NA,
+  "CP003",    6,    237782,      5.38,       NA,        NA,
+  "CP003",    9,     35236,      4.55,     2453,      34.0,
+  "CP003",   10,    590794,      5.77,       NA,        NA,
+  "CP003",   12,    416199,      5.62,       NA,        NA,
+  "CP003",   18,    321762,      5.51,     2405,      35.0,
+  "CP003",   18,    528361,      5.72,       NA,        NA,
+  "CP003",   19,    313011,      5.50,       NA,        NA,
+  "CP003",   23,    548564,      5.74,       NA,        NA,
+  "CP003",   24,    921709,      5.96,     2490,      29.2,
+  "CP003",   93,        90,        NA,       NA,        NA,
+  "CP003",   97,        20,        NA,     1211,        NA,
+  # CP006
+  "CP006",    1,  10000000,      7.00,     1155,      32.0,
+  "CP006",    2,      6075,      3.78,       NA,        NA,
+  "CP006",    3,       143,      2.16,       NA,        NA,
+  "CP006",    5,       242,      2.38,       NA,        NA,
+  "CP006",    6,       101,      2.12,       NA,        NA,
+  "CP006",    7,        NA,        NA,     1952,        NA,
+  "CP006",    9,       131,      2.00,       NA,        NA,
+  "CP006",   10,        53,      1.72,       NA,        NA,
+  "CP006",   12,        73,      1.86,     1961,      29.0,
+  "CP006",   18,        94,      1.96,     1371,      28.0,
+  "CP006",   18,        20,      1.30,       NA,        NA,
+  "CP006",   19,        20,      1.30,       NA,        NA,
+  "CP006",   24,        20,      1.30,       NA,        NA,
+  "CP006",   36,        NA,        NA,     1261,      28.5,
+  "CP006",   40,        20,        NA,       NA,        NA,
+  "CP006",   48,        20,        NA,     1182,      31.0,
+  "CP006",   62,        20,        NA,     1101,        NA,
+  "CP006",   70,     88800,      5.90,      601,        NA,
+  # CP013
+  "CP013",    1,      3434,      3.54,     4033,      40.9,
+  "CP013",    2,       607,      2.78,       NA,        NA,
+  "CP013",    3,       153,        NA,       NA,        NA,
+  "CP013",    4,        NA,      2.18,       NA,        NA,
+  "CP013",    5,        49,      1.69,       NA,        NA,
+  "CP013",    6,        20,      1.30,       NA,        NA,
+  "CP013",    9,        20,      1.30,       NA,        NA,
+  "CP013",   10,        20,      1.30,     3373,      31.0,
+  "CP013",   12,        20,      1.30,       NA,        NA,
+  "CP013",   15,        NA,        NA,     2003,      38.0,
+  "CP013",   18,        20,      1.30,       NA,        NA,
+  "CP013",   23,        NA,        NA,     1394,      32.0,
+  "CP013",   25,        20,        NA,       NA,        NA,
+  "CP013",   33,        NA,        NA,     1522,      36.0,
+  "CP013",   42,        20,        NA,       NA,        NA,
+  "CP013",   48,        NA,        NA,     1510,        NA,
+  "CP013",   53,    104001,      5.02,     1611,      37.0,
+  "CP013",   60,        20,        NA,       NA,        NA,
+  "CP013",   66,        20,        NA,     1389,        NA,
+  "CP013",   78,        20,        NA,     1251,        NA,
+  "CP013",   84,        20,        NA,     1062,        NA,
+  "CP013",   88,        20,        NA,      933,        NA,
+  "CP013",   92,        20,        NA,     1413,      30.9,
+  # CP018
+  "CP018",    1,    176970,      5.25,     5713,      59.0,
+  "CP018",    3,        97,      1.99,       NA,        NA,
+  "CP018",    4,        90,      1.95,       NA,        NA,
+  "CP018",    6,       361,      2.56,       NA,        NA,
+  "CP018",    7,        99,      2.00,     3630,        NA,
+  "CP018",   10,        20,      1.30,       NA,        NA,
+  "CP018",   11,        20,      1.30,     3351,      60.0,
+  "CP018",   13,        20,      1.38,       NA,        NA,
+  "CP018",   17,        NA,        NA,     4092,      67.0,
+  "CP018",   19,        20,      1.30,       NA,        NA,
+  "CP018",   19,        20,      1.30,       NA,        NA,
+  "CP018",   23,        NA,        NA,     2639,      49.0,
+  "CP018",   25,        20,        NA,       NA,        NA,
+  "CP018",   33,        NA,        NA,     1876,      58.0,
+  "CP018",   36,      3460,      3.54,       NA,        NA,
+  "CP018",   37,        NA,        NA,     2341,        NA,
+  "CP018",   42,        57,      1.76,     3231,        NA,
+  "CP018",   48,        NA,        NA,     3184,      55.0,
+  "CP018",   59,        20,        NA,       NA,        NA,
+  "CP018",   65,        20,        NA,     1928,      53.0,
+  "CP018",   78,        20,        NA,     1177,        NA,
+  "CP018",   84,        26,      1.41,     1320,        NA,
+  "CP018",   87,        20,        NA,     1330,        NA,
+  # CP020
+  "CP020",    1,    414409,      5.62,     1731,      21.0,
+  "CP020",    3,   6597870,      6.82,       NA,        NA,
+  "CP020",    5,   1906485,      6.28,       NA,        NA,
+  "CP020",    6,   1295342,      6.11,       NA,        NA,
+  "CP020",    9,   6728224,      6.83,     1349,        NA,
+  "CP020",   10,   2586245,      6.41,       NA,        NA,
+  "CP020",   12,  10000000,      7.00,     1071,       8.5,
+  "CP020",   16,   5100378,      6.71,       NA,        NA,
+  "CP020",   18,   3170082,      6.50,       NA,        NA,
+  "CP020",   19,   2720690,      6.43,       NA,        NA,
+  "CP020",   19,   3097575,      6.49,     1320,      10.0,
+  "CP020",   22,   3620634,      6.56,       NA,        NA,
+  "CP020",   29,     10167,      4.01,       NA,        NA,
+  "CP020",   31,    140460,      5.15,      775,      12.0,
+  "CP020",   34,    206003,      5.31,       NA,        NA,
+  "CP020",   44,    534772,      5.73,      743,        NA,
+  "CP020",   45,     55350,      4.74,       NA,        NA,
+  "CP020",   57,       182,        NA,     1147,        NA,
+  "CP020",   63,       146,      2.16,      901,      16.0,
+  "CP020",   76,        70,      1.84,      691,        NA,
+  "CP020",   81,        96,      1.98,      959,        NA,
+  "CP020",   85,        50,      1.70,      532,        NA,
+  "CP020",   89,        NA,        NA,      821,      23.0
+)
+
+# "Days to first VL ≤400 / ≤20" from clinical metadata
+days_to_supp <- tribble(
+  ~PID,    ~days_to_supp_400, ~days_to_supp_20,
+  "CP003", 152,               NA,
+  "CP006",  93,              570,
+  "CP013",  94,              170,
+  "CP018",  65,              275,
+  "CP020",  NA,               NA
+)
+
+write.csv(vl_cd4_long,
+          file.path(supp2_dir, "ReservoirExtension_VL_CD4.csv"),
+          row.names = FALSE)
+
+# Per-PID VL/CD4 summary metrics restricted to the first 24 months
+# (matched to the scRNA-seq sampling window).
+vl_cd4_summary <- vl_cd4_long %>%
+  filter(Age_m <= 24) %>%
+  group_by(PID) %>%
+  summarise(
+    vl_peak_24m       = suppressWarnings(max(VL_cpmL, na.rm = TRUE)),
+    vl_median_24m     = suppressWarnings(median(VL_cpmL, na.rm = TRUE)),
+    vl_log_median_24m = suppressWarnings(median(VL_log10, na.rm = TRUE)),
+    # Area under VL log10 curve over 0–24 m, trapezoidal
+    vl_auc_log_24m    = {
+      df <- tibble(Age_m, VL_log10) %>%
+        filter(!is.na(VL_log10)) %>% arrange(Age_m) %>%
+        # collapse duplicates by mean
+        group_by(Age_m) %>% summarise(VL_log10 = mean(VL_log10), .groups = "drop")
+      if (nrow(df) < 2) NA_real_ else
+        sum(diff(df$Age_m) * (head(df$VL_log10, -1) + tail(df$VL_log10, -1)) / 2)
+    },
+    cd4_min_24m       = suppressWarnings(min(CD4_mm3, na.rm = TRUE)),
+    cd4_median_24m    = suppressWarnings(median(CD4_mm3, na.rm = TRUE)),
+    cd4pct_min_24m    = suppressWarnings(min(CD4_pct, na.rm = TRUE)),
+    cd4pct_median_24m = suppressWarnings(median(CD4_pct, na.rm = TRUE)),
+    n_vl_visits_24m   = sum(!is.na(VL_cpmL)),
+    .groups = "drop"
+  ) %>%
+  # replace Inf from empty slices with NA
+  mutate(across(where(is.numeric), ~ ifelse(is.finite(.x), .x, NA_real_))) %>%
+  left_join(days_to_supp, by = "PID")
+
+cat("\n=== VL/CD4 SUMMARY (first 24 m) ===\n")
+print(as.data.frame(vl_cd4_summary))
 
 
 ################################################################################
@@ -1370,7 +1541,8 @@ combined <- reservoir_summary %>%
   left_join(persistence_metrics, by = "PID") %>%
   left_join(jaccard_per_pid,     by = "PID") %>%
   left_join(hiv_clones_per_pid,  by = "PID") %>%
-  left_join(module_per_pid,      by = "PID")
+  left_join(module_per_pid,      by = "PID") %>%
+  left_join(vl_cd4_summary,      by = "PID")
 
 cat("\n=== COMBINED PER-PATIENT RESERVOIR + TCR + MODULE TABLE ===\n")
 print(as.data.frame(combined))
@@ -1383,14 +1555,23 @@ write.csv(combined,
 numeric_cols <- combined %>% select(where(is.numeric)) %>% colnames()
 resv_metrics <- c("Intact_per_mil", "Defective_per_mil", "Pct_intact",
                   "LTR_per_mil", "Total_HIV_per_mil_early_1m")
+vlcd4_metrics <- c("vl_peak_24m", "vl_median_24m", "vl_log_median_24m",
+                   "vl_auc_log_24m", "days_to_supp_400", "days_to_supp_20",
+                   "cd4_min_24m", "cd4_median_24m",
+                   "cd4pct_min_24m", "cd4pct_median_24m")
 tcr_metrics  <- c("n_persist_2p", "pct_persist_2p", "mean_timepoints_per_clone",
                   "pct_persistent_cells", "mean_jaccard_consec",
                   "n_HIV", "pct_HIV")
 mod_metrics  <- intersect(names(module_per_pid), names(module_patterns))
 
+# regressors: anything reservoir OR vl/cd4 derived
+reg_metrics  <- union(resv_metrics, vlcd4_metrics)
+# outcomes: TCR persistence + module scores
+out_metrics  <- union(tcr_metrics, mod_metrics)
+
 cor_rows <- list()
-for (rm in intersect(resv_metrics, numeric_cols)) {
-  for (tm in intersect(c(tcr_metrics, mod_metrics), numeric_cols)) {
+for (rm in intersect(reg_metrics, numeric_cols)) {
+  for (tm in intersect(out_metrics, numeric_cols)) {
     x <- combined[[rm]]; y <- combined[[tm]]
     ok <- complete.cases(x, y)
     if (sum(ok) >= 3) {
@@ -1509,6 +1690,75 @@ ggsave(file.path(supp2_dir, "S2H_Longitudinal_IntactFraction.png"),
        p_s2h, width = 8, height = 5, dpi = 300, bg = "white")
 
 
+# ── S2I: three-panel longitudinal — VL, CD4 count, total HIV DNA ────────────
+# One row per participant (free_y), shared age axis. scRNA-seq timepoints
+# annotated with grey rules at 1, 12, 24 m.
+vl_track  <- vl_cd4_long %>%
+  transmute(PID, Age_m, metric = "VL (log10 cp/mL)", value = VL_log10) %>%
+  filter(!is.na(value))
+cd4_track <- vl_cd4_long %>%
+  transmute(PID, Age_m, metric = "CD4 count (/mm³)", value = CD4_mm3) %>%
+  filter(!is.na(value))
+res_track <- reservoir_long %>%
+  filter(!is.na(Total_DNA)) %>%
+  transmute(PID, Age_m, metric = "Total HIV DNA (log10 / 10⁶ PBMC)",
+            value = log10(pmax(Total_DNA, 0.1)))
+intact_track <- reservoir_long %>%
+  filter(!is.na(Intact)) %>%
+  transmute(PID, Age_m, metric = "Intact provirus (log10 / 10⁶ PBMC)",
+            value = log10(pmax(Intact, 0.1)))
+
+tracks_df <- bind_rows(vl_track, cd4_track, res_track, intact_track) %>%
+  mutate(metric = factor(metric, levels = c(
+    "VL (log10 cp/mL)", "CD4 count (/mm³)",
+    "Total HIV DNA (log10 / 10⁶ PBMC)",
+    "Intact provirus (log10 / 10⁶ PBMC)"
+  )))
+
+scrna_lines <- tibble(Age_m = c(1, 12, 24))
+
+p_s2i <- ggplot(tracks_df,
+                aes(x = Age_m, y = value, color = PID, group = PID)) +
+  geom_vline(data = scrna_lines, aes(xintercept = Age_m),
+             linetype = "dotted", color = "grey40") +
+  geom_line(linewidth = 0.8) +
+  geom_point(size = 2.2) +
+  scale_color_manual(values = pid_cols_5) +
+  scale_x_continuous(breaks = c(1, 6, 12, 24, 48, 72, 87)) +
+  facet_grid(metric ~ PID, scales = "free_y", switch = "y") +
+  labs(x = "Age (months)", y = NULL,
+       title = "Longitudinal virological, immunological and reservoir trajectories",
+       subtitle = "Grey dotted lines: scRNA-seq sampling (1, 12, 24 m)") +
+  theme_bw(base_size = 11) +
+  theme(legend.position = "none",
+        strip.background = element_rect(fill = "grey92", color = NA),
+        strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
+        strip.placement = "outside",
+        plot.title = element_text(face = "bold"),
+        panel.grid.minor = element_blank())
+
+ggsave(file.path(supp2_dir, "S2I_Longitudinal_VL_CD4_Reservoir.png"),
+       p_s2i, width = 14, height = 9, dpi = 300, bg = "white")
+
+
+# ── S2J: VL AUC (first 24m) vs clonal persistence ────────────────────────────
+p_s2j <- combined %>%
+  filter(!is.na(vl_auc_log_24m), !is.na(pct_persist_2p)) %>%
+  ggplot(aes(x = vl_auc_log_24m, y = pct_persist_2p, color = PID, label = PID)) +
+  geom_point(size = 6) +
+  geom_text_repel(size = 5, fontface = "bold", box.padding = 1) +
+  scale_color_manual(values = pid_cols_5) +
+  labs(x = "VL AUC (log10·months) over first 24 m",
+       y = "% expanded clones persisting ≥2 timepoints",
+       title = "Cumulative antigen exposure vs clonal persistence") +
+  theme_classic(base_size = 16) +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold"))
+
+ggsave(file.path(supp2_dir, "S2J_VL_AUC_vs_Persistence.png"),
+       p_s2j, width = 7, height = 6, dpi = 300, bg = "white")
+
+
 ################################################################################
 # 9. MANUSCRIPT-READY STATS PRINTOUT
 ################################################################################
@@ -1537,6 +1787,13 @@ for (pid in hei_5) {
            format(round(r$Total_HIV_per_mil_early_1m, 1))),
     r$n_expanded_clones, r$n_persist_2p,
     r$pct_persist_2p, r$n_HIV
+  ))
+  cat(sprintf(
+    "  | VL AUC 0-24m (log10·mo)=%s, median VL log10 0-24m=%s, CD4 nadir 0-24m=%s, days to VL<=400=%s.",
+    ifelse(is.na(r$vl_auc_log_24m),    "—", format(round(r$vl_auc_log_24m, 1))),
+    ifelse(is.na(r$vl_log_median_24m), "—", format(round(r$vl_log_median_24m, 2))),
+    ifelse(is.na(r$cd4_min_24m),       "—", format(round(r$cd4_min_24m))),
+    ifelse(is.na(r$days_to_supp_400),  "—", format(r$days_to_supp_400))
   ))
 }
 cat("\n\n")
