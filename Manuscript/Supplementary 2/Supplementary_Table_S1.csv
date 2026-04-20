@@ -1,0 +1,6 @@
+"PID","ART_status","Reservoir_timepoint_m","Intact_per_mil","Pct_intact","LTR_per_mil","Total_HIV_1m","Jaccard_1m→12m","Jaccard_12m→24m","Jaccard_12m→25m","Jaccard_1m→25m","Jaccard_25m→42m","Jaccard_12m→44m","n_expanded_clones","n_persist_2p","pct_persist_2p","max_timepoints","n_HIV","pct_HIV"
+"CP003","Intermittent / rebound",12,282.73,41.19,690.75,3988.42,0.1064,0.2806,NA,NA,NA,NA,163,42,25.8,3,7,4.3
+"CP006","Rapidly suppressed",12,4.39,14.27,65.51,31491.73,0,0.236,NA,NA,NA,NA,168,38,22.6,2,2,1.2
+"CP013","Suppressed (low seeding)",87,0,0,0,41.47,0,NA,0.1981,NA,NA,NA,108,21,19.4,2,2,1.9
+"CP018","Suppressed",80,NA,NA,18.32,3470.07,NA,NA,NA,0,0.2105,NA,54,8,14.8,2,0,0
+"CP020","Never suppressed",84,0,0,312.3,5578.01,0,NA,NA,NA,NA,0.1304,187,21,11.2,2,2,1.1

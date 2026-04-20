@@ -1,0 +1,10 @@
+"reservoir_metric","tcr_metric","n","rho","p"
+"Intact_per_mil","n_persist_2p",4,1,0
+"Pct_intact","n_persist_2p",4,1,0
+"Intact_per_mil","pct_persist_2p",4,0.949,0.0513
+"Pct_intact","pct_persist_2p",4,0.949,0.0513
+"Intact_per_mil","n_HIV",4,0.816,0.1835
+"Pct_intact","n_HIV",4,0.816,0.1835
+"LTR_per_mil","n_HIV",5,0.671,0.2152
+"LTR_per_mil","n_persist_2p",5,0.667,0.2189
+"LTR_per_mil","pct_persist_2p",5,0.3,0.6238

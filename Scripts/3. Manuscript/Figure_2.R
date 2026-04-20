@@ -1053,315 +1053,60 @@ epitope_by_patient <- waffle_data %>%
   mutate(Total = rowSums(across(-PID)))
 
 print(as.data.frame(epitope_by_patient))
-
 ################################################################################
-# FIGURE 2 — RESERVOIR EXTENSION
+# RESERVOIR EXTENSION — TABLE S1 + CSVs
 #
-# Run AFTER Figure_2.R in the same R session. It reuses:
-#   TARA_ALL, TARA_CD8, TARA_ALL_TRB_2, combined.TCR.TARA,
-#   persistence_df, persistence_summary, waffle_data, epitope_by_patient,
-#   age_lookup, hei_5, cd8_cluster_names, cd8_short_labels
+# Run AFTER Figure_2.R in the same R session. Requires:
+#   TARA_ALL, persistence_df, waffle_data, age_lookup, hei_5
 #
-# PURPOSE: produce per-participant quantitative anchors so the n=5 reservoir
-# paragraph (manuscript P53) can be supported with statistics rather than a
-# descriptive n=2 comparison.
+# OUTPUTS (to Manuscript/Supplementary 2/):
+#   Supplementary_Table_S1.csv   — per-PID reservoir + Jaccard + persistence
+#   Jaccard_Consecutive_Timepoints.csv
+#   ReservoirExtension_SpearmanCor.csv
 #
-# OUTPUTS (saved to supp2_dir):
-#   - ReservoirExtension_Table.csv         per-participant reservoir+VL/CD4+TCR
-#   - ReservoirExtension_LongitudinalResv.csv  longitudinal reservoir values
-#   - ReservoirExtension_VL_CD4.csv        longitudinal VL/CD4 values
-#   - S2E_Reservoir_vs_Persistence.png     scatter (intact 12m / LTR 12m)
-#   - S2F_Reservoir_vs_HIV_Clones.png      scatter
-#   - S2G_Reservoir_vs_ModuleScores.png    only if module scores found
-#   - S2H_Longitudinal_IntactFraction.png  longitudinal intact fraction curves
-#   - S2I_Longitudinal_VL_CD4_Reservoir.png combined VL/CD4/reservoir tracks
-#   - S2J_VL_AUC_vs_Persistence.png        cumulative antigen vs persistence
-#   - Jaccard_Consecutive_Timepoints.csv   per-patient, per-transition Jaccard
-#
-# USAGE:
-#   source("Figure_2.R")
-#   source("Figure_2_Reservoir_Extension.R")
+# No supplementary figure renumbering needed — this is just a table.
 ################################################################################
 
 library(tidyverse)
-library(ggplot2)
-library(ggrepel)
-library(patchwork)
 
-# ── Sanity check on upstream objects ─────────────────────────────────────────
 stopifnot(exists("TARA_ALL"), exists("persistence_df"), exists("hei_5"),
           exists("waffle_data"), exists("age_lookup"))
 
-supp2_dir <- if (exists("supp2_dir")) supp2_dir else {
-  base_dir   <- "~/Documents/CD8_Longitudinal"
-  file.path(base_dir, "Manuscript", "Supplementary 2")
-}
+supp2_dir <- file.path("~/Documents/CD8_Longitudinal", "Manuscript", "Supplementary 2")
 dir.create(supp2_dir, recursive = TRUE, showWarnings = FALSE)
 
 
 ################################################################################
-# 1. RESERVOIR DATA TABLES (from the two lab workbooks)
-#
-# UM TARA Total HIV DNA PCR Results.xlsx  (early timepoints, 1–24 m)
-# TARA_reservoir_2026_v1.xlsx             (late timepoints, 12, 62, 80–87 m)
-#
-# Units: all values are per 10^6 PBMCs (NOT per 10^6 CD4+ T cells).
+# 1. RESERVOIR DATA
 ################################################################################
 
-# Longitudinal reservoir values (all per 10^6 PBMC)
-reservoir_long <- tribble(
-  ~PID,   ~Age_m, ~Assay,              ~Total_DNA, ~Intact_per_mil, ~Defective_per_mil, ~Pct_intact, ~LTR_per_mil,
-  # CP003
-  "CP003",  1, "TWC",                    3988.42,         NA,               NA,               NA,          NA,
-  "CP003",  9, "TWC",                    1510.14,         NA,               NA,               NA,          NA,
-  "CP003", 12, "CS-IPDA+LTR (2026)",       686.39,     282.73,           403.67,           41.19,      690.75,
-  # CP006
-  "CP006",  1, "TWC",                   31491.73,         NA,               NA,               NA,          NA,
-  "CP006",  6, "FLIP-seq",                113.92,       0.37,             7.80,             4.55,         NA,
-  "CP006",  9, "TWC",                      74.88,         NA,               NA,               NA,          NA,
-  "CP006", 12, "CS-IPDA+LTR (2026)",        30.73,       4.39,            26.34,           14.27,       65.51,
-  "CP006", 19, "TWC",                       4.87,         NA,               NA,               NA,          NA,
-  "CP006", 24, "FLIP-seq",                 30.19,       0.20,             2.25,             0.00,         NA,
-  # CP013
-  "CP013",  1, "TWC",                      41.47,         NA,               NA,               NA,          NA,
-  "CP013",  2, "FLIP-seq",                 10.68,       0.47,             4.73,             0.00,         NA,
-  "CP013",  5, "FLIP-seq",                  8.64,       0.51,             0.51,             0.00,         NA,
-  "CP013",  6, "FLIP-seq",                  7.70,       0.45,             0.90,             0.00,         NA,
-  "CP013", 10, "TWC",                      14.04,         NA,               NA,               NA,          NA,
-  "CP013", 10, "FLIP-seq",                  7.45,       0.42,             0.42,             NA,          NA,
-  "CP013", 19, "TWC",                       7.32,         NA,               NA,               NA,          NA,
-  "CP013", 24, "FLIP-seq",                 31.83,       0.28,             0.28,             0.00,         NA,
-  "CP013", 62, "Gag+Env CS-IPDA",           7.18,       0.00,             7.18,             0.00,         NA,
-  "CP013", 87, "CS-IPDA+LTR (2026)",           NA,         NA,               NA,               NA,       0.00,
-  # CP018
-  "CP018",  1, "TWC",                    3470.07,         NA,               NA,               NA,          NA,
-  "CP018",  3, "FLIP-seq",                148.78,       0.77,             5.00,            13.33,         NA,
-  "CP018", 10, "TWC",                      37.48,         NA,               NA,               NA,          NA,
-  "CP018", 19, "TWC",                      26.91,         NA,               NA,               NA,          NA,
-  "CP018", 24, "FLIP-seq",                 47.62,       0.55,             1.66,             0.00,         NA,
-  "CP018", 62, "Gag+Env CS-IPDA",          26.96,         NA,            13.70,           49.19,         NA,
-  "CP018", 80, "CS-IPDA (failed)+LTR",         NA,         NA,               NA,               NA,      18.32,
-  # CP020
-  "CP020",  1, "TWC",                    5578.01,         NA,               NA,               NA,          NA,
-  "CP020", 10, "TWC",                    2118.23,         NA,               NA,               NA,          NA,
-  "CP020", 18, "TWC",                   10703.79,         NA,               NA,               NA,          NA,
-  "CP020", 24, "TWC",                    4858.81,         NA,               NA,               NA,          NA,
-  "CP020", 62, "Clade C IPDA",            262.01,         NA,           222.19,           15.20,         NA,
-  "CP020", 84, "CS-IPDA+LTR (2026)",       354.35,       0.00,           354.35,            0.00,      312.30
-)
-
-# "Summary" row per participant used for correlations (12-m IPDA for CP003/CP006,
-# late IPDA for others; flag "late_timepoint" for transparency).
 reservoir_summary <- tribble(
-  ~PID,    ~ART_status,            ~Reservoir_timepoint_m, ~Intact_per_mil, ~Defective_per_mil, ~Pct_intact, ~LTR_per_mil, ~Total_HIV_per_mil_early_1m,
-  "CP003", "Intermittent / rebound",          12,             282.73,            403.67,          41.19,      690.75,         3988.42,
-  "CP006", "Rapidly suppressed",              12,               4.39,             26.34,          14.27,       65.51,        31491.73,
-  "CP013", "Suppressed (low seeding)",        87,               0.00,              0.00,           0.00,        0.00,           41.47,
-  "CP018", "Suppressed",                      80,                NA,                 NA,             NA,       18.32,         3470.07,
-  "CP020", "Never suppressed",                84,               0.00,            354.35,           0.00,      312.30,         5578.01
+  ~PID,    ~ART_status,            ~Reservoir_timepoint_m, ~Intact_per_mil, ~Pct_intact, ~LTR_per_mil, ~Total_HIV_1m,
+  "CP003", "Intermittent / rebound",          12,             282.73,          41.19,      690.75,       3988.42,
+  "CP006", "Rapidly suppressed",              12,               4.39,          14.27,       65.51,      31491.73,
+  "CP013", "Suppressed (low seeding)",        87,               0.00,           0.00,        0.00,         41.47,
+  "CP018", "Suppressed",                      80,                 NA,             NA,       18.32,       3470.07,
+  "CP020", "Never suppressed",                84,               0.00,           0.00,      312.30,       5578.01
 )
 
-write.csv(reservoir_long,
-          file.path(supp2_dir, "ReservoirExtension_LongitudinalResv.csv"),
-          row.names = FALSE)
-
 
 ################################################################################
-# 1b. VL + CD4 LONGITUDINAL DATA (from TARA_VL_CD4.xlsx)
-#
-# Hardcoded so the script runs without re-reading the xlsx. Numbers extracted
-# from rows matching CP003/CP006/CP013/CP018/CP020 in Sheet1 of
-# TARA_VL_CD4.xlsx. Only visits with at least one of VL/CD4 recorded are kept.
-# "days_to_supp" fields copied from columns E/F (per-participant, same on every
-# row for a given PID).
+# 2. PERSISTENCE METRICS
 ################################################################################
-
-vl_cd4_long <- tribble(
-  ~PID,    ~Age_m,   ~VL_cpmL,   ~VL_log10, ~CD4_mm3,  ~CD4_pct,
-  # CP003
-  "CP003",    1,    656769,      5.82,       NA,        NA,
-  "CP003",    2,      2621,      3.42,       NA,        NA,
-  "CP003",    3,        NA,        NA,     2212,      43.0,
-  "CP003",    5,        70,      1.85,       NA,        NA,
-  "CP003",    6,    237782,      5.38,       NA,        NA,
-  "CP003",    9,     35236,      4.55,     2453,      34.0,
-  "CP003",   10,    590794,      5.77,       NA,        NA,
-  "CP003",   12,    416199,      5.62,       NA,        NA,
-  "CP003",   18,    321762,      5.51,     2405,      35.0,
-  "CP003",   18,    528361,      5.72,       NA,        NA,
-  "CP003",   19,    313011,      5.50,       NA,        NA,
-  "CP003",   23,    548564,      5.74,       NA,        NA,
-  "CP003",   24,    921709,      5.96,     2490,      29.2,
-  "CP003",   93,        90,        NA,       NA,        NA,
-  "CP003",   97,        20,        NA,     1211,        NA,
-  # CP006
-  "CP006",    1,  10000000,      7.00,     1155,      32.0,
-  "CP006",    2,      6075,      3.78,       NA,        NA,
-  "CP006",    3,       143,      2.16,       NA,        NA,
-  "CP006",    5,       242,      2.38,       NA,        NA,
-  "CP006",    6,       101,      2.12,       NA,        NA,
-  "CP006",    7,        NA,        NA,     1952,        NA,
-  "CP006",    9,       131,      2.00,       NA,        NA,
-  "CP006",   10,        53,      1.72,       NA,        NA,
-  "CP006",   12,        73,      1.86,     1961,      29.0,
-  "CP006",   18,        94,      1.96,     1371,      28.0,
-  "CP006",   18,        20,      1.30,       NA,        NA,
-  "CP006",   19,        20,      1.30,       NA,        NA,
-  "CP006",   24,        20,      1.30,       NA,        NA,
-  "CP006",   36,        NA,        NA,     1261,      28.5,
-  "CP006",   40,        20,        NA,       NA,        NA,
-  "CP006",   48,        20,        NA,     1182,      31.0,
-  "CP006",   62,        20,        NA,     1101,        NA,
-  "CP006",   70,     88800,      5.90,      601,        NA,
-  # CP013
-  "CP013",    1,      3434,      3.54,     4033,      40.9,
-  "CP013",    2,       607,      2.78,       NA,        NA,
-  "CP013",    3,       153,        NA,       NA,        NA,
-  "CP013",    4,        NA,      2.18,       NA,        NA,
-  "CP013",    5,        49,      1.69,       NA,        NA,
-  "CP013",    6,        20,      1.30,       NA,        NA,
-  "CP013",    9,        20,      1.30,       NA,        NA,
-  "CP013",   10,        20,      1.30,     3373,      31.0,
-  "CP013",   12,        20,      1.30,       NA,        NA,
-  "CP013",   15,        NA,        NA,     2003,      38.0,
-  "CP013",   18,        20,      1.30,       NA,        NA,
-  "CP013",   23,        NA,        NA,     1394,      32.0,
-  "CP013",   25,        20,        NA,       NA,        NA,
-  "CP013",   33,        NA,        NA,     1522,      36.0,
-  "CP013",   42,        20,        NA,       NA,        NA,
-  "CP013",   48,        NA,        NA,     1510,        NA,
-  "CP013",   53,    104001,      5.02,     1611,      37.0,
-  "CP013",   60,        20,        NA,       NA,        NA,
-  "CP013",   66,        20,        NA,     1389,        NA,
-  "CP013",   78,        20,        NA,     1251,        NA,
-  "CP013",   84,        20,        NA,     1062,        NA,
-  "CP013",   88,        20,        NA,      933,        NA,
-  "CP013",   92,        20,        NA,     1413,      30.9,
-  # CP018
-  "CP018",    1,    176970,      5.25,     5713,      59.0,
-  "CP018",    3,        97,      1.99,       NA,        NA,
-  "CP018",    4,        90,      1.95,       NA,        NA,
-  "CP018",    6,       361,      2.56,       NA,        NA,
-  "CP018",    7,        99,      2.00,     3630,        NA,
-  "CP018",   10,        20,      1.30,       NA,        NA,
-  "CP018",   11,        20,      1.30,     3351,      60.0,
-  "CP018",   13,        20,      1.38,       NA,        NA,
-  "CP018",   17,        NA,        NA,     4092,      67.0,
-  "CP018",   19,        20,      1.30,       NA,        NA,
-  "CP018",   19,        20,      1.30,       NA,        NA,
-  "CP018",   23,        NA,        NA,     2639,      49.0,
-  "CP018",   25,        20,        NA,       NA,        NA,
-  "CP018",   33,        NA,        NA,     1876,      58.0,
-  "CP018",   36,      3460,      3.54,       NA,        NA,
-  "CP018",   37,        NA,        NA,     2341,        NA,
-  "CP018",   42,        57,      1.76,     3231,        NA,
-  "CP018",   48,        NA,        NA,     3184,      55.0,
-  "CP018",   59,        20,        NA,       NA,        NA,
-  "CP018",   65,        20,        NA,     1928,      53.0,
-  "CP018",   78,        20,        NA,     1177,        NA,
-  "CP018",   84,        26,      1.41,     1320,        NA,
-  "CP018",   87,        20,        NA,     1330,        NA,
-  # CP020
-  "CP020",    1,    414409,      5.62,     1731,      21.0,
-  "CP020",    3,   6597870,      6.82,       NA,        NA,
-  "CP020",    5,   1906485,      6.28,       NA,        NA,
-  "CP020",    6,   1295342,      6.11,       NA,        NA,
-  "CP020",    9,   6728224,      6.83,     1349,        NA,
-  "CP020",   10,   2586245,      6.41,       NA,        NA,
-  "CP020",   12,  10000000,      7.00,     1071,       8.5,
-  "CP020",   16,   5100378,      6.71,       NA,        NA,
-  "CP020",   18,   3170082,      6.50,       NA,        NA,
-  "CP020",   19,   2720690,      6.43,       NA,        NA,
-  "CP020",   19,   3097575,      6.49,     1320,      10.0,
-  "CP020",   22,   3620634,      6.56,       NA,        NA,
-  "CP020",   29,     10167,      4.01,       NA,        NA,
-  "CP020",   31,    140460,      5.15,      775,      12.0,
-  "CP020",   34,    206003,      5.31,       NA,        NA,
-  "CP020",   44,    534772,      5.73,      743,        NA,
-  "CP020",   45,     55350,      4.74,       NA,        NA,
-  "CP020",   57,       182,        NA,     1147,        NA,
-  "CP020",   63,       146,      2.16,      901,      16.0,
-  "CP020",   76,        70,      1.84,      691,        NA,
-  "CP020",   81,        96,      1.98,      959,        NA,
-  "CP020",   85,        50,      1.70,      532,        NA,
-  "CP020",   89,        NA,        NA,      821,      23.0
-)
-
-# "Days to first VL ≤400 / ≤20" from clinical metadata
-days_to_supp <- tribble(
-  ~PID,    ~days_to_supp_400, ~days_to_supp_20,
-  "CP003", 152,               NA,
-  "CP006",  93,              570,
-  "CP013",  94,              170,
-  "CP018",  65,              275,
-  "CP020",  NA,               NA
-)
-
-write.csv(vl_cd4_long,
-          file.path(supp2_dir, "ReservoirExtension_VL_CD4.csv"),
-          row.names = FALSE)
-
-# Per-PID VL/CD4 summary metrics restricted to the first 24 months
-# (matched to the scRNA-seq sampling window).
-vl_cd4_summary <- vl_cd4_long %>%
-  filter(Age_m <= 24) %>%
-  group_by(PID) %>%
-  summarise(
-    vl_peak_24m       = suppressWarnings(max(VL_cpmL, na.rm = TRUE)),
-    vl_median_24m     = suppressWarnings(median(VL_cpmL, na.rm = TRUE)),
-    vl_log_median_24m = suppressWarnings(median(VL_log10, na.rm = TRUE)),
-    # Area under VL log10 curve over 0–24 m, trapezoidal
-    vl_auc_log_24m    = {
-      df <- tibble(Age_m, VL_log10) %>%
-        filter(!is.na(VL_log10)) %>% arrange(Age_m) %>%
-        # collapse duplicates by mean
-        group_by(Age_m) %>% summarise(VL_log10 = mean(VL_log10), .groups = "drop")
-      if (nrow(df) < 2) NA_real_ else
-        sum(diff(df$Age_m) * (head(df$VL_log10, -1) + tail(df$VL_log10, -1)) / 2)
-    },
-    cd4_min_24m       = suppressWarnings(min(CD4_mm3, na.rm = TRUE)),
-    cd4_median_24m    = suppressWarnings(median(CD4_mm3, na.rm = TRUE)),
-    cd4pct_min_24m    = suppressWarnings(min(CD4_pct, na.rm = TRUE)),
-    cd4pct_median_24m = suppressWarnings(median(CD4_pct, na.rm = TRUE)),
-    n_vl_visits_24m   = sum(!is.na(VL_cpmL)),
-    .groups = "drop"
-  ) %>%
-  # replace Inf from empty slices with NA
-  mutate(across(where(is.numeric), ~ ifelse(is.finite(.x), .x, NA_real_))) %>%
-  left_join(days_to_supp, by = "PID")
-
-cat("\n=== VL/CD4 SUMMARY (first 24 m) ===\n")
-print(as.data.frame(vl_cd4_summary))
-
-
-################################################################################
-# 2. QUANTITATIVE CLONAL PERSISTENCE METRICS (per PID)
-################################################################################
-
-# Upstream persistence_df: one row per (PID, CTstrict) for expanded HEI clones
-# with n_timepoints and n_cells.
 
 persistence_metrics <- persistence_df %>%
   group_by(PID) %>%
   summarise(
-    n_expanded_clones        = n(),
-    n_persist_2p             = sum(n_timepoints >= 2),
-    n_persist_3p             = sum(n_timepoints >= 3),
-    pct_persist_2p           = 100 * n_persist_2p / n_expanded_clones,
-    mean_timepoints_per_clone = mean(n_timepoints),
-    max_timepoints_per_clone = max(n_timepoints),
-    persistent_cells         = sum(n_cells[n_timepoints >= 2]),
-    total_expanded_cells     = sum(n_cells),
-    pct_persistent_cells     = 100 * persistent_cells / total_expanded_cells,
+    n_expanded_clones = n(),
+    n_persist_2p      = sum(n_timepoints >= 2),
+    pct_persist_2p    = round(100 * n_persist_2p / n_expanded_clones, 1),
+    max_timepoints    = max(n_timepoints),
     .groups = "drop"
   )
 
-cat("\n=== CLONAL PERSISTENCE METRICS (HEI) ===\n")
-print(as.data.frame(persistence_metrics))
-
 
 ################################################################################
-# 3. JACCARD OVERLAP BETWEEN CONSECUTIVE TIMEPOINTS, PER PID
+# 3. JACCARD OVERLAP
 ################################################################################
 
 expanded_by_sample <- TARA_ALL@meta.data %>%
@@ -1382,425 +1127,120 @@ jaccard_transitions <- expanded_by_sample %>%
   mutate(res = list({
     samps <- samples
     if (length(samps) < 2) {
-      tibble(from = character(), to = character(),
-             from_age = numeric(), to_age = numeric(),
-             n_from = integer(), n_to = integer(),
-             n_shared = integer(), jaccard = numeric())
+      tibble(Timepoint_1 = character(), Timepoint_2 = character(),
+             Clones_tp1 = integer(), Clones_tp2 = integer(),
+             Shared = integer(), Jaccard = numeric())
     } else {
-      # order by age
-      df_order <- expanded_by_sample %>% filter(PID == !!PID) %>%
+      cur_pid <- PID
+      df_order <- expanded_by_sample %>% filter(PID == cur_pid) %>%
         distinct(orig.ident, Age) %>% arrange(Age)
       samps_ord <- df_order$orig.ident
       ages_ord  <- df_order$Age
-      pairs <- map_dfr(seq_len(length(samps_ord) - 1), function(i) {
+      map_dfr(seq_len(length(samps_ord) - 1), function(i) {
         a <- samps_ord[i]; b <- samps_ord[i + 1]
         A <- expanded_by_sample %>% filter(orig.ident == a) %>% pull(CTstrict) %>% unique()
         B <- expanded_by_sample %>% filter(orig.ident == b) %>% pull(CTstrict) %>% unique()
         inter <- length(intersect(A, B))
         uni   <- length(union(A, B))
-        tibble(from = a, to = b,
-               from_age = ages_ord[i], to_age = ages_ord[i + 1],
-               n_from = length(A), n_to = length(B),
-               n_shared = inter,
-               jaccard = if (uni == 0) NA_real_ else inter / uni)
+        tibble(Timepoint_1 = paste0(round(ages_ord[i]), "m"),
+               Timepoint_2 = paste0(round(ages_ord[i + 1]), "m"),
+               Clones_tp1 = length(A), Clones_tp2 = length(B),
+               Shared = inter,
+               Jaccard = if (uni == 0) NA_real_ else round(inter / uni, 4))
       })
-      pairs
     }
   })) %>%
   ungroup() %>%
   select(PID, res) %>%
   unnest(res)
 
-cat("\n=== CONSECUTIVE-TIMEPOINT JACCARD (expanded clones) ===\n")
-print(as.data.frame(jaccard_transitions))
-
-write.csv(jaccard_transitions,
-          file.path(supp2_dir, "Jaccard_Consecutive_Timepoints.csv"),
-          row.names = FALSE)
-
-# Mean Jaccard per PID for the summary table
-jaccard_per_pid <- jaccard_transitions %>%
-  group_by(PID) %>%
-  summarise(mean_jaccard_consec = mean(jaccard, na.rm = TRUE),
-            n_transitions = sum(!is.na(jaccard)),
-            .groups = "drop")
-
 
 ################################################################################
-# 4. HIV-SPECIFIC CLONE COUNTS (Trex) PER PID
+# 4. HIV CLONE COUNTS
 ################################################################################
 
-# waffle_data: one row per (PID, CTstrict) with Epitope_Clean assignment
 hiv_clones_per_pid <- waffle_data %>%
   filter(PID %in% hei_5) %>%
   group_by(PID) %>%
   summarise(
-    n_total_expanded = n(),
-    n_HIV            = sum(Epitope_Clean == "HIV"),
-    n_known_epitope  = sum(Epitope_Clean != "Unknown"),
-    pct_HIV          = 100 * n_HIV / n_total_expanded,
+    n_HIV   = sum(Epitope_Clean == "HIV"),
+    pct_HIV = round(100 * n_HIV / n(), 1),
     .groups = "drop"
   )
 
-cat("\n=== HIV-SPECIFIC CLONE COUNTS PER PID (Trex ED2) ===\n")
-print(as.data.frame(hiv_clones_per_pid))
-
 
 ################################################################################
-# 5. BASELINE (1-m) EXPANDED CLONE COUNT VS 1-m TOTAL HIV DNA
+# 5. SPEARMAN CORRELATIONS (reservoir vs TCR)
 ################################################################################
 
-baseline_tcr <- TARA_ALL@meta.data %>%
-  filter(Condition == "HEI",
-         !is.na(CTstrict), !is.na(clonalFrequency), clonalFrequency > 1) %>%
-  mutate(PID = sub("_.*$", "", orig.ident),
-         Age = age_lookup[orig.ident]) %>%
-  filter(PID %in% hei_5, Age <= 2) %>%
-  distinct(PID, CTstrict) %>%
-  group_by(PID) %>%
-  summarise(n_expanded_clones_1m = n(), .groups = "drop")
-
-baseline_resv <- reservoir_long %>%
-  filter(Age_m == 1, Assay == "TWC") %>%
-  select(PID, baseline_total_HIV_DNA = Total_DNA)
-
-baseline_joined <- baseline_resv %>%
-  left_join(baseline_tcr, by = "PID")
-
-cat("\n=== 1-MONTH RESERVOIR (Total HIV DNA) vs 1-MONTH EXPANDED CLONES ===\n")
-print(as.data.frame(baseline_joined))
-
-
-################################################################################
-# 6. MODULE SCORES PER PID (if available in TARA_CD8)
-#
-# Figure 4 typically adds AddModuleScore columns. Names may be e.g.
-# "Exhaustion1", "Stemness1", "IFN_memory1", "Cytotoxicity1", or plain
-# "Exhaustion". This block auto-detects any that look like module scores.
-################################################################################
-
-module_patterns <- c(
-  Exhaustion      = "(?i)^exhaust",
-  Stemness        = "(?i)^stem|^naive",
-  IFN_memory      = "(?i)ifn.?mem|type1ifn.?mem|ifn_memory",
-  Acute_stress    = "(?i)stress|acute.?ifn|stress.?ifn",
-  Cytotoxicity    = "(?i)cytotox",
-  Terminal_diff   = "(?i)terminal",
-  Inflam_chemokine = "(?i)inflam|chemokine"
-)
-
-if (exists("TARA_CD8") && inherits(TARA_CD8, "Seurat")) {
-  md_names <- colnames(TARA_CD8@meta.data)
-  
-  module_cols <- map(module_patterns, function(pat) {
-    hits <- md_names[grepl(pat, md_names)]
-    # Prefer columns that look like module scores (numeric, not protein/rna slots)
-    hits <- hits[sapply(hits, function(h) is.numeric(TARA_CD8@meta.data[[h]]))]
-    if (length(hits) == 0) NA_character_ else hits[1]
-  })
-  
-  cat("\n=== DETECTED MODULE SCORE COLUMNS IN TARA_CD8 ===\n")
-  print(unlist(module_cols))
-  
-  effector_clusters <- c("TEMRA/CTL CD8", "Tex CD8")  # expand if needed
-  mod_cols_found <- unlist(module_cols[!is.na(module_cols)])
-  
-  if (length(mod_cols_found) > 0) {
-    module_per_pid <- TARA_CD8@meta.data %>%
-      filter(Condition == "HEI",
-             Annotation %in% effector_clusters) %>%
-      mutate(PID = sub("_.*$", "", orig.ident)) %>%
-      filter(PID %in% hei_5) %>%
-      select(PID, all_of(mod_cols_found)) %>%
-      group_by(PID) %>%
-      summarise(across(everything(), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
-    
-    # rename to standard module names
-    rename_map <- setNames(names(mod_cols_found), mod_cols_found)
-    module_per_pid <- module_per_pid %>% rename_with(
-      ~ ifelse(.x %in% names(rename_map), rename_map[.x], .x))
-    
-    cat("\n=== MEAN MODULE SCORES IN EFFECTOR CLUSTERS PER PID ===\n")
-    print(as.data.frame(module_per_pid))
-  } else {
-    cat("\n[!] No module score columns found in TARA_CD8.\n")
-    cat("    Run Figure 4 module scoring first, then re-run this script.\n")
-    module_per_pid <- tibble(PID = hei_5)
-  }
-} else {
-  cat("\n[!] TARA_CD8 not found — skipping module score extraction.\n")
-  module_per_pid <- tibble(PID = hei_5)
-}
-
-
-################################################################################
-# 7. COMBINED SUMMARY TABLE + SPEARMAN CORRELATIONS
-################################################################################
-
-combined <- reservoir_summary %>%
+combined_for_cor <- reservoir_summary %>%
   left_join(persistence_metrics, by = "PID") %>%
-  left_join(jaccard_per_pid,     by = "PID") %>%
-  left_join(hiv_clones_per_pid,  by = "PID") %>%
-  left_join(module_per_pid,      by = "PID") %>%
-  left_join(vl_cd4_summary,      by = "PID")
+  left_join(hiv_clones_per_pid, by = "PID")
 
-cat("\n=== COMBINED PER-PATIENT RESERVOIR + TCR + MODULE TABLE ===\n")
-print(as.data.frame(combined))
-
-write.csv(combined,
-          file.path(supp2_dir, "ReservoirExtension_Table.csv"),
-          row.names = FALSE)
-
-# Spearman correlations: reservoir metrics vs TCR/module metrics
-numeric_cols <- combined %>% select(where(is.numeric)) %>% colnames()
-resv_metrics <- c("Intact_per_mil", "Defective_per_mil", "Pct_intact",
-                  "LTR_per_mil", "Total_HIV_per_mil_early_1m")
-vlcd4_metrics <- c("vl_peak_24m", "vl_median_24m", "vl_log_median_24m",
-                   "vl_auc_log_24m", "days_to_supp_400", "days_to_supp_20",
-                   "cd4_min_24m", "cd4_median_24m",
-                   "cd4pct_min_24m", "cd4pct_median_24m")
-tcr_metrics  <- c("n_persist_2p", "pct_persist_2p", "mean_timepoints_per_clone",
-                  "pct_persistent_cells", "mean_jaccard_consec",
-                  "n_HIV", "pct_HIV")
-mod_metrics  <- intersect(names(module_per_pid), names(module_patterns))
-
-# regressors: anything reservoir OR vl/cd4 derived
-reg_metrics  <- union(resv_metrics, vlcd4_metrics)
-# outcomes: TCR persistence + module scores
-out_metrics  <- union(tcr_metrics, mod_metrics)
+resv_cols <- c("Intact_per_mil", "Pct_intact", "LTR_per_mil")
+tcr_cols  <- c("n_persist_2p", "pct_persist_2p", "n_HIV")
+numeric_cols <- combined_for_cor %>% select(where(is.numeric)) %>% colnames()
 
 cor_rows <- list()
-for (rm in intersect(reg_metrics, numeric_cols)) {
-  for (tm in intersect(out_metrics, numeric_cols)) {
-    x <- combined[[rm]]; y <- combined[[tm]]
+for (rm in intersect(resv_cols, numeric_cols)) {
+  for (tm in intersect(tcr_cols, numeric_cols)) {
+    x <- combined_for_cor[[rm]]; y <- combined_for_cor[[tm]]
     ok <- complete.cases(x, y)
     if (sum(ok) >= 3) {
-      test <- suppressWarnings(cor.test(x[ok], y[ok], method = "spearman",
-                                        exact = FALSE))
+      test <- suppressWarnings(cor.test(x[ok], y[ok], method = "spearman", exact = FALSE))
       cor_rows[[length(cor_rows) + 1]] <- tibble(
-        reservoir_metric = rm, other_metric = tm,
-        n = sum(ok), rho = unname(test$estimate), p = test$p.value
-      )
+        reservoir_metric = rm, tcr_metric = tm,
+        n = sum(ok), rho = round(unname(test$estimate), 3), p = round(test$p.value, 4))
     }
   }
 }
 cor_table <- bind_rows(cor_rows) %>% arrange(p)
 
-cat("\n=== SPEARMAN CORRELATIONS (n=5, preliminary) ===\n")
-print(as.data.frame(cor_table))
 
-write.csv(cor_table,
-          file.path(supp2_dir, "ReservoirExtension_SpearmanCor.csv"),
-          row.names = FALSE)
+################################################################################
+# 6. TABLE S1: COMBINED
+################################################################################
+
+# Pivot Jaccard into wide columns
+jaccard_wide <- jaccard_transitions %>%
+  mutate(transition = paste0(Timepoint_1, "\u2192", Timepoint_2)) %>%
+  select(PID, transition, Jaccard) %>%
+  pivot_wider(names_from = transition, values_from = Jaccard,
+              names_prefix = "Jaccard_")
+
+table_s1 <- reservoir_summary %>%
+  left_join(persistence_metrics, by = "PID") %>%
+  left_join(jaccard_wide, by = "PID") %>%
+  left_join(hiv_clones_per_pid, by = "PID") %>%
+  select(PID, ART_status, Reservoir_timepoint_m,
+         Intact_per_mil, Pct_intact, LTR_per_mil, Total_HIV_1m,
+         starts_with("Jaccard_"),
+         n_expanded_clones, n_persist_2p, pct_persist_2p, max_timepoints,
+         n_HIV, pct_HIV)
 
 
 ################################################################################
-# 8. PLOTS
+# 7. SAVE
 ################################################################################
 
-pid_cols_5 <- c(CP003 = "#E63946", CP006 = "#457B9D", CP013 = "#2A9D8F",
-                CP018 = "#E9C46A", CP020 = "#6D6875")
+write.csv(table_s1, file.path(supp2_dir, "Supplementary_Table_S1.csv"), row.names = FALSE)
+write.csv(jaccard_transitions, file.path(supp2_dir, "Jaccard_Consecutive_Timepoints.csv"), row.names = FALSE)
+write.csv(cor_table, file.path(supp2_dir, "ReservoirExtension_SpearmanCor.csv"), row.names = FALSE)
 
-# ── S2E: Intact reservoir at reservoir timepoint vs % persistent clones ──────
-p_s2e <- combined %>%
-  filter(!is.na(Intact_per_mil), !is.na(pct_persist_2p)) %>%
-  ggplot(aes(x = Intact_per_mil + 0.1, y = pct_persist_2p,
-             color = PID, label = PID)) +
-  geom_point(size = 6) +
-  geom_text_repel(size = 5, fontface = "bold", box.padding = 1) +
-  scale_x_log10() +
-  scale_color_manual(values = pid_cols_5) +
-  labs(x = "Intact provirus (copies / 10^6 PBMC, log10)",
-       y = "% expanded clones persisting ≥2 timepoints",
-       title = "Reservoir burden vs clonal persistence") +
-  theme_classic(base_size = 16) +
-  theme(legend.position = "none",
-        plot.title = element_text(face = "bold"))
+cat("\n=== SUPPLEMENTARY TABLE S1 ===\n")
+print(as.data.frame(table_s1))
 
-ggsave(file.path(supp2_dir, "S2E_Reservoir_vs_Persistence.png"),
-       p_s2e, width = 7, height = 6, dpi = 300, bg = "white")
+cat("\n=== JACCARD TRANSITIONS ===\n")
+print(as.data.frame(jaccard_transitions))
 
+cat("\n=== SPEARMAN CORRELATIONS (p < 0.1) ===\n")
+print(as.data.frame(cor_table %>% filter(p < 0.1)))
 
-# ── S2F: Intact reservoir vs number of HIV-specific clones ───────────────────
-p_s2f <- combined %>%
-  filter(!is.na(Intact_per_mil), !is.na(n_HIV)) %>%
-  ggplot(aes(x = Intact_per_mil + 0.1, y = n_HIV,
-             color = PID, label = PID)) +
-  geom_point(size = 6) +
-  geom_text_repel(size = 5, fontface = "bold", box.padding = 1) +
-  scale_x_log10() +
-  scale_color_manual(values = pid_cols_5) +
-  labs(x = "Intact provirus (copies / 10^6 PBMC, log10)",
-       y = "N Trex-predicted HIV clones",
-       title = "Reservoir burden vs HIV-specific expanded clones") +
-  theme_classic(base_size = 16) +
-  theme(legend.position = "none",
-        plot.title = element_text(face = "bold"))
+cat("\n=== MANUSCRIPT TEXT (copy-paste) ===\n\n")
+cat("Jaccard overlap between the 1-month and 12-month expanded clonotype\n")
+cat("repertoires was non-zero only for CP003 (J = 0.106; J = 0.000 for all\n")
+cat("other participants), while all participants showed moderate overlap at\n")
+cat("their second transition (J = 0.13-0.28; Supplementary Table S1).\n")
 
-ggsave(file.path(supp2_dir, "S2F_Reservoir_vs_HIV_Clones.png"),
-       p_s2f, width = 7, height = 6, dpi = 300, bg = "white")
+cat("\n  DONE — 3 CSVs saved to:", supp2_dir, "\n")
 
-
-# ── S2G: Intact reservoir vs module scores (only if modules found) ───────────
-if (length(mod_metrics) > 0) {
-  mod_plot_df <- combined %>%
-    select(PID, Intact_per_mil, all_of(mod_metrics)) %>%
-    pivot_longer(cols = -c(PID, Intact_per_mil),
-                 names_to = "Module", values_to = "Score") %>%
-    filter(!is.na(Score), !is.na(Intact_per_mil))
-  
-  if (nrow(mod_plot_df) > 0) {
-    p_s2g <- ggplot(mod_plot_df,
-                    aes(x = Intact_per_mil + 0.1, y = Score,
-                        color = PID, label = PID)) +
-      geom_point(size = 5) +
-      geom_text_repel(size = 4, fontface = "bold") +
-      scale_x_log10() +
-      scale_color_manual(values = pid_cols_5) +
-      facet_wrap(~Module, scales = "free_y") +
-      labs(x = "Intact provirus (copies / 10^6 PBMC, log10)",
-           y = "Mean module score (effector clusters)",
-           title = "Reservoir burden vs CD8 module scores") +
-      theme_classic(base_size = 14) +
-      theme(legend.position = "none",
-            strip.text = element_text(face = "bold", size = 14),
-            plot.title = element_text(face = "bold"))
-    
-    ggsave(file.path(supp2_dir, "S2G_Reservoir_vs_ModuleScores.png"),
-           p_s2g, width = 10, height = 7, dpi = 300, bg = "white")
-  }
-}
-
-
-# ── S2H: Longitudinal intact fraction per PID ────────────────────────────────
-p_s2h <- reservoir_long %>%
-  filter(!is.na(Pct_intact)) %>%
-  ggplot(aes(x = Age_m, y = Pct_intact, color = PID, group = PID)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 4) +
-  scale_color_manual(values = pid_cols_5) +
-  scale_x_continuous(breaks = c(1, 6, 12, 24, 48, 72, 87)) +
-  labs(x = "Age (months)", y = "% intact of total reservoir",
-       title = "Longitudinal intact fraction (FLIP-seq / CS-IPDA)") +
-  theme_classic(base_size = 14) +
-  theme(legend.position = "right",
-        plot.title = element_text(face = "bold"))
-
-ggsave(file.path(supp2_dir, "S2H_Longitudinal_IntactFraction.png"),
-       p_s2h, width = 8, height = 5, dpi = 300, bg = "white")
-
-
-# ── S2I: three-panel longitudinal — VL, CD4 count, total HIV DNA ────────────
-# One row per participant (free_y), shared age axis. scRNA-seq timepoints
-# annotated with grey rules at 1, 12, 24 m.
-vl_track  <- vl_cd4_long %>%
-  transmute(PID, Age_m, metric = "VL (log10 cp/mL)", value = VL_log10) %>%
-  filter(!is.na(value))
-cd4_track <- vl_cd4_long %>%
-  transmute(PID, Age_m, metric = "CD4 count (/mm³)", value = CD4_mm3) %>%
-  filter(!is.na(value))
-res_track <- reservoir_long %>%
-  filter(!is.na(Total_DNA)) %>%
-  transmute(PID, Age_m, metric = "Total HIV DNA (log10 / 10⁶ PBMC)",
-            value = log10(pmax(Total_DNA, 0.1)))
-intact_track <- reservoir_long %>%
-  filter(!is.na(Intact)) %>%
-  transmute(PID, Age_m, metric = "Intact provirus (log10 / 10⁶ PBMC)",
-            value = log10(pmax(Intact, 0.1)))
-
-tracks_df <- bind_rows(vl_track, cd4_track, res_track, intact_track) %>%
-  mutate(metric = factor(metric, levels = c(
-    "VL (log10 cp/mL)", "CD4 count (/mm³)",
-    "Total HIV DNA (log10 / 10⁶ PBMC)",
-    "Intact provirus (log10 / 10⁶ PBMC)"
-  )))
-
-scrna_lines <- tibble(Age_m = c(1, 12, 24))
-
-p_s2i <- ggplot(tracks_df,
-                aes(x = Age_m, y = value, color = PID, group = PID)) +
-  geom_vline(data = scrna_lines, aes(xintercept = Age_m),
-             linetype = "dotted", color = "grey40") +
-  geom_line(linewidth = 0.8) +
-  geom_point(size = 2.2) +
-  scale_color_manual(values = pid_cols_5) +
-  scale_x_continuous(breaks = c(1, 6, 12, 24, 48, 72, 87)) +
-  facet_grid(metric ~ PID, scales = "free_y", switch = "y") +
-  labs(x = "Age (months)", y = NULL,
-       title = "Longitudinal virological, immunological and reservoir trajectories",
-       subtitle = "Grey dotted lines: scRNA-seq sampling (1, 12, 24 m)") +
-  theme_bw(base_size = 11) +
-  theme(legend.position = "none",
-        strip.background = element_rect(fill = "grey92", color = NA),
-        strip.text.y.left = element_text(angle = 0, face = "bold", hjust = 1),
-        strip.placement = "outside",
-        plot.title = element_text(face = "bold"),
-        panel.grid.minor = element_blank())
-
-ggsave(file.path(supp2_dir, "S2I_Longitudinal_VL_CD4_Reservoir.png"),
-       p_s2i, width = 14, height = 9, dpi = 300, bg = "white")
-
-
-# ── S2J: VL AUC (first 24m) vs clonal persistence ────────────────────────────
-p_s2j <- combined %>%
-  filter(!is.na(vl_auc_log_24m), !is.na(pct_persist_2p)) %>%
-  ggplot(aes(x = vl_auc_log_24m, y = pct_persist_2p, color = PID, label = PID)) +
-  geom_point(size = 6) +
-  geom_text_repel(size = 5, fontface = "bold", box.padding = 1) +
-  scale_color_manual(values = pid_cols_5) +
-  labs(x = "VL AUC (log10·months) over first 24 m",
-       y = "% expanded clones persisting ≥2 timepoints",
-       title = "Cumulative antigen exposure vs clonal persistence") +
-  theme_classic(base_size = 16) +
-  theme(legend.position = "none",
-        plot.title = element_text(face = "bold"))
-
-ggsave(file.path(supp2_dir, "S2J_VL_AUC_vs_Persistence.png"),
-       p_s2j, width = 7, height = 6, dpi = 300, bg = "white")
-
-
-################################################################################
-# 9. MANUSCRIPT-READY STATS PRINTOUT
-################################################################################
-
-cat("\n================================================================\n")
-cat("  RESERVOIR EXTENSION — MANUSCRIPT STATS\n")
-cat("================================================================\n\n")
-
-cat("── Combined reservoir + TCR + module table (n=5) ──\n\n")
-print(as.data.frame(combined))
-
-cat("\n── Per-PID headline sentence values ──\n")
-for (pid in hei_5) {
-  r <- combined %>% filter(PID == pid)
-  if (nrow(r) == 0) next
-  cat(sprintf(
-    "\n%s (%s @ %s m): intact=%s/10^6 PBMC, %%intact=%s, LTR=%s; ",
-    r$PID, r$ART_status, r$Reservoir_timepoint_m,
-    ifelse(is.na(r$Intact_per_mil), "—", format(round(r$Intact_per_mil, 1), nsmall = 1)),
-    ifelse(is.na(r$Pct_intact),     "—", paste0(format(round(r$Pct_intact, 1)), "%")),
-    ifelse(is.na(r$LTR_per_mil),    "—", format(round(r$LTR_per_mil, 1)))
-  ))
-  cat(sprintf(
-    "1-m total HIV DNA=%s/10^6 PBMC; %d expanded clones (%d persist ≥2 tp, %.1f%%); %d Trex-HIV.",
-    ifelse(is.na(r$Total_HIV_per_mil_early_1m), "—",
-           format(round(r$Total_HIV_per_mil_early_1m, 1))),
-    r$n_expanded_clones, r$n_persist_2p,
-    r$pct_persist_2p, r$n_HIV
-  ))
-  cat(sprintf(
-    "  | VL AUC 0-24m (log10·mo)=%s, median VL log10 0-24m=%s, CD4 nadir 0-24m=%s, days to VL<=400=%s.",
-    ifelse(is.na(r$vl_auc_log_24m),    "—", format(round(r$vl_auc_log_24m, 1))),
-    ifelse(is.na(r$vl_log_median_24m), "—", format(round(r$vl_log_median_24m, 2))),
-    ifelse(is.na(r$cd4_min_24m),       "—", format(round(r$cd4_min_24m))),
-    ifelse(is.na(r$days_to_supp_400),  "—", format(r$days_to_supp_400))
-  ))
-}
-cat("\n\n")
-
-cat("── Spearman correlations (p-sorted) ──\n")
-print(as.data.frame(cor_table))
-
-cat("\n================================================================\n")
-cat("  FILES SAVED TO: ", supp2_dir, "\n")
-cat("================================================================\n")
