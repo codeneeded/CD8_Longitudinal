@@ -586,5 +586,5 @@ seu_singlets <- JoinLayers(seu_singlets)
 # (optional but nice) reset ident
 Idents(seu_singlets) <- "Sample"   # or "Timepoint" / "CellType_Sort"
 
-# Save (qs2 only, in saved_R_data only)
+# Save (qs2 only, in saved_R_data only) ###
 qs_save(seu_singlets, file = out_qs2)
