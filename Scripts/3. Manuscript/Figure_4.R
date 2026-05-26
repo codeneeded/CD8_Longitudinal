@@ -513,3 +513,55 @@ if (file.exists(module_path)) {
 }
 
 cat("\n=== Figure 4 panels complete ===\n")
+
+################################################################################
+# Panel G: CD16 feature plots — RNA (FCGR3A) + protein
+################################################################################
+cat("  Panel G: CD16 feature plots (RNA + protein)...\n")
+
+library(viridis)  # for inferno palette
+
+umap_reduction <- "wnn.umap"
+inferno_pal    <- viridis(n = 10, option = "B")   # "B" = inferno ("A" = magma)
+have_sccustom  <- requireNamespace("scCustomize", quietly = TRUE)
+if (!have_sccustom) message("scCustomize not installed -> using Seurat::FeaturePlot.")
+
+cd16_feature_plot <- function(seu, feature, assay, title) {
+  DefaultAssay(seu) <- assay
+  if (have_sccustom) {
+    scCustomize::FeaturePlot_scCustom(seu, reduction = umap_reduction,
+                                      features = feature, colors_use = inferno_pal,
+                                      order = TRUE) + ggtitle(title)
+  } else {
+    Seurat::FeaturePlot(seu, reduction = umap_reduction, features = feature, order = TRUE) +
+      viridis::scale_color_viridis(option = "B") + ggtitle(title)
+  }
+}
+
+# --- RNA: FCGR3A ---
+rna_assay <- if ("SCT" %in% Assays(TARA_cd8)) "SCT" else "RNA"
+p_G_rna   <- cd16_feature_plot(TARA_cd8, "FCGR3A", rna_assay, "CD16 (FCGR3A) — RNA")
+
+# --- Protein: locate the CD16 ADT feature name ---
+adt_assay <- intersect(c("ADT", "Protein", "prot", "CITE", "PROT"), Assays(TARA_cd8))[1]
+p_G_prot  <- NULL
+if (!is.na(adt_assay)) {
+  adt_features <- rownames(TARA_cd8[[adt_assay]])
+  cd16_prot    <- grep("CD16|FCGR3", adt_features, value = TRUE, ignore.case = TRUE)
+  cat("    ADT assay:", adt_assay, "| CD16 candidates:", paste(cd16_prot, collapse = ", "), "\n")
+  if (length(cd16_prot) >= 1) {
+    p_G_prot <- cd16_feature_plot(TARA_cd8, cd16_prot[1], adt_assay,
+                                  paste0("CD16 (", cd16_prot[1], ") — protein"))
+  } else {
+    message("No CD16 protein feature found in assay '", adt_assay, "'.")
+  }
+} else {
+  message("No ADT/protein assay found -> skipping protein panel.")
+}
+
+# --- Combine & save ---
+p_G <- if (!is.null(p_G_prot)) (p_G_rna | p_G_prot) else p_G_rna
+ggsave(file.path(fig4_dir, "Fig4G_CD16_FeaturePlots_RNA_protein.png"),
+       plot = p_G, width = if (!is.null(p_G_prot)) 16 else 8, height = 7,
+       dpi = 300, bg = "white")
+
