@@ -1,0 +1,4 @@
+"Timepoint_Group","n_samples","VL_min","VL_med","VL_max","question"
+"PreART_Entry",11,3434,656769,1e+07,"Q3_Q4_VL_cutoffs"
+"PostART_Suppressed",6,20,20,73,"Q3_Q4_VL_cutoffs"
+"PostART_Unsuppressed",4,489676,519134.5,6293122,"Q3_Q4_VL_cutoffs"

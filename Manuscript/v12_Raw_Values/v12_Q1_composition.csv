@@ -1,0 +1,7 @@
+"CD8_Annotation","Timepoint_Group","n_cells","pct_of_cluster","question"
+"Naïve Intermediate CD8","PreART_Entry",1996,90.3,"Q1_composition"
+"Naïve Intermediate CD8","PostART_Suppressed",201,9.1,"Q1_composition"
+"Naïve Intermediate CD8","PostART_Unsuppressed",14,0.6,"Q1_composition"
+"Tscm CD8","PreART_Entry",390,89,"Q1_composition"
+"Tscm CD8","PostART_Suppressed",13,3,"Q1_composition"
+"Tscm CD8","PostART_Unsuppressed",35,8,"Q1_composition"

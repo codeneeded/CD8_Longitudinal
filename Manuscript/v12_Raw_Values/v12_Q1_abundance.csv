@@ -1,0 +1,7 @@
+"CD8_Annotation","Timepoint_Group","n","pct_of_total_cd8","question"
+"Naïve Intermediate CD8","PreART_Entry",1996,21.62,"Q1_abundance"
+"Naïve Intermediate CD8","PostART_Suppressed",201,3.69,"Q1_abundance"
+"Naïve Intermediate CD8","PostART_Unsuppressed",14,0.34,"Q1_abundance"
+"Tscm CD8","PreART_Entry",390,4.22,"Q1_abundance"
+"Tscm CD8","PostART_Suppressed",13,0.24,"Q1_abundance"
+"Tscm CD8","PostART_Unsuppressed",35,0.84,"Q1_abundance"
