@@ -1,0 +1,5 @@
+"step","before","after","removed"
+"V/J consistency",38774,38756,18
+"Productive only",38756,38750,6
+"Remove multi-heavy cells",38750,34111,4639
+"Remove heavy-less cells",34111,33607,504

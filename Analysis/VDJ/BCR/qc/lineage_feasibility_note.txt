@@ -1,0 +1,1 @@
+Lineage trees and expansion-based clonal tracking were not performed: 0 clones reached >=5 sequences and 1 clones spanned >=2 timepoints, consistent with the unimodal nearest-neighbour distribution and the highly polyclonal, minimally-expanded character of the repertoire.

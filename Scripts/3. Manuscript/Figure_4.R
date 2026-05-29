@@ -373,8 +373,12 @@ if (file.exists(dge_all_path)) {
 
 ################################################################################
 # Panel F: Cohen's d — ALL 3 PAIRWISE, ALL EFFECTOR CLUSTERS
+#   Produces 3 figure variants (bar + heatmap each):
+#     (1) ALL 7 modules  — same as original
+#     (2) Exhaustion + Stemness / naïve + Type I IFN memory
+#     (3) Remaining 4    — Cytotoxicity, Terminal diff., Stress/IFN, Chemokines
 ################################################################################
-cat("  Panel F: Cohen's d...\n")
+cat("  Panel F: Cohen's d (3 module-subset variants)...\n")
 
 module_path <- file.path(analysis_dir, "10_module_scores", "ModuleScores_per_cell.csv")
 
@@ -420,12 +424,11 @@ if (file.exists(module_path)) {
                                ifelse(cd_all$p_adj < 0.05, "*", "")))
   
   cd_all$Module_Label <- module_labels[cd_all$Module]
-  module_order <- c("Exhaustion", "Stemness / naïve", "Cytotoxicity",
-                    "Terminal differentiation", "Stress / IFN (acute)",
-                    "Inflammatory chemokines", "Type I IFN memory")
-  cd_all$Module_Label <- factor(cd_all$Module_Label, levels = rev(module_order))
+  full_module_order <- c("Exhaustion", "Stemness / naïve", "Cytotoxicity",
+                         "Terminal differentiation", "Stress / IFN (acute)",
+                         "Inflammatory chemokines", "Type I IFN memory")
   
-  # UPDATED: factor levels for 4 effector clusters
+  # UPDATED: factor levels for 3 effector clusters
   cd_all$CD8_Annotation <- factor(cd_all$CD8_Annotation,
                                   levels = c("TEM CD8", "TEMRA CD8", "CD16+ Effector CD8"))
   cd_all$Comparison <- factor(cd_all$Comparison,
@@ -434,12 +437,6 @@ if (file.exists(module_path)) {
                                          "Unsuppressed vs Pre-ART"))
   
   cd_all <- cd_all %>% filter(!is.na(CD8_Annotation) & !is.na(Comparison) & !is.na(Module_Label))
-  
-  x_range_all <- max(abs(cd_all$cohens_d), na.rm = TRUE)
-  cd_all$star_x <- ifelse(cd_all$cohens_d > 0,
-                          cd_all$cohens_d + x_range_all * 0.04,
-                          cd_all$cohens_d - x_range_all * 0.04)
-  cd_all$star_hjust <- ifelse(cd_all$cohens_d > 0, 0, 1)
   
   # UPDATED: short labels for new clusters
   cd_all$Cluster_Short <- dplyr::recode(as.character(cd_all$CD8_Annotation),
@@ -455,61 +452,117 @@ if (file.exists(module_path)) {
     "CD16+ Eff."   = "#D62728"    # brick red
   )
   
-  p_F <- ggplot(cd_all, aes(x = cohens_d, y = Module_Label, fill = Cluster_Short)) +
-    geom_col(width = 0.75, alpha = 0.9, position = position_dodge(width = 0.8)) +
-    geom_vline(xintercept = 0, linewidth = 0.6, color = "grey30") +
-    geom_text(aes(x = star_x, label = star, hjust = star_hjust, group = Cluster_Short),
-              position = position_dodge(width = 0.8),
-              size = 5, color = "black", vjust = 0.35, fontface = "bold") +
-    facet_wrap(~ Comparison, nrow = 1, drop = FALSE) +
-    scale_fill_manual(values = effector_bar_colors, name = "Cluster", drop = FALSE) +
-    coord_cartesian(clip = "off") +
-    labs(x = "Cohen's d (effect size)", y = NULL,
-         title = "Module score differences: effect sizes by comparison") +
-    theme_cowplot(font_size = 18) +
-    theme(strip.text = element_text(size = 16, face = "bold"),
-          strip.background = element_rect(fill = "grey92", color = NA),
-          axis.text.y = element_text(size = 14, face = "bold"),
-          legend.position = "bottom",
-          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-          plot.margin = margin(10, 30, 10, 10),
-          plot.background = element_rect(fill = "white", color = NA)) +
-    guides(fill = guide_legend(nrow = 1))
+  # ── Helper: build bar + heatmap for a given module subset ───────────────────
+  make_module_figs <- function(df, modules_keep, suffix, subtitle_tag) {
+    df_sub <- df %>% filter(Module_Label %in% modules_keep)
+    # Module order within this subset (preserving original ordering)
+    mod_order_sub <- full_module_order[full_module_order %in% modules_keep]
+    df_sub$Module_Label <- factor(df_sub$Module_Label, levels = rev(mod_order_sub))
+    
+    # Re-compute star positions within the subset's own x-range so labels
+    # don't get pushed off-plot when the visible range shrinks
+    x_range_sub <- max(abs(df_sub$cohens_d), na.rm = TRUE)
+    df_sub$star_x <- ifelse(df_sub$cohens_d > 0,
+                            df_sub$cohens_d + x_range_sub * 0.04,
+                            df_sub$cohens_d - x_range_sub * 0.04)
+    df_sub$star_hjust <- ifelse(df_sub$cohens_d > 0, 0, 1)
+    
+    n_mod <- length(mod_order_sub)
+    
+    # ── Bar plot ──
+    p_bar <- ggplot(df_sub, aes(x = cohens_d, y = Module_Label, fill = Cluster_Short)) +
+      geom_col(width = 0.75, alpha = 0.9, position = position_dodge(width = 0.8)) +
+      geom_vline(xintercept = 0, linewidth = 0.6, color = "grey30") +
+      geom_text(aes(x = star_x, label = star, hjust = star_hjust, group = Cluster_Short),
+                position = position_dodge(width = 0.8),
+                size = 5, color = "black", vjust = 0.35, fontface = "bold") +
+      facet_wrap(~ Comparison, nrow = 1, drop = FALSE) +
+      scale_fill_manual(values = effector_bar_colors, name = "Cluster", drop = FALSE) +
+      coord_cartesian(clip = "off") +
+      labs(x = "Cohen's d (effect size)", y = NULL,
+           title = "Module score differences: effect sizes by comparison",
+           subtitle = subtitle_tag) +
+      theme_cowplot(font_size = 18) +
+      theme(strip.text = element_text(size = 16, face = "bold"),
+            strip.background = element_rect(fill = "grey92", color = NA),
+            axis.text.y = element_text(size = 14, face = "bold"),
+            legend.position = "bottom",
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            plot.subtitle = element_text(size = 15, hjust = 0.5, color = "grey25"),
+            plot.margin = margin(10, 30, 10, 10),
+            plot.background = element_rect(fill = "white", color = NA)) +
+      guides(fill = guide_legend(nrow = 1))
+    
+    # Scale height with number of modules so bars stay readable
+    bar_h <- max(4.5, n_mod * 1.4)
+    ggsave(file.path(fig4_dir, paste0("Fig4F_CohenD_AllComparisons_", suffix, ".png")),
+           plot = p_bar, width = 20, height = bar_h, dpi = 300, bg = "white")
+    
+    # ── Heatmap ──
+    df_hm <- df_sub %>%
+      mutate(Cluster_Short = dplyr::recode(as.character(CD8_Annotation),
+                                           "TEM CD8" = "TEM",
+                                           "TEMRA CD8" = "TEMRA",
+                                           "CD16+ Effector CD8" = "CD16+\nEffector"),
+             Cluster_Short = factor(Cluster_Short,
+                                    levels = c("TEM", "TEMRA", "CD16+\nEffector")))
+    
+    p_hm <- ggplot(df_hm, aes(x = Cluster_Short, y = Module_Label, fill = cohens_d)) +
+      geom_tile(color = "white", linewidth = 1.5) +
+      geom_text(aes(label = star), color = "black", size = 5, fontface = "bold", vjust = 0.8) +
+      geom_text(aes(label = sprintf("%.2f", cohens_d)),
+                color = "black", size = 3.5, vjust = 2.2, alpha = 0.7) +
+      facet_wrap(~ Comparison, nrow = 1) +
+      scale_fill_gradient2(low = "#3A6FB0", mid = "white", high = "#C4463A",
+                           midpoint = 0, limits = c(-1.0, 1.0), oob = scales::squish,
+                           name = "Cohen's d") +
+      labs(x = NULL, y = NULL,
+           title = "Module score differences",
+           subtitle = subtitle_tag) +
+      theme_cowplot(font_size = 18) +
+      theme(strip.text = element_text(size = 16, face = "bold"),
+            strip.background = element_rect(fill = "grey92", color = NA),
+            axis.text.y = element_text(size = 13, face = "bold"),
+            axis.text.x = element_text(size = 13, face = "bold"),
+            plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+            plot.subtitle = element_text(size = 15, hjust = 0.5, color = "grey25"),
+            plot.background = element_rect(fill = "white", color = NA))
+    
+    hm_h <- max(4.5, n_mod * 1.1)
+    ggsave(file.path(fig4_dir, paste0("Fig4F_CohenD_Heatmap_", suffix, ".png")),
+           plot = p_hm, width = 16, height = hm_h, dpi = 300, bg = "white")
+    
+    invisible(list(bar = p_bar, heatmap = p_hm))
+  }
   
-  ggsave(file.path(fig4_dir, "Fig4F_CohenD_AllComparisons.png"),
-         plot = p_F, width = 20, height = 10, dpi = 300, bg = "white")
+  # ── (1) ALL 7 modules (same as original) ────────────────────────────────────
+  make_module_figs(
+    df           = cd_all,
+    modules_keep = full_module_order,
+    suffix       = "all",
+    subtitle_tag = "All modules"
+  )
   
+  # ── (2) Exhaustion + Stemness / naïve + Type I IFN memory ───────────────────
+  make_module_figs(
+    df           = cd_all,
+    modules_keep = c("Exhaustion", "Stemness / naïve", "Type I IFN memory"),
+    suffix       = "exh_stem_ifnmem",
+    subtitle_tag = "Exhaustion · Stemness / naïve · Type I IFN memory"
+  )
+  
+  # ── (3) Remaining 4 modules ─────────────────────────────────────────────────
+  make_module_figs(
+    df           = cd_all,
+    modules_keep = c("Cytotoxicity", "Terminal differentiation",
+                     "Stress / IFN (acute)", "Inflammatory chemokines"),
+    suffix       = "remaining",
+    subtitle_tag = "Cytotoxicity · Terminal diff. · Stress/IFN · Chemokines"
+  )
+  
+  # Stats CSV — write once, covers all modules
   write.csv(cd_all %>% select(Comparison, Module, CD8_Annotation, cohens_d, p_value, p_adj, star),
             file.path(fig4_dir, "Fig4F_CohenD_stats.csv"), row.names = FALSE)
-  
-  # Heatmap version
-  heatmap_data <- cd_all %>%
-    mutate(Cluster_Short = dplyr::recode(as.character(CD8_Annotation),
-                                         "TEM CD8" = "TEM",
-                                         "TEMRA CD8" = "TEMRA",
-                                         "CD16+ Effector CD8" = "CD16+\nEffector"),
-           Cluster_Short = factor(Cluster_Short, levels = c("TEM", "TEMRA", "CD16+\nEffector")))
-  
-  p_F_heatmap <- ggplot(heatmap_data, aes(x = Cluster_Short, y = Module_Label, fill = cohens_d)) +
-    geom_tile(color = "white", linewidth = 1.5) +
-    geom_text(aes(label = star), color = "black", size = 5, fontface = "bold", vjust = 0.8) +
-    geom_text(aes(label = sprintf("%.2f", cohens_d)),
-              color = "black", size = 3.5, vjust = 2.2, alpha = 0.7) +
-    facet_wrap(~ Comparison, nrow = 1) +
-    scale_fill_gradient2(low = "#3A6FB0", mid = "white", high = "#C4463A",
-                         midpoint = 0, limits = c(-1.0, 1.0), oob = scales::squish,
-                         name = "Cohen's d") +
-    labs(x = NULL, y = NULL, title = "Module score differences") +
-    theme_cowplot(font_size = 18) +
-    theme(strip.text = element_text(size = 16, face = "bold"),
-          strip.background = element_rect(fill = "grey92", color = NA),
-          axis.text.y = element_text(size = 13, face = "bold"),
-          axis.text.x = element_text(size = 13, face = "bold"),
-          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-          plot.background = element_rect(fill = "white", color = NA))
-  
-  ggsave(file.path(fig4_dir, "Fig4F_CohenD_Heatmap.png"),
-         plot = p_F_heatmap, width = 16, height = 8, dpi = 300, bg = "white")
 }
 
 cat("\n=== Figure 4 panels complete ===\n")

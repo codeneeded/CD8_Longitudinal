@@ -100,11 +100,25 @@ for SAMPLE in "${SAMPLES[@]}"; do
     fi
 
     # ── STEP 3a: Filter productive heavy chains ─────────────
+    # NOTE: ParseDb select with multiple -f fields uses "any" logic by default,
+    # so a single combined call does NOT enforce both conditions. Chain two
+    # single-field selects instead: first productive, then locus.
     echo "  [3/3] ParseDb filtering..."
     if ! ParseDb.py select \
         -d "$OUTDIR/${SAMPLE}_db-pass.tsv" \
-        -f productive locus \
-        -u T IGH \
+        -f productive \
+        -u T \
+        --outname "${SAMPLE}_prod" \
+        --outdir "$OUTDIR" 2>&1 | sed 's/^/      /'; then
+        echo "  ✗ ParseDb (productive) failed"
+        FAILED+=("$SAMPLE (ParseDb productive)")
+        continue
+    fi
+
+    if ! ParseDb.py select \
+        -d "$OUTDIR/${SAMPLE}_prod_parse-select.tsv" \
+        -f locus \
+        -u IGH \
         --outname "${SAMPLE}_heavy" \
         --outdir "$OUTDIR" 2>&1 | sed 's/^/      /'; then
         echo "  ✗ ParseDb (heavy) failed"
@@ -114,9 +128,9 @@ for SAMPLE in "${SAMPLES[@]}"; do
 
     # ── STEP 3b: Filter productive light chains ─────────────
     ParseDb.py select \
-        -d "$OUTDIR/${SAMPLE}_db-pass.tsv" \
-        -f productive locus \
-        -u T IGK IGL \
+        -d "$OUTDIR/${SAMPLE}_prod_parse-select.tsv" \
+        -f locus \
+        -u IGK IGL \
         --outname "${SAMPLE}_light" \
         --outdir "$OUTDIR" 2>&1 | sed 's/^/      /' || true   # don't fail if no light chains
 

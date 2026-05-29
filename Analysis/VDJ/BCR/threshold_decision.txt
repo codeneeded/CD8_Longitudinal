@@ -1,0 +1,6 @@
+chosen_threshold	0.1
+method	fixed_unimodal
+shape	unimodal
+median_distance	0.3148
+frac_below_0.15	0.015
+verdict	The heavy-chain nearest-neighbour distance distribution was unimodal with no low-distance clonal mode (median 0.31; 1.5% of cells below 0.15), indicating minimal clonal expansion. A conservative fixed clonal distance threshold of 0.1 (normalized Hamming) was applied; shared V/J/junction-length groupings reflect convergent recombination rather than clonal relatedness.
