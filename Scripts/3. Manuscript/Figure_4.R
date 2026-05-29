@@ -475,7 +475,7 @@ if (file.exists(module_path)) {
       geom_vline(xintercept = 0, linewidth = 0.6, color = "grey30") +
       geom_text(aes(x = star_x, label = star, hjust = star_hjust, group = Cluster_Short),
                 position = position_dodge(width = 0.8),
-                size = 5, color = "black", vjust = 0.35, fontface = "bold") +
+                size = 5, color = "black", vjust = 0.5, fontface = "bold") +
       facet_wrap(~ Comparison, nrow = 1, drop = FALSE) +
       scale_fill_manual(values = effector_bar_colors, name = "Cluster", drop = FALSE) +
       coord_cartesian(clip = "off") +
@@ -617,4 +617,3 @@ p_G <- if (!is.null(p_G_prot)) (p_G_rna | p_G_prot) else p_G_rna
 ggsave(file.path(fig4_dir, "Fig4G_CD16_FeaturePlots_RNA_protein.png"),
        plot = p_G, width = if (!is.null(p_G_prot)) 16 else 8, height = 7,
        dpi = 300, bg = "white")
-
