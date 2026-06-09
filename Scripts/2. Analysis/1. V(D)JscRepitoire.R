@@ -1698,7 +1698,7 @@ ggplot(TARA_clonal_expansion_summary_2, aes(x = Age, y = TARA_Expanded_Clone_Cou
 #### Save TCR Combined Seurat ####
 
 save(TARA_ALL, TARA_ALL_TRB_0, TARA_ALL_TRB_1, TARA_ALL_TRB_2,
-     file = "/home/akshay-iyer/Documents/CD8_Longitudinal/TARA_TCR_Combined.RData")
+     file = "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data/TARA_TCR_Combined.RData")
 
 save(EARTH, EARTH_TRB_0, EARTH_TRB_1, EARTH_TRB_2,
-     file = "/home/akshay-iyer/Documents/CD8_Longitudinal/EARTH_TCR_Combined.RData")
+     file = "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data/EARTH_TCR_Combined.RData")
