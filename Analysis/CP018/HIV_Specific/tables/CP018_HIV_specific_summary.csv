@@ -1,0 +1,10 @@
+"metric","value"
+"total_cells",5129
+"cells_with_TCR",4645
+"expanded_cells",311
+"MAIT_cells_excluded",246
+"HIV_specific_cells",311
+"HIV_specific_clonotypes",72
+"HIV_specific_replicate_confirmed",57
+"HIV_specific_cells_2m",99
+"HIV_specific_cells_90m",212

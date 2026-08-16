@@ -1,0 +1,4 @@
+"comparison","n_A","n_B","n_shared","pct_of_smaller","jaccard"
+"2m A vs B (same sample, technical)",796,1855,25,3.14,0.0095
+"90m A vs B (same sample, technical)",1282,460,70,15.22,0.0419
+"2m vs 90m (BIOLOGICAL, 88 months apart)",2626,1672,3,0.18,7e-04

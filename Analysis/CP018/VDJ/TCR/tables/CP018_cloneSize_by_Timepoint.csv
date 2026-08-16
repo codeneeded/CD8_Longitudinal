@@ -1,0 +1,13 @@
+"cloneSize","Timepoint","n_cells","pct_of_sample"
+"Hyperexpanded (100 < X <= 500)","2m",0,0
+"Large (20 < X <= 100)","2m",0,0
+"Medium (5 < X <= 20)","2m",23,0.84
+"Small (1 < X <= 5)","2m",87,3.19
+"Single (0 < X <= 1)","2m",2615,95.96
+"None ( < X <= 0)","2m",0,0
+"Hyperexpanded (100 < X <= 500)","90m",0,0
+"Large (20 < X <= 100)","90m",0,0
+"Medium (5 < X <= 20)","90m",13,0.68
+"Small (1 < X <= 5)","90m",293,15.26
+"Single (0 < X <= 1)","90m",1614,84.06
+"None ( < X <= 0)","90m",0,0

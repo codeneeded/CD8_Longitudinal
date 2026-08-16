@@ -1,0 +1,74 @@
+CP018 config loaded | 4 libraries | CR_OUT: /home/ammasakshay/Desktop/Projects/cellranger_out/CP018_multi_out/outs/per_sample_outs
+qs2 0.2.2
+Loading required package: SeuratObject
+Loading required package: sp
+‘SeuratObject’ was built under R 4.5.3 but the current version is
+4.6.1; it is recomended that you reinstall ‘SeuratObject’ as the ABI
+for R may have changed
+‘SeuratObject’ was built with package ‘Matrix’ 1.7.5 but the current
+version is 1.7.6; it is recomended that you reinstall ‘SeuratObject’ as
+the ABI for ‘Matrix’ may have changed
+
+Attaching package: ‘SeuratObject’
+
+The following objects are masked from ‘package:base’:
+
+    intersect, t
+
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+scCustomize v3.3.0
+If you find the scCustomize useful please cite.
+See 'samuel-marsh.github.io/scCustomize/articles/FAQ.html' for citation info.
+Loading required package: SeuratExtendData
+            Sample_Subfolder n_contigs n_barcodes
+CP018_2m_A        CP018_2m_A      2014        891
+CP018_2m_B        CP018_2m_B      4198       1981
+CP018_90m_A      CP018_90m_A      3391       1513
+CP018_90m_B      CP018_90m_B      1348        576
+
+2m vs 90m clonal overlap:
+  n_clonotypes_2m n_clonotypes_90m n_shared jaccard pct_of_2m_shared
+1            2743             1799        3   7e-04             0.11
+  pct_of_90m_shared
+1              0.17
+
+Replicate clonotype overlap (A vs B):
+  Timepoint  n_A  n_B n_shared jaccard
+1        2m  843 1928       28  0.0102
+2       90m 1374  505       80  0.0445
+
+TCR recovery:
+# A tibble: 4 × 4
+  Sample_Subfolder n_cells n_with_TCR pct_with_TCR
+  <chr>              <int>      <int>        <dbl>
+1 CP018_2m_A           935        828         88.6
+2 CP018_2m_B          2040       1897         93  
+3 CP018_90m_A         1553       1405         90.5
+4 CP018_90m_B          601        515         85.7
+The 'I want hue' color presets were generated from: https://medialab.github.io/iwanthue/
+This message is shown once per session
+
+Attaching package: ‘cowplot’
+
+The following object is masked from ‘package:patchwork’:
+
+    align_plots
+
+  [csv] CP018_cloneSize_by_annotation.csv  (42 rows)
+  [csv] CP018_clonotype_table.csv  (4295 rows)
+  [csv] CP018_clonotypes_expanded.csv  (181 rows)
+  [csv] CP018_clonotypes_shared_2m_90m.csv  (3 rows)
+  [csv] CP018_TCR_recovery_by_library.csv  (4 rows)
+  [csv] CP018_cloneSize_by_Timepoint.csv  (12 rows)
+  [csv] CP018_cell_metadata_withTCR.csv  (5129 rows)
+Saved: /home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/saved_R_data/CP018_RNA_integrated_CCA_MNN_withTCR.qs2

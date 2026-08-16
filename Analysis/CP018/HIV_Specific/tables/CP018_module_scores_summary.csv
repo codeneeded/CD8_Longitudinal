@@ -1,0 +1,5 @@
+"HIV_Specific_TCR","Timepoint","n","Stemness_score1_mean","Stemness_score1_sd","Cytotoxicity_score1_mean","Cytotoxicity_score1_sd","Exhaustion_score1_mean","Exhaustion_score1_sd","Cycling_score1_mean","Cycling_score1_sd"
+"Other","2m",2876,0.165,0.4516,-0.037,0.4429,-0.0194,0.1606,-0.0196,0.2903
+"Other","90m",1942,-0.0842,0.4975,-0.2643,0.8041,-0.0217,0.2079,-0.01,0.3591
+"HIV-Specific TCR","2m",99,-0.714,0.4743,1.1663,0.7171,0.4793,0.3984,0.493,0.6636
+"HIV-Specific TCR","90m",212,-0.2129,0.5655,0.1364,1.0909,0.1572,0.2443,0.0971,0.4972

@@ -1,0 +1,3 @@
+"participant","published_definition","n_clonotypes_published","n_clonotypes_matched_rule"
+"CP003","clonalFrequency > 1 AND not in bystander clusters",165,119
+"CP018","clonalFrequency > 1 AND not in bystander clusters (INVALID - cluster numbers came from a different resolution)",72,72

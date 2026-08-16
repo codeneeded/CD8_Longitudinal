@@ -3,3 +3,28 @@
 .RData
 .Ruserdata
 saved_R_data
+
+# Raw sequencing data — never committed (deposited at GEO instead)
+fastq_raw/
+*.fastq
+*.fastq.gz
+*.fq.gz
+*.bam
+*.bam.bai
+*.cram
+
+# Cell Ranger output — lives outside the repo, but guard against a stray copy
+cellranger_out/
+*_multi_out/
+*.cloupe
+*.vloupe
+*.h5
+*.mtx.gz
+
+# Local R library / environment scratch
+.Rlib_*/
+renv/library/
+.Rproj.user/
+
+# Sandbox-only script variants (shimmed for a conda env; not for production use)
+Scripts/CP018 - FACTseq/_sandbox_runs/

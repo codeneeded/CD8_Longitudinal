@@ -1,0 +1,3 @@
+"participant","rule","n_cells","n_cells_with_TCR","n_HIV_specific_cells","n_HIV_specific_clonotypes","n_MAIT_excluded","mait_exclusion_possible"
+"CP003","clone size > 2 within timepoint",4032,3436,1452,119,0,TRUE
+"CP018","clone size > 2 within timepoint",5129,4645,311,72,246,TRUE

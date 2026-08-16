@@ -1,0 +1,5 @@
+"Timepoint","Replicate","Sample_Subfolder","n_cells","pct_of_timepoint","balance_ratio"
+"2m","A","CP018_2m_A",937,31.5,0.459
+"2m","B","CP018_2m_B",2040,68.5,0.459
+"90m","A","CP018_90m_A",1553,72.1,0.387
+"90m","B","CP018_90m_B",601,27.9,0.387

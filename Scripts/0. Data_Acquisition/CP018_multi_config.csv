@@ -1,0 +1,18 @@
+[gene-expression]
+reference,/home/ammasakshay/Desktop/Projects/refdata/human/gex/refdata-gex-GRCh38-2024-A
+create-bam,true
+
+[vdj]
+reference,/home/ammasakshay/Desktop/Projects/refdata/human/vdj/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.1.0
+
+[libraries]
+fastq_id,fastqs,lanes,feature_types
+DeArmas-34125-001_OCM-GEX5,/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/fastq_raw/CP018_FACTseq/DeArmas-34125-001_OCM-GEX5_L8_ds.3ec64a91c15f436c93d2f104a42919b4,any,Gene Expression
+DeArmas-34125-001_OCM-TCR,/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/fastq_raw/CP018_FACTseq/DeArmas-34125-001_OCM-TCR_L8_ds.5ca7dbc513d24931bc9f6a8ca0735dc2,any,VDJ-T
+
+[samples]
+sample_id,ocm_barcode_ids,description
+CP018_2m_A,OB1,CP018 2m replicate A (tube 1)
+CP018_2m_B,OB2,CP018 2m replicate B (tube 2)
+CP018_90m_A,OB3,CP018 90m replicate A (tube 3)
+CP018_90m_B,OB4,CP018 90m replicate B (tube 4)

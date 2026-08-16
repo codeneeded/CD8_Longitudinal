@@ -1,0 +1,14 @@
+"participant","cluster","n_cells","stemness","exhaustion","ratio_ex_stem"
+"CP003","Cycling Effector",770,0.3798,0.6947,1.8288
+"CP003","Tex",24,0.494,0.6113,1.2374
+"CP003","TEMRA/Effector",766,0.6046,0.5359,0.8864
+"CP003","Tpex",619,1.0184,0.4492,0.4411
+"CP003","Transitional Tem",362,1.4903,0.2062,0.1383
+"CP003","Naive/Bystander",1491,1.547,0.04,0.0259
+"CP018","Cycling Effector",408,0.9223,0.5167,0.5602
+"CP018","Activated Stem-like",437,1.6384,0.3777,0.2305
+"CP018","TEMRA/Effector",426,0.3593,0.2693,0.7497
+"CP018","Transitional Tem",496,1.0495,0.1552,0.1478
+"CP018","MAIT",246,0.8462,0.1188,0.1404
+"CP018","Naive (hypoxic)",231,1.5256,0.0394,0.0258
+"CP018","Naive/Bystander",2885,1.5706,0.034,0.0216

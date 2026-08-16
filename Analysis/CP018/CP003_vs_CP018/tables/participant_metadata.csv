@@ -1,0 +1,3 @@
+"participant","ART_status","preART_VL","VL_at_suppression","days_to_suppress","stim_timepoints","cellranger","n_cells"
+"CP003","Never suppressed",NA,NA,NA,"2m, 101m","9.0.1",4032
+"CP018","Suppressed",176970,20,65,"2m, 90m","10.1.0",5129

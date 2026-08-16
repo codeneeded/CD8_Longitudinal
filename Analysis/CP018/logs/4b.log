@@ -1,0 +1,139 @@
+CP018 config loaded | 4 libraries | CR_OUT: /home/ammasakshay/Desktop/Projects/cellranger_out/CP018_multi_out/outs/per_sample_outs
+qs2 0.2.2
+Loading required package: SeuratObject
+Loading required package: sp
+‘SeuratObject’ was built under R 4.5.3 but the current version is
+4.6.1; it is recomended that you reinstall ‘SeuratObject’ as the ABI
+for R may have changed
+‘SeuratObject’ was built with package ‘Matrix’ 1.7.5 but the current
+version is 1.7.6; it is recomended that you reinstall ‘SeuratObject’ as
+the ABI for ‘Matrix’ may have changed
+
+Attaching package: ‘SeuratObject’
+
+The following objects are masked from ‘package:base’:
+
+    intersect, t
+
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Using: CP018_HIVSpecificTCR_annotated.qs2
+          used  (Mb) gc trigger  (Mb) max used  (Mb)
+Ncells 3533799 188.8    6868571 366.9  4623367 247.0
+Vcells 6580085  50.3   73969216 564.4 88576954 675.8
+4645 cells with a clonotype
+  [csv] CP018_clonotype_fates.csv  (4295 rows)
+  [csv] CP018_detection_power_controls.csv  (3 rows)
+
+=== Detection power ===
+                              comparison  n_A  n_B n_shared pct_of_smaller
+      2m A vs B (same sample, technical)  796 1855       25           3.14
+     90m A vs B (same sample, technical) 1282  460       70          15.22
+ 2m vs 90m (BIOLOGICAL, 88 months apart) 2626 1672        3           0.18
+ jaccard
+  0.0095
+  0.0419
+  0.0007
+
+The two technical rows are the CEILING. Cross-timepoint persistence
+cannot exceed what replicates of the same sample recover.
+  [csv] CP018_clone_size_distribution.csv  (12 rows)
+
+Singletons: 4114 / 4295 clonotypes (95.8%)
+  [csv] CP018_persistence_by_clone_size.csv  (5 rows)
+
+=== Persistence by clone size at 2m ===
+ size_bin n_clonotypes n_redetected_90m pct_redetected
+        1         2590                1           0.04
+        2           18                1           5.56
+      3-4           10                0           0.00
+      5-9            6                0           0.00
+      10+            2                1          50.00
+  [csv] CP018_alluvial_source_data.csv  (11 rows)
+  [csv] CP018_HIVspecific_clonotype_fates.csv  (72 rows)
+
+HIV-specific clonotypes: 72 | persisting 2m->90m: 1
+  [csv] CP018_persistent_alluvial_source.csv  (6 rows)
+  [csv] CP018_cells_by_fate.csv  (6 rows)
+
+=== Cells by fate ===
+                  fate Timepoint n_cells
+               2m only        2m    2707
+               2m only       90m       0
+              90m only        2m       0
+              90m only       90m    1917
+ Persistent (2m + 90m)        2m      18
+ Persistent (2m + 90m)       90m       3
+  [csv] CP018_persistent_clonotypes.csv  (3 rows)
+  [csv] CP018_persistent_clonotype_states.csv  (7 rows)
+
+=== State of each persistent clonotype's cells ===
+                                                                                                                                                                                                           CTstrict
+                                                                                              TRAV13-1.TRAJ12.TRAC;TGTGCAGCAAGTGGCAGCAGCTATAAATTGATCTTC_TRBV4-1..TRBJ2-1.TRBC2;TGCGCCAGCAGCCAGCTCGGGGATGAGCAGTTCTTC
+                                                                                              TRAV13-1.TRAJ12.TRAC;TGTGCAGCAAGTGGCAGCAGCTATAAATTGATCTTC_TRBV4-1..TRBJ2-1.TRBC2;TGCGCCAGCAGCCAGCTCGGGGATGAGCAGTTCTTC
+                                                                                          TRAV36/DV7.TRAJ47.TRAC;TGTGCTGTCCCCATGGAATATGGAAACAAACTGGTCTTT_TRBV30..TRBJ2-3.TRBC2;TGTGCCTGGAGGGAAAATACAGATACGCAGTATTTT
+                                                                                          TRAV36/DV7.TRAJ47.TRAC;TGTGCTGTCCCCATGGAATATGGAAACAAACTGGTCTTT_TRBV30..TRBJ2-3.TRBC2;TGTGCCTGGAGGGAAAATACAGATACGCAGTATTTT
+                                                                                          TRAV36/DV7.TRAJ47.TRAC;TGTGCTGTCCCCATGGAATATGGAAACAAACTGGTCTTT_TRBV30..TRBJ2-3.TRBC2;TGTGCCTGGAGGGAAAATACAGATACGCAGTATTTT
+ TRAV9-2.TRAJ6.TRAC;TGTGCTCTGAGTGATCTGACAGGAGGAAGCTACATACCTACATTT_TRBV6-7..TRBJ2-6.TRBC2;TRBV19..TRBJ2-3.TRBC2;TGTGCCAGCAGTTACTCGTCTTGGGGCGCCGGGGCCAACGTCCTGACTTTC;TGTGCCAGTAGTTCAAAGCTATGGACAGACACAGATACGCAGTATTTT
+ TRAV9-2.TRAJ6.TRAC;TGTGCTCTGAGTGATCTGACAGGAGGAAGCTACATACCTACATTT_TRBV6-7..TRBJ2-6.TRBC2;TRBV19..TRBJ2-3.TRBC2;TGTGCCAGCAGTTACTCGTCTTGGGGCGCCGGGGCCAACGTCCTGACTTTC;TGTGCCAGTAGTTCAAAGCTATGGACAGACACAGATACGCAGTATTTT
+                                               CTaa Timepoint   Fig_Annotation
+                          CAASGSSYKLIF_CASSQLGDEQFF        2m Cycling Effector
+                          CAASGSSYKLIF_CASSQLGDEQFF       90m Cycling Effector
+                         CAVPMEYGNKLVF_CAWRENTDTQYF        2m   TEMRA/Effector
+                         CAVPMEYGNKLVF_CAWRENTDTQYF        2m Cycling Effector
+                         CAVPMEYGNKLVF_CAWRENTDTQYF       90m Cycling Effector
+ CALSDLTGGSYIPTF_CASSYSSWGAGANVLTF;CASSSKLWTDTDTQYF        2m Cycling Effector
+ CALSDLTGGSYIPTF_CASSYSSWGAGANVLTF;CASSSKLWTDTDTQYF       90m Cycling Effector
+ n_cells
+       1
+       1
+       1
+       1
+       1
+      15
+       1
+
+3 persistent clonotype(s); 1 span more than one annotated state.
+Do not describe them as sharing a single phenotype unless n_states == 1 for all.
+
+=== Persistent clonotypes (detected at BOTH timepoints) ===
+                                               CTaa n_total n_2m n_90m
+ CALSDLTGGSYIPTF_CASSYSSWGAGANVLTF;CASSSKLWTDTDTQYF      16   15     1
+                         CAVPMEYGNKLVF_CAWRENTDTQYF       3    2     1
+                          CAASGSSYKLIF_CASSQLGDEQFF       2    1     1
+ rep_confirmed_2m rep_confirmed_90m clusters hiv_specific
+             TRUE             FALSE        4         TRUE
+            FALSE             FALSE      3;4        FALSE
+            FALSE             FALSE        4        FALSE
+  [csv] CP018_persistence_summary.csv  (9 rows)
+
+=== Summary ===
+                               metric   value
+                     Total clonotypes 4295.00
+                       Detected at 2m 2626.00
+                      Detected at 90m 1672.00
+                    Persistent (both)    3.00
+           Persistence rate (% of 2m)    0.11
+             Singleton clonotypes (%)   95.80
+   Technical replicate overlap 2m (%)    3.14
+  Technical replicate overlap 90m (%)   15.22
+ Interval between timepoints (months)   88.00
+
+INTERPRETATION GUARD:
+Persistence (0.11% of 2m clonotypes) must be read
+against the technical replicate ceiling (3.14% / 15.22%). Splitting ONE sample in two
+recovers only a small fraction of the same clonotypes, so non-detection at
+90m is the expected outcome for any clone that is not large. Report
+persistence of EXPANDED clones; do not claim clonal loss from these data.
+
+Outputs:
+   /home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/Analysis/CP018/VDJ/TCR/Persistence 

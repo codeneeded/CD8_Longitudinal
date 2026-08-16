@@ -1,0 +1,10 @@
+"metric","value"
+"Total clonotypes",4295
+"Detected at 2m",2626
+"Detected at 90m",1672
+"Persistent (both)",3
+"Persistence rate (% of 2m)",0.11
+"Singleton clonotypes (%)",95.8
+"Technical replicate overlap 2m (%)",3.14
+"Technical replicate overlap 90m (%)",15.22
+"Interval between timepoints (months)",88

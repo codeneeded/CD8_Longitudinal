@@ -1,0 +1,6 @@
+"signature","mean_CP003","mean_CP018","difference","cohens_d","wilcox_p","wilcox_p_BH","note"
+"Activation",0.3256,0.1439,-0.1817,-0.547,0,0,"cell-level descriptive comparison; n=1 participant per group"
+"Cytotoxicity",0.7129,0.3423,-0.3706,-0.578,0,0,"cell-level descriptive comparison; n=1 participant per group"
+"Exhaustion",0.3404,0.1372,-0.2031,-0.706,0,0,"cell-level descriptive comparison; n=1 participant per group"
+"IFN_I",0.3286,0.4042,0.0756,0.309,2.15693774709212e-79,2.15693774709212e-79,"cell-level descriptive comparison; n=1 participant per group"
+"Stemness",1.0525,1.337,0.2845,0.509,2.18713927992825e-114,2.73392409991031e-114,"cell-level descriptive comparison; n=1 participant per group"

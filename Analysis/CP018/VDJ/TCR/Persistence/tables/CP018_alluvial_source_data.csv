@@ -1,0 +1,12 @@
+"2m","90m","fate","n_clonotypes"
+"Large (10+)","Single cell","Persistent (2m + 90m)",1
+"Large (10+)","Not detected","2m only",1
+"Medium (5-9)","Not detected","2m only",6
+"Small (2-4)","Single cell","Persistent (2m + 90m)",1
+"Small (2-4)","Not detected","2m only",27
+"Single cell","Single cell","Persistent (2m + 90m)",1
+"Single cell","Not detected","2m only",2589
+"Not detected","Large (10+)","90m only",1
+"Not detected","Medium (5-9)","90m only",10
+"Not detected","Small (2-4)","90m only",133
+"Not detected","Single cell","90m only",1525

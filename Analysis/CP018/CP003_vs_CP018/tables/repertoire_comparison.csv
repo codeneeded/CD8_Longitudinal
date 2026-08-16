@@ -1,0 +1,3 @@
+"participant","n_cells","n_cells_with_TCR","pct_with_TCR","n_clonotypes","n_expanded","pct_expanded_cells","largest_clone","shannon","n_HIV_specific_clonotypes"
+"CP003",4032,3436,85.2,2012,206,47.4,84,6.808,165
+"CP018",5129,4645,90.6,4295,181,11.4,16,8.305,72

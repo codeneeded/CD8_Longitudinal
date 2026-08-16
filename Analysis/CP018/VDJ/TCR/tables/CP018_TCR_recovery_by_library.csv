@@ -1,0 +1,5 @@
+"Sample_Subfolder","Timepoint","Replicate","n_cells","n_with_TCR","pct_with_TCR","n_clonotypes","n_expanded_cells"
+"CP018_2m_A","2m","A",935,828,88.6,796,48
+"CP018_2m_B","2m","B",2040,1897,93,1855,62
+"CP018_90m_A","90m","A",1553,1405,90.5,1282,206
+"CP018_90m_B","90m","B",601,515,85.7,460,100

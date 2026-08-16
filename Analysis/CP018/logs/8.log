@@ -1,0 +1,138 @@
+CP018 config loaded | 4 libraries | CR_OUT: /home/ammasakshay/Desktop/Projects/cellranger_out/CP018_multi_out/outs/per_sample_outs
+qs2 0.2.2
+Loading required package: SeuratObject
+Loading required package: sp
+‘SeuratObject’ was built under R 4.5.3 but the current version is
+4.6.1; it is recomended that you reinstall ‘SeuratObject’ as the ABI
+for R may have changed
+‘SeuratObject’ was built with package ‘Matrix’ 1.7.5 but the current
+version is 1.7.6; it is recomended that you reinstall ‘SeuratObject’ as
+the ABI for ‘Matrix’ may have changed
+
+Attaching package: ‘SeuratObject’
+
+The following objects are masked from ‘package:base’:
+
+    intersect, t
+
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+CP003 object: cp003_fig3_annotated.qs2
+CP018: 5129 cells | CP003: 4032 cells
+  [csv] participant_metadata.csv  (2 rows)
+  [csv] signature_scores_per_cell.csv  (9161 rows)
+  [csv] signature_gene_coverage.csv  (33 rows)
+  [csv] signature_summary_by_participant.csv  (10 rows)
+  [csv] signature_comparison.csv  (5 rows)
+
+=== Signature comparison (CP018 suppressed - CP003 unsuppressed) ===
+    signature mean_CP003 mean_CP018 difference cohens_d      wilcox_p
+   Activation     0.3256     0.1439    -0.1817   -0.547  0.000000e+00
+ Cytotoxicity     0.7129     0.3423    -0.3706   -0.578  0.000000e+00
+   Exhaustion     0.3404     0.1372    -0.2031   -0.706  0.000000e+00
+        IFN_I     0.3286     0.4042     0.0756    0.309  2.156938e-79
+     Stemness     1.0525     1.3370     0.2845    0.509 2.187139e-114
+   wilcox_p_BH                                                         note
+  0.000000e+00 cell-level descriptive comparison; n=1 participant per group
+  0.000000e+00 cell-level descriptive comparison; n=1 participant per group
+  0.000000e+00 cell-level descriptive comparison; n=1 participant per group
+  2.156938e-79 cell-level descriptive comparison; n=1 participant per group
+ 2.733924e-114 cell-level descriptive comparison; n=1 participant per group
+  [csv] signature_comparison_HIVspecific.csv  (5 rows)
+
+=== HIV-specific cells only ===
+    signature n_CP003 n_CP018 mean_CP003 mean_CP018 difference     wilcox_p
+   Activation    1515     311     0.5726     0.4972    -0.0754 1.126505e-03
+ Cytotoxicity    1515     311     1.1452     1.0044    -0.1408 2.605106e-05
+   Exhaustion    1515     311     0.5849     0.4561    -0.1288 3.062883e-12
+        IFN_I    1515     311     0.4120     0.3062    -0.1058 1.275131e-07
+     Stemness    1515     311     0.7037     1.0460     0.3423 1.330487e-14
+  wilcox_p_BH
+ 1.126505e-03
+ 3.256383e-05
+ 7.657208e-12
+ 2.125218e-07
+ 6.652433e-14
+  [csv] cluster_exhaustion_stemness.csv  (13 rows)
+
+=== Cluster exhaustion/stemness balance ===
+ participant             cluster n_cells stemness exhaustion ratio_ex_stem
+       CP003    Cycling Effector     770   0.3798     0.6947        1.8288
+       CP003                 Tex      24   0.4940     0.6113        1.2374
+       CP003      TEMRA/Effector     766   0.6046     0.5359        0.8864
+       CP003                Tpex     619   1.0184     0.4492        0.4411
+       CP003    Transitional Tem     362   1.4903     0.2062        0.1383
+       CP003     Naive/Bystander    1491   1.5470     0.0400        0.0259
+       CP018    Cycling Effector     408   0.9223     0.5167        0.5602
+       CP018 Activated Stem-like     437   1.6384     0.3777        0.2305
+       CP018      TEMRA/Effector     426   0.3593     0.2693        0.7497
+       CP018    Transitional Tem     496   1.0495     0.1552        0.1478
+       CP018                MAIT     246   0.8462     0.1188        0.1404
+       CP018     Naive (hypoxic)     231   1.5256     0.0394        0.0258
+       CP018     Naive/Bystander    2885   1.5706     0.0340        0.0216
+  [csv] repertoire_comparison.csv  (2 rows)
+
+=== Repertoire comparison ===
+ participant n_cells n_cells_with_TCR pct_with_TCR n_clonotypes n_expanded
+       CP003    4032             3436         85.2         2012        206
+       CP018    5129             4645         90.6         4295        181
+ pct_expanded_cells largest_clone shannon n_HIV_specific_clonotypes
+               47.4            84   6.808                       165
+               11.4            16   8.305                        72
+  [csv] HIV_specific_matched_recall.csv  (2 rows)
+
+=== HIV-specific, SAME rule applied to both participants ===
+ participant                            rule n_cells n_cells_with_TCR
+       CP003 clone size > 2 within timepoint    4032             3436
+       CP018 clone size > 2 within timepoint    5129             4645
+ n_HIV_specific_cells n_HIV_specific_clonotypes n_MAIT_excluded
+                 1452                       119               0
+                  311                        72             246
+ mait_exclusion_possible
+                    TRUE
+                    TRUE
+  [csv] HIV_specific_definition_comparison.csv  (2 rows)
+
+=== Published vs matched definition ===
+ participant n_clonotypes_published n_clonotypes_matched_rule
+       CP003                    165                       119
+       CP018                     72                        72
+
+Clonotypes shared between CP003 and CP018: 0 
+  [csv] shared_clonotypes_CP003_CP018.csv  (0 rows)
+  -> no overlap, as expected between unrelated participants;
+     also rules out barcode bleed-through between the two datasets.
+  [csv] cellcycle_composition.csv  (6 rows)
+  [csv] CP003_vs_CP018_summary.csv  (13 rows)
+
+=== SUMMARY ===
+                  metric            CP003               CP018
+              ART status Never suppressed Suppressed (day 65)
+  Stimulation timepoints         2m, 101m             2m, 90m
+     Cell Ranger version            9.0.1              10.1.0
+                   Cells             4032                5129
+          Cells with TCR             3436                4645
+              Clonotypes             2012                4295
+     Expanded clonotypes              206                 181
+ HIV-specific clonotypes              165                  72
+           Mean stemness           1.0525               1.337
+         Mean exhaustion           0.3404              0.1372
+       Mean cytotoxicity           0.7129              0.3423
+         Mean type-I IFN           0.3286              0.4042
+  Max cluster exhaustion           0.6947              0.5167
+
+Outputs:
+   /home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/Analysis/CP018/CP003_vs_CP018 
+   /home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/Analysis/CP018/CP003_vs_CP018/tables 
+
+REMINDER: n = 1 participant per group. Differences are descriptive and
+carry a Cell Ranger version confound (9.0.1 vs 10.1.0). State both in Methods.
