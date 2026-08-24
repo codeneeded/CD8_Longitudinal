@@ -26,7 +26,9 @@ library(Seurat)
 library(dplyr)
 library(ggplot2)
 library(patchwork)
-library(SeuratExtend)
+# SeuratExtend is loaded (or fallbacks defined) by config.R - see the
+# HAS_SEURATEXTEND block there. Loading it directly here would make the whole
+# script fail on a missing presentation dependency.
 library(scCustomize)
 
 mkdirs(HIV_ROOT)

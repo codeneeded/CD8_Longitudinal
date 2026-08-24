@@ -1,0 +1,5 @@
+"module","n_matched","n_unmatched","mean_matched","mean_unmatched","delta","p","p_adj_BH"
+"TypeIIFNmemory",8,2180,0.0268,0.0196,0.0072,0.6042,0.6042
+"StemnessNaive",8,2180,-0.9079,-0.0508,-0.8571,0.001894,0.003788
+"Exhaustion",8,2180,0.3094,0.0637,0.2457,0.001005,0.003788
+"Cytotoxicity",8,2180,1.8308,0.6682,1.1625,0.01271,0.01695

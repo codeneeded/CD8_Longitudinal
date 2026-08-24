@@ -1,0 +1,6 @@
+"object","file","cells","cells_with_TCR","strings_normalised","pct_normalised","clonotypes_raw","clonotypes_canon","collapsed","convention"
+"CP018 stim (FACT-Seq)","CP018_RNA_integrated_CCA_MNN_withTCR.qs2",5129,4645,3911,84.2,4295,4295,0,"CR10-style (empty D field, normalised)"
+"CP018 stim annotated","CP018_HIVSpecificTCR_annotated.qs2",5129,4645,3911,84.2,4295,4295,0,"CR10-style (empty D field, normalised)"
+"CP003 stim (published)","cp003_fig3_annotated.qs2",4032,3436,0,0,2012,2012,0,"CR9/legacy-style (.NA. D field)"
+"unstim CP018 crossref","tara_cp018_crossref.qs2",13880,9394,0,0,9191,9191,0,"CR9/legacy-style (.NA. D field)"
+"CP003+CP018 integrated","CP003_CP018_integrated.qs2",9161,8081,3911,48.4,6307,6307,0,"CR10-style (empty D field, normalised)"

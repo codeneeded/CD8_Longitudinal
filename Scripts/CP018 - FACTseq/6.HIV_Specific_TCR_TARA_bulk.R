@@ -27,7 +27,12 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(qs2)
-library(SeuratExtend)
+# SeuratExtend supplies VlnPlot2 for one plot below. It is a heavy dependency
+# (pulls SeuratExtendData), so treat it as optional and fall back to Seurat's
+# own VlnPlot rather than letting a cosmetic call block the cross-reference.
+HAS_SEXT <- requireNamespace("SeuratExtend", quietly = TRUE)
+if (HAS_SEXT) library(SeuratExtend) else
+  message("SeuratExtend not installed - using Seurat::VlnPlot for module plots.")
 library(patchwork)
 
 out_dir <- file.path(HIV_ROOT, "TARA_crossref")
@@ -58,6 +63,8 @@ if (!"CP018" %in% unique(TARA_ALL$PID)) {
 tara_cp018 <- subset(TARA_ALL, subset = PID == "CP018")
 rm(TARA_ALL); gc()
 
+csv_dir_6 <- file.path(HIV_ROOT, "tables"); mkdirs(csv_dir_6)
+
 cat("CP018 stim cells:", ncol(cp018), "\n")
 cat("TARA CP018 (unstimulated) cells:", ncol(tara_cp018), "\n")
 cat("TARA CP018 timepoints:\n"); print(table(tara_cp018$orig.ident))
@@ -71,10 +78,23 @@ cat("Using TARA annotation column:", anno_col, "\n")
 # ══════════════════════════════════════════════════════════════════════════════
 # STEP 2 — Clone lists
 # ══════════════════════════════════════════════════════════════════════════════
+# ── MATCHING LEVEL ────────────────────────────────────────────────────────────
+# See normalise_ct() in config.R for the full diagnosis. In short: CR 10.1.0
+# writes an empty D-gene field ("TRBV29-1..TRBJ1-2") where the older alignments
+# write ".NA.", so CP018's raw CTstrict matches NOTHING in the unstimulated
+# object - a false negative that looks exactly like clonal absence.
+# Normalising restores it, and CTstrict is preferred over CTaa because it
+# requires nucleotide sequence AND gene calls to agree.
+MATCH_COL <- MATCH_LEVEL_PRIMARY   # "CTstrict_norm"
+CHECK_COL <- MATCH_LEVEL_CHECK     # "CTaa"
+
 cp018_meta <- cp018@meta.data %>%
   transmute(
     Cell              = rownames(.),
     CTstrict          = CTstrict,
+    CTstrict_norm     = if (CT_CANON %in% names(.)) .data[[CT_CANON]] else normalise_ct(CTstrict),
+    CTaa              = CTaa,
+    CTnt              = CTnt,
     HIV_Specific_TCR  = as.character(HIV_Specific_TCR),
     CP018_Sample      = Sample_Subfolder,
     CP018_Timepoint   = Timepoint,
@@ -84,45 +104,102 @@ cp018_meta <- cp018@meta.data %>%
     CP018_Phase       = if ("Phase" %in% colnames(.)) Phase else NA_character_
   )
 
-hiv_clones <- cp018_meta %>%
-  filter(HIV_Specific_TCR == "HIV-Specific TCR", !is.na(CTstrict), CTstrict != "") %>%
-  distinct(CTstrict) %>% pull(CTstrict)
+# Clone lists at every level, so the matching diagnostic below can compare them.
+clone_set <- function(df, col, hiv_only = FALSE) {
+  if (hiv_only) df <- df %>% filter(HIV_Specific_TCR == "HIV-Specific TCR")
+  v <- df[[col]]
+  unique(v[!is.na(v) & v != "" & v != "NA"])
+}
+LEVELS_ALL <- c("CTstrict", "CTstrict_norm", "CTaa", "CTnt")
+hiv_sets  <- setNames(lapply(LEVELS_ALL, function(k) clone_set(cp018_meta, k, TRUE)),  LEVELS_ALL)
+stim_sets <- setNames(lapply(LEVELS_ALL, function(k) clone_set(cp018_meta, k, FALSE)), LEVELS_ALL)
 
-all_stim_clones <- cp018_meta %>%
-  filter(!is.na(CTstrict), CTstrict != "") %>%
-  distinct(CTstrict) %>% pull(CTstrict)
+hiv_clones      <- hiv_sets[[MATCH_COL]]
+all_stim_clones <- stim_sets[[MATCH_COL]]
 
-cat("\nCP018 HIV-specific clonotypes:", length(hiv_clones), "\n")
-cat("CP018 all stim clonotypes:", length(all_stim_clones), "\n")
+cat("\nCP018 HIV-specific clonotypes (", MATCH_COL, "):", length(hiv_clones), "\n")
+cat("CP018 all stim clonotypes (", MATCH_COL, "):", length(all_stim_clones), "\n")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # STEP 3 — Match into unstimulated TARA
 # ══════════════════════════════════════════════════════════════════════════════
-if (!"CTstrict" %in% colnames(tara_cp018@meta.data)) {
-  stop("TARA object has no CTstrict column — TCR data must be attached first.")
-}
+need <- intersect(c("CTstrict","CTaa","CTnt"), colnames(tara_cp018@meta.data))
+if (!"CTstrict" %in% need && !"CTaa" %in% need)
+  stop("Unstimulated object has no ", MATCH_COL, " column - TCR data must be attached first.",
+       call. = FALSE)
 
 tara_meta <- tara_cp018@meta.data %>%
   transmute(
     Cell            = rownames(.),
-    CTstrict        = CTstrict,
+    CTstrict        = if ("CTstrict" %in% names(.)) CTstrict else NA_character_,
+    CTstrict_norm   = if ("CTstrict" %in% names(.)) normalise_ct(CTstrict) else NA_character_,
+    CTaa            = CTaa,
+    CTnt            = if ("CTnt" %in% names(.)) CTnt else NA_character_,
     TARA_Sample     = orig.ident,
+    TARA_Timepoint_Group = if ("Timepoint_Group" %in% names(.))
+                             as.character(Timepoint_Group) else NA_character_,
     TARA_Cluster    = .data[[anno_col]],
+    TARA_CellType   = if ("predicted.celltype.l1" %in% names(.))
+                         as.character(predicted.celltype.l1) else NA_character_,
     TARA_clonalFreq = suppressWarnings(as.numeric(as.character(clonalFrequency)))
   ) %>%
-  filter(!is.na(CTstrict), CTstrict != "")
+  filter(!is.na(.data[[MATCH_COL]]), .data[[MATCH_COL]] != "")
+
+# ── MATCHING DIAGNOSTIC + GUARD ───────────────────────────────────────────────
+# A zero-overlap result is indistinguishable from a real biological absence, so
+# compare EVERY level before trusting any of them. If the chosen level returns
+# nothing while a looser level returns matches, that is a reference-compatibility
+# failure, not a finding - stop rather than report a false negative.
+diag_rows <- lapply(LEVELS_ALL, function(k) {
+  if (!k %in% colnames(tara_meta)) return(NULL)
+  u <- unique(tara_meta[[k]][!is.na(tara_meta[[k]]) & tara_meta[[k]] != ""])
+  data.frame(level = k,
+             n_stim_hiv        = length(hiv_sets[[k]]),
+             n_unstim_clono    = length(u),
+             hiv_recovered     = length(intersect(u, hiv_sets[[k]])),
+             any_stim_recovered= length(intersect(u, stim_sets[[k]])),
+             stringsAsFactors  = FALSE)
+})
+match_diag <- do.call(rbind, diag_rows)
+match_diag$used <- ifelse(match_diag$level == MATCH_COL, "<== USED", "")
+cat("\n=== Clonotype matching across experiments, by level ===\n")
+print(match_diag, row.names = FALSE)
+
+used_n  <- match_diag$hiv_recovered[match_diag$level == MATCH_COL]
+best_n  <- max(match_diag$hiv_recovered)
+best_lv <- match_diag$level[which.max(match_diag$hiv_recovered)]
+if (used_n == 0 && best_n > 0) {
+  stop("MATCH_COL='", MATCH_COL, "' recovers 0 HIV-specific clonotypes, but '",
+       best_lv, "' recovers ", best_n, ".\nThis is a reference-compatibility ",
+       "failure, not a biological absence. Set MATCH_COL <- \"", best_lv,
+       "\" and re-run.", call. = FALSE)
+}
+if (used_n == 0) {
+  warning("No HIV-specific clonotype recovered at ANY matching level. ",
+          "Verify TCR data is attached to the unstimulated object before ",
+          "interpreting this as clonal absence.", call. = FALSE)
+}
+# Corroboration: do CTaa and CTnt agree on which clonotypes were found?
+if (all(c("CTaa","CTnt") %in% colnames(tara_meta))) {
+  u_aa <- unique(tara_meta$CTaa); u_nt <- unique(tara_meta$CTnt[!is.na(tara_meta$CTnt)])
+  cat("\nCorroboration - HIV-specific recovered at CTaa:",
+      length(intersect(u_aa, hiv_sets$CTaa)),
+      "| at CTnt:", length(intersect(u_nt, hiv_sets$CTnt)),
+      "\n(agreement means matches are not amino-acid degeneracy artefacts)\n")
+}
+save_csv(match_diag, file.path(csv_dir_6, "CP018_clonotype_matching_diagnostic.csv"))
 
 tara_meta$clone_status <- case_when(
-  tara_meta$CTstrict %in% hiv_clones      ~ "HIV-Specific Match",
-  tara_meta$CTstrict %in% all_stim_clones ~ "Stim Match (not HIV-specific)",
-  TRUE                                    ~ "No Match"
+  tara_meta[[MATCH_COL]] %in% hiv_clones      ~ "HIV-Specific Match",
+  tara_meta[[MATCH_COL]] %in% all_stim_clones ~ "Stim Match (not HIV-specific)",
+  TRUE                                        ~ "No Match"
 )
 
 matched <- tara_meta %>% filter(clone_status == "HIV-Specific Match")
 
 cat("\n=== Cross-reference result ===\n")
 cat("Unstimulated TARA CP018 cells carrying an HIV-specific clonotype:", nrow(matched), "\n")
-cat("Unique HIV-specific clonotypes recovered:", n_distinct(matched$CTstrict),
+cat("Unique HIV-specific clonotypes recovered:", n_distinct(matched[[MATCH_COL]]),
     "of", length(hiv_clones), "\n")
 if (nrow(matched) > 0) {
   cat("\nBy TARA timepoint:\n");  print(table(matched$TARA_Sample))
@@ -245,18 +322,68 @@ if (nrow(matched) > 0) {
          width = 7, height = 5, dpi = 400, bg = "white")
 
   # Module comparison: matched vs other, in the unstimulated data
+  mod_stats <- list()
   for (grp in c("Type I IFN memory", "Stemness/Naive", "Exhaustion", "Cytotoxicity")) {
     genes <- intersect(gene_groups[[grp]], rownames(tara_cp018))
     if (length(genes) < 2) next
     nm <- paste0("mod_", gsub("[^A-Za-z]", "", grp))
     tara_cp018 <- AddModuleScore(tara_cp018, features = list(genes), name = nm)
-    ggsave(file.path(out_dir, paste0("CP018_TARA_", nm, "_matched_vs_other.png")),
-           VlnPlot2(tara_cp018, features = paste0(nm, "1"),
-                    group.by = "clone_match", show.mean = TRUE) +
-             ggtitle(paste0(grp, " — unstimulated CP018")),
-           width = 6, height = 5, dpi = 400, bg = "white")
+    feat <- paste0(nm, "1")
+    p_mod <- if (HAS_SEXT) {
+      SeuratExtend::VlnPlot2(tara_cp018, features = feat,
+                             group.by = "clone_match", show.mean = TRUE)
+    } else {
+      VlnPlot(tara_cp018, features = feat, group.by = "clone_match", pt.size = 0) +
+        stat_summary(fun = mean, geom = "point", size = 2.5, colour = "black") +
+        NoLegend()
+    }
+    save_png(file.path(out_dir, paste0("CP018_TARA_", nm, "_matched_vs_other.png")),
+             p_mod + labs(x = NULL, y = paste(grp, "score"),
+                          title = paste0(grp, " - unstimulated CP018")) +
+               theme_cp018() + rotate_x(20) +
+               theme(plot.title.position = "plot",
+                     plot.title = element_text(face = "bold", hjust = 0)),
+             width = 7, height = 5.5)
+
+    # Statistics, not just a picture: matched vs unmatched, Wilcoxon + BH.
+    dfm <- data.frame(score = tara_cp018@meta.data[[feat]],
+                      grp   = as.character(tara_cp018$clone_match),
+                      tp    = as.character(tara_cp018$orig.ident),
+                      stringsAsFactors = FALSE)
+    dfm <- dfm[!is.na(dfm$score) & !is.na(dfm$grp), ]
+    mm  <- dfm$grp == "HIV-Specific Match"
+    if (sum(mm) >= 3 && sum(!mm) >= 3) {
+      wt <- suppressWarnings(wilcox.time <- wilcox.test(dfm$score[mm], dfm$score[!mm]))
+      mod_stats[[grp]] <- data.frame(
+        module      = grp,
+        n_matched   = sum(mm),
+        n_unmatched = sum(!mm),
+        mean_matched   = round(mean(dfm$score[mm]), 4),
+        mean_unmatched = round(mean(dfm$score[!mm]), 4),
+        delta       = round(mean(dfm$score[mm]) - mean(dfm$score[!mm]), 4),
+        p_wilcoxon  = signif(wt$p.value, 4),
+        stringsAsFactors = FALSE)
+    } else {
+      mod_stats[[grp]] <- data.frame(
+        module = grp, n_matched = sum(mm), n_unmatched = sum(!mm),
+        mean_matched = NA_real_, mean_unmatched = NA_real_, delta = NA_real_,
+        p_wilcoxon = NA_real_, stringsAsFactors = FALSE)
+    }
   }
 
+  if (length(mod_stats)) {
+    mod_tbl <- do.call(rbind, mod_stats)
+    mod_tbl$p_adj_BH <- signif(p.adjust(mod_tbl$p_wilcoxon, method = "BH"), 4)
+    save_csv(mod_tbl, file.path(csv_dir_6, "CP018_unstim_module_matched_vs_unmatched.csv"))
+    cat("\n=== Module scores, matched vs unmatched (unstimulated CP018) ===\n")
+    print(mod_tbl, row.names = FALSE)
+    cat("NOTE: n_matched is small; these are descriptive, not powered tests.\n")
+  }
+
+  # This object is WRITTEN here, so stamp the canonical column before saving.
+  # Stage 0 ran earlier on the object this was derived from; the derived object
+  # is new and would otherwise reach script 6b without CT_CANON.
+  tara_cp018 <- add_ct_canon(tara_cp018)
   qs_save(tara_cp018, file = file.path(SAVED_DIR, "tara_cp018_crossref.qs2"))
   message("Saved: ", file.path(SAVED_DIR, "tara_cp018_crossref.qs2"))
 

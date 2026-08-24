@@ -95,6 +95,145 @@ HIV_EXCLUDE_MAIT     <- TRUE   # MAIT TCRs are semi-invariant: unrelated cells
                                # by receptor biology, not antigen response.
                                # Applied by ANNOTATION LABEL, never by number.
 
+# ── Output location policy ───────────────────────────────────────────────────
+# Everything CP018 writes goes under Analysis/CP018/. The Manuscript/ folders
+# hold the CURRENT published figures and are not to be overwritten while we are
+# still deciding how the CP018 panels fold in. save_png()/save_csv() enforce
+# this rather than relying on every script getting the path right.
+MANUSCRIPT_DIR <- file.path(REPO_DIR, "Manuscript")
+
+assert_not_manuscript <- function(path) {
+  ap <- normalizePath(dirname(path), mustWork = FALSE)
+  if (startsWith(ap, normalizePath(MANUSCRIPT_DIR, mustWork = FALSE))) {
+    stop("REFUSING to write into Manuscript/:\n  ", path,
+         "\nCP018 outputs belong under Analysis/CP018/. The published figures\n",
+         "stay untouched until we decide how to fold the new panels in.",
+         call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+# ── SeuratExtend: optional, with fallbacks ───────────────────────────────────
+# The pipeline uses three SeuratExtend helpers: DimPlot2, VlnPlot2 and
+# ClusterDistrBar. SeuratExtend pulls SeuratExtendData and can be awkward to
+# install, and none of the three is load-bearing for a RESULT - they are
+# presentation wrappers. So define fallbacks that produce the equivalent plot
+# with base Seurat + ggplot2 when the package is absent, and let the scripts
+# call the same names either way.
+#
+# HAS_SEURATEXTEND is recorded in output where it matters, so a figure made with
+# the fallback is not silently passed off as a SeuratExtend figure.
+HAS_SEURATEXTEND <- requireNamespace("SeuratExtend", quietly = TRUE)
+
+if (HAS_SEURATEXTEND) {
+  suppressPackageStartupMessages(library(SeuratExtend))
+} else {
+  message("SeuratExtend not installed - using base Seurat fallbacks for ",
+          "DimPlot2 / VlnPlot2 / ClusterDistrBar.")
+
+  DimPlot2 <- function(object, features = NULL, group.by = NULL, reduction = NULL,
+                       label = FALSE, cols = NULL, theme = NULL, ncol = NULL,
+                       pt.size = NULL, ...) {
+    if (!is.null(features)) {
+      p <- Seurat::FeaturePlot(object, features = features, reduction = reduction,
+                               label = label, ncol = ncol, pt.size = pt.size, ...)
+    } else {
+      p <- Seurat::DimPlot(object, group.by = group.by, reduction = reduction,
+                           label = label, cols = cols, pt.size = pt.size, ...)
+    }
+    p
+  }
+
+  VlnPlot2 <- function(object, features, group.by = NULL, show.mean = FALSE,
+                       pt.size = 0, cols = NULL, ...) {
+    p <- Seurat::VlnPlot(object, features = features, group.by = group.by,
+                         pt.size = pt.size, cols = cols, ...)
+    if (isTRUE(show.mean)) {
+      p <- p + ggplot2::stat_summary(fun = mean, geom = "point",
+                                     size = 2.4, colour = "black")
+    }
+    # Seurat titles the panel with the raw column name ("Cytotoxicity_score1")
+    # and adds a legend that just repeats the x-axis. Clean both up: the caller
+    # sets its own title, and the axis already carries the group identity.
+    lab <- gsub("_", " ", sub("1$", "", features[1]))
+    p + ggplot2::labs(title = lab, x = NULL, y = lab) +
+      ggplot2::guides(fill = "none") +
+      ggplot2::theme(legend.position = "none",
+                     plot.title = ggplot2::element_text(face = "bold", hjust = 0),
+                     axis.text.x = ggplot2::element_text(angle = 25, hjust = 1))
+  }
+
+  # Stacked composition bar: proportion of each group within each cluster.
+  ClusterDistrBar <- function(origin, cluster, reverse = FALSE, normalize = TRUE, ...) {
+    df <- as.data.frame(table(cluster = as.character(cluster),
+                              origin  = as.character(origin)))
+    names(df)[3] <- "n"
+    if (isTRUE(normalize)) {
+      df <- do.call(rbind, lapply(split(df, df$cluster), function(d) {
+        d$frac <- if (sum(d$n) > 0) d$n / sum(d$n) else 0; d }))
+      yv <- "frac"; ylab <- "Proportion"
+    } else { df$frac <- df$n; yv <- "frac"; ylab <- "Cells" }
+    if (isTRUE(reverse)) { tmp <- df$cluster; df$cluster <- df$origin; df$origin <- tmp }
+    ggplot2::ggplot(df, ggplot2::aes(x = .data$cluster, y = .data[[yv]],
+                                     fill = .data$origin)) +
+      ggplot2::geom_col(colour = "black", linewidth = 0.25) +
+      ggplot2::labs(x = NULL, y = ylab, fill = NULL) +
+      ggplot2::theme_classic(base_size = 12) +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 30, hjust = 1))
+  }
+}
+
+# ── Canonical clonotype column ────────────────────────────────────────────────
+# CT_CANON is the clonotype identifier every script should use. It is
+# CTstrict with the D-gene convention normalised, stored ON the object rather
+# than recomputed per script, so a downstream script cannot accidentally
+# compare a normalised list against a raw one.
+#
+# Safe to use universally, measured on this project's actual objects:
+#   CP018 stim (CR 10.1.0)     4,645 clonotypes | 84.2% changed by normalisation
+#   CP003 stim (CR 9.0.1)      3,436 clonotypes |  0.0% changed
+#   unstim eCITE-seq (CP018)   9,394 clonotypes |  0.0% changed
+# So CP003 and the unstimulated data pass through UNTOUCHED - published CP003
+# numbers are reproduced exactly, whether a script uses CTstrict or CT_CANON.
+# normalise_ct() is also idempotent, so re-stamping an object is harmless.
+CT_CANON <- "CTstrict_norm"
+
+# Ensure CT_CANON exists on an object, and record which convention it came from
+# so provenance travels with the data rather than living in a script comment.
+add_ct_canon <- function(obj, verbose = TRUE) {
+  md <- obj@meta.data
+  if (!"CTstrict" %in% colnames(md)) {
+    warning("No CTstrict column - cannot add ", CT_CANON, "; TCR data not attached?")
+    return(obj)
+  }
+  raw <- as.character(md$CTstrict)
+  nm  <- normalise_ct(raw)
+  obj[[CT_CANON]] <- nm
+
+  has <- !is.na(raw) & raw != "NA" & raw != ""
+  n_changed <- sum(has & raw != nm, na.rm = TRUE)
+  obj$ct_convention <- if (n_changed > 0) "CR10-style (empty D field, normalised)"
+                       else                "CR9/legacy-style (.NA. D field)"
+  if (verbose) {
+    cat(sprintf("  %s: %d clonotype strings | %d normalised (%.1f%%) | convention: %s\n",
+                CT_CANON, sum(has), n_changed,
+                if (sum(has)) 100 * n_changed / sum(has) else 0,
+                obj$ct_convention[1]))
+  }
+  obj
+}
+
+# Fail loudly if a script reaches a cross-experiment comparison without it.
+require_ct_canon <- function(obj, what = "object") {
+  if (!CT_CANON %in% colnames(obj@meta.data)) {
+    stop(what, " has no ", CT_CANON, " column.\n",
+         "Run 0.Normalise_Clonotypes.R first (or call add_ct_canon(obj)).\n",
+         "Comparing raw CTstrict across Cell Ranger versions silently returns\n",
+         "zero matches - see the normalise_ct() note above.", call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
 # ── Clustering resolution (set after inspecting clustree) ────────────────────
 # Clusters smaller than this are dropped before annotation - they cannot
 # support a marker test. Raise it if clustering yields extra small clusters.
@@ -261,6 +400,7 @@ theme_cp018 <- function(base_size = 16) {
 # larger values for multi-panel patchworks.
 save_png <- function(filename, plot_obj, width = 9, height = 6.5,
                      dpi = FIG_DPI, limitsize = FALSE) {
+  assert_not_manuscript(filename)
   # Back-compat: earlier calls passed pixels (e.g. width = 1800). Detect and convert.
   if (width  > 60) width  <- width  / 200
   if (height > 60) height <- height / 200
@@ -279,6 +419,7 @@ panel_size <- function(n_panels, ncol = 2, panel_w = 5.0, panel_h = 3.6) {
 # Every figure should ship the numbers behind it. save_csv() writes to the same
 # directory as the plot and echoes the path, so nothing is silently skipped.
 save_csv <- function(x, path, row.names = FALSE) {
+  assert_not_manuscript(path)
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   utils::write.csv(x, path, row.names = row.names)
   message("  [csv] ", basename(path), "  (", nrow(x), " rows)")
@@ -358,6 +499,39 @@ umap_labels <- function(p, size = 4.2) {
         label.size = 0.15, box.padding = 0.35, seed = 1,
         min.segment.length = 0.2, segment.colour = "grey35")
 }
+
+# ── Cross-experiment clonotype matching ──────────────────────────────────────
+# Cell Ranger 10.1.0 writes an EMPTY D-gene field where 9.0.1 and the older
+# eCITE-seq alignment write a literal "NA":
+#
+#   CP003 stim (CR 9.0.1)      TRBV6-1.NA.TRBJ2-5.TRBC2;TGTGCC...
+#   unstim eCITE-seq (older)   TRBV15.NA.TRBJ2-3.TRBC2;TGTGCC...
+#   CP018 stim (CR 10.1.0)     TRBV29-1..TRBJ1-2.TRBC1;TGCAGC...   <- ".."
+#
+# Measured on this project: 3,607 of CP018's 4,295 CTstrict values contain "..",
+# against 0 of 9,191 in the unstimulated object. So CP018 can NEVER match on raw
+# CTstrict, and the result is 0 matches - indistinguishable from a real
+# biological absence. CP003 is unaffected (both sides use ".NA."), which is why
+# the published CP003 cross-reference is valid as run.
+#
+# normalise_ct() makes the two conventions comparable. Effect on CP018:
+#   raw CTstrict         0 / 72 HIV-specific recovered
+#   normalised CTstrict  3 / 72
+#   CTaa (looser)        5 / 72
+# CTstrict-normalised is preferred as primary: it requires nucleotide sequence
+# AND gene calls to agree, so it is more specific than CTaa (where distinct
+# nucleotide sequences encoding the same CDR3 peptide collapse together).
+normalise_ct <- function(x) {
+  x <- as.character(x)
+  x[x == "" | x == "NA"] <- NA_character_
+  # empty D-gene field -> explicit NA, applied repeatedly for chained gaps
+  for (i in 1:3) x <- gsub("\\.\\.", ".NA.", x, perl = TRUE)
+  x
+}
+
+# Primary / corroborating matching levels for any cross-experiment comparison.
+MATCH_LEVEL_PRIMARY <- "CTstrict_norm"
+MATCH_LEVEL_CHECK   <- "CTaa"
 
 # Fail loudly and early if an input object is missing.
 require_file <- function(path, what = "input") {

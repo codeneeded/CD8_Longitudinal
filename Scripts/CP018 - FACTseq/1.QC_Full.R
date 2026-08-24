@@ -26,7 +26,9 @@ library(scCustomize)
 library(qs2)
 library(SingleCellExperiment)
 library(scDblFinder)
-library(SeuratExtend)
+# SeuratExtend is loaded (or fallbacks defined) by config.R - see the
+# HAS_SEURATEXTEND block there. Loading it directly here would make the whole
+# script fail on a missing presentation dependency.
 library(Azimuth)
 
 pre_root  <- file.path(QC_ROOT, "Pre-QC")

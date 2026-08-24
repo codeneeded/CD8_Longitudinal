@@ -1,0 +1,32 @@
+"TARA_Cluster","n_cells","pct"
+"Tex CD8",5,55.6
+"CD8+ MAIT cell",2,22.2
+"TEMRA/CTL CD8",2,22.2
+"Activated B cell",0,0
+"CD4dim Naive T cell",0,0
+"CD56bright NK",0,0
+"CD56dim CD122hi NK",0,0
+"CD56dim CD122int NK",0,0
+"CD56dim CD122lo NK",0,0
+"Classical Monocyte",0,0
+"Cytotoxic gd T cell",0,0
+"Follicular B cell",0,0
+"Intermediate Monocyte",0,0
+"ISG+ CD4 T cell",0,0
+"Naive 1 CD4",0,0
+"Naive 1 CD8",0,0
+"Naive 2 CD4",0,0
+"Naive 2 CD8",0,0
+"Naive 3 CD4",0,0
+"Naive Intermediate CD8",0,0
+"Non-classical Monocyte",0,0
+"pDC",0,0
+"Resting Naive B cell",0,0
+"Th2/Th17 EM CD4",0,0
+"TNF+ B cell",0,0
+"Transitional B cell",0,0
+"Transitional Memory CD4",0,0
+"Treg",0,0
+"Tscm CD8",0,0
+"Vd1 gd T cell",0,0
+"Vg9Vd2 gd T cell",0,0

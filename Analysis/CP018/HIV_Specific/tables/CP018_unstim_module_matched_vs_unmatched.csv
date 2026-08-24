@@ -1,0 +1,5 @@
+"module","n_matched","n_unmatched","mean_matched","mean_unmatched","delta","p_wilcoxon","p_adj_BH"
+"Type I IFN memory",9,13871,0.0401,0.0029,0.0372,0.5038,0.5038
+"Stemness/Naive",9,13871,-0.8992,0.2451,-1.1443,7.444e-06,2.378e-05
+"Exhaustion",9,13871,0.2855,-0.0071,0.2926,2.017e-05,2.689e-05
+"Cytotoxicity",9,13871,1.864,0.0127,1.8513,1.189e-05,2.378e-05

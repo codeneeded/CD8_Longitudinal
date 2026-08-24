@@ -1,0 +1,3 @@
+"participant","ART_status","stim_timepoints","unstim_timepoints","hiv_specific_clonotypes","recovered_in_unstim","pct_recovered","persisting_2plus_tp","pct_persisting","validated_cells_all_lineages","validated_cells_CD8_only","excluded_non_CD8"
+"CP003","Never suppressed","2m, 101m","1m, 12m, 24m",165,7,4.2,11,6.7,124,121,3
+"CP018","Suppressed","2m, 90m","1m (pre-ART), 25m, 42m",72,3,4.2,3,4.2,9,7,2

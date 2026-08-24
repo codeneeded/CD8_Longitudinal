@@ -1,0 +1,7 @@
+"atlas_cluster","n_cells","exhaustion","stemness","exh_stem_ratio","meets_Tex_criterion","n_validated_here"
+"TEMRA/CTL CD8",464,0.258,0.248,1,FALSE,2
+"Tex CD8",85,0.355,0.489,0.71,FALSE,5
+"Tscm CD8",41,0.044,1.701,0.03,FALSE,0
+"Naive 1 CD8",614,0.037,1.653,0.02,FALSE,0
+"Naive 2 CD8",417,0.037,1.655,0.02,FALSE,0
+"Naive Intermediate CD8",372,0.03,1.745,0.02,FALSE,0

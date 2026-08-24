@@ -1,0 +1,15 @@
+"gene","panel","CP003_in_cluster","CP018_in_cluster"
+"TOX","exhaustion",0.441,0.188
+"PDCD1","exhaustion",0.126,0.082
+"HAVCR2","exhaustion",0.279,0.241
+"LAG3","exhaustion",0.957,0.372
+"TIGIT","exhaustion",0.282,0.065
+"CTLA4","exhaustion",0.722,0.288
+"ENTPD1","exhaustion",0.14,0.245
+"TCF7","stemness",0.321,0.539
+"IL7R","stemness",1.031,0.546
+"SELL","stemness",1.158,1.25
+"CCR7","stemness",0.454,0.907
+"ID3","stemness",0.228,0.662
+"LEF1","stemness",0.432,0.369
+"BACH2","stemness",0.347,0.548

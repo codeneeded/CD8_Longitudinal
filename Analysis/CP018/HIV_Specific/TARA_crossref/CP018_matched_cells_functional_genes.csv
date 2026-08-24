@@ -1,0 +1,37 @@
+"Group","Gene","pct_expressing","mean_expression"
+"Cytotoxicity","GZMB",66.7,1.451
+"Cytotoxicity","GNLY",44.4,1.926
+"Cytotoxicity","PRF1",77.8,1.452
+"Cytotoxicity","NKG7",100,3.816
+"Cytotoxicity","GZMA",88.9,2.127
+"Cytotoxicity","GZMH",100,2.721
+"Cytokines/chemokines","CCL3",0,0
+"Cytokines/chemokines","CCL4",22.2,0.182
+"Cytokines/chemokines","CCL5",100,4.253
+"Cytokines/chemokines","IFNG",11.1,0.208
+"Cytokines/chemokines","TNF",0,0
+"Effector TFs","TBX21",55.6,0.923
+"Effector TFs","ZEB2",77.8,1.03
+"Effector TFs","PRDM1",11.1,0.1
+"Effector TFs","ID2",0,0
+"Effector markers","KLRG1",55.6,0.807
+"Effector markers","CX3CR1",22.2,0.262
+"Effector markers","FCGR3A",11.1,0.161
+"Effector markers","S1PR5",11.1,0.176
+"Exhaustion","PDCD1",22.2,0.279
+"Exhaustion","LAG3",66.7,0.914
+"Exhaustion","TIGIT",44.4,0.494
+"Exhaustion","TOX",44.4,0.516
+"Exhaustion","HAVCR2",0,0
+"Exhaustion","CTLA4",11.1,0.152
+"Stemness/Naive","TCF7",55.6,0.737
+"Stemness/Naive","SELL",22.2,0.288
+"Stemness/Naive","BACH2",11.1,0.12
+"Stemness/Naive","LEF1",0,0
+"Stemness/Naive","IL7R",0,0
+"Stemness/Naive","CCR7",11.1,0.1
+"Stemness/Naive","BCL2",11.1,0.147
+"Type I IFN memory","IFIT1",0,0
+"Type I IFN memory","IFIT3",0,0
+"Type I IFN memory","ISG15",44.4,0.49
+"Type I IFN memory","MX1",22.2,0.281

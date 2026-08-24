@@ -99,7 +99,7 @@ sig_scores <- function(obj, label) {
   df$HIV_Specific   <- if ("HIV_Specific_TCR" %in% names(md))
                          as.character(md$HIV_Specific_TCR) else NA_character_
   df$clonalFrequency <- if ("clonalFrequency" %in% names(md)) md$clonalFrequency else NA
-  df$CTstrict       <- if ("CTstrict" %in% names(md)) as.character(md$CTstrict) else NA_character_
+  df$CTstrict       <- if ("CTstrict" %in% names(md)) as.character(md[[CT_CANON]]) else NA_character_
   df$Phase          <- as.character(md$Phase)
   df
 }
@@ -235,11 +235,11 @@ save_png(file.path(CMP_ROOT, "Cluster_exhaustion_vs_stemness.png"),
 # ── 4) Repertoire comparison ─────────────────────────────────────────────────
 rep_stats <- function(obj, label) {
   md <- obj@meta.data
-  ct <- md$CTstrict[!is.na(md$CTstrict) & md$CTstrict != ""]
+  ct <- md[[CT_CANON]][!is.na(md[[CT_CANON]]) & md[[CT_CANON]] != ""]
   tb <- table(ct)
   hiv_n <- if ("HIV_Specific_TCR" %in% names(md))
-    dplyr::n_distinct(md$CTstrict[md$HIV_Specific_TCR == "HIV-Specific TCR" &
-                                  !is.na(md$CTstrict)]) else NA
+    dplyr::n_distinct(md[[CT_CANON]][md$HIV_Specific_TCR == "HIV-Specific TCR" &
+                                  !is.na(md[[CT_CANON]])]) else NA
   data.frame(
     participant        = label,
     n_cells            = ncol(obj),
@@ -338,9 +338,22 @@ print(published[, c("participant","n_clonotypes_published","n_clonotypes_matched
 # ── 5) Shared clonotypes between participants ────────────────────────────────
 # Any overlap is either a public TCR specificity or a barcode artefact — both
 # worth knowing about before anything is claimed.
-cl3  <- unique(cp3$CTstrict[!is.na(cp3$CTstrict)])
-cl18 <- unique(cp18$CTstrict[!is.na(cp18$CTstrict)])
+# MUST use the canonical column. CP003 was aligned with CR 9.0.1 and CP018 with
+# 10.1.0, which write the empty D-gene field differently, so intersecting raw
+# CTstrict across participants returns 0 by construction - a false negative
+# indistinguishable from "no shared clonotypes".
+require_ct_canon(cp3,  "CP003 object")
+require_ct_canon(cp18, "CP018 object")
+cl3  <- unique(cp3[[CT_CANON]][!is.na(cp3[[CT_CANON]])])
+cl18 <- unique(cp18[[CT_CANON]][!is.na(cp18[[CT_CANON]])])
 shared <- intersect(cl3, cl18)
+
+# Report the raw-column result alongside, so the effect of normalisation on this
+# specific comparison is visible rather than assumed.
+shared_raw <- intersect(unique(cp3$CTstrict[!is.na(cp3$CTstrict)]),
+                        unique(cp18$CTstrict[!is.na(cp18$CTstrict)]))
+cat("Cross-participant overlap | canonical:", length(shared),
+    "| raw CTstrict:", length(shared_raw), "\n")
 cat("\nClonotypes shared between CP003 and CP018:", length(shared), "\n")
 # data.frame() recycles a length-1 column against a length-0 one and errors, so
 # the empty case needs its own branch. Zero overlap is the EXPECTED result for

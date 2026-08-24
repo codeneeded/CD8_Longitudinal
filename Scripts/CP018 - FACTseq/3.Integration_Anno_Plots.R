@@ -18,7 +18,9 @@ library(dplyr)
 library(ggplot2)
 library(patchwork)
 library(clustree)
-library(SeuratExtend)
+# SeuratExtend is loaded (or fallbacks defined) by config.R - see the
+# HAS_SEURATEXTEND block there. Loading it directly here would make the whole
+# script fail on a missing presentation dependency.
 library(scCustomize)
 
 mkdirs(INT_ROOT)
@@ -82,9 +84,12 @@ for (r in res_grid) {
   seu <- FindClusters(seu, graph.name = "cca_snn", resolution = r,
                       algorithm = 1, verbose = FALSE)
 }
+# The clustree legend stack runs tall and clipped at the canvas edge; the
+# explicit bottom margin gives it room rather than growing the whole canvas.
 ggsave(file.path(INT_ROOT, "CP018_clustree_CCA.png"),
-       clustree(seu, prefix = "cca_snn_res."),
-       width = 14, height = 12, dpi = 350, bg = "white")
+       clustree(seu, prefix = "cca_snn_res.") +
+         theme(plot.margin = margin(10, 10, 22, 10)),
+       width = 14, height = 13, dpi = 350, bg = "white")
 
 seu <- FindNeighbors(seu, reduction = "integrated.mnn.rna", dims = 1:30,
                      graph.name = "mnn_snn", verbose = FALSE)
@@ -92,9 +97,12 @@ for (r in res_grid) {
   seu <- FindClusters(seu, graph.name = "mnn_snn", resolution = r,
                       algorithm = 1, verbose = FALSE)
 }
+# The clustree legend stack runs tall and clipped at the canvas edge; the
+# explicit bottom margin gives it room rather than growing the whole canvas.
 ggsave(file.path(INT_ROOT, "CP018_clustree_MNN.png"),
-       clustree(seu, prefix = "mnn_snn_res."),
-       width = 14, height = 12, dpi = 350, bg = "white")
+       clustree(seu, prefix = "mnn_snn_res.") +
+         theme(plot.margin = margin(10, 10, 22, 10)),
+       width = 14, height = 13, dpi = 350, bg = "white")
 
 # Finalise resolutions (values live in config.R — revisit after clustree)
 cca_col <- paste0("cca_snn_res.", CCA_RES_FINAL)

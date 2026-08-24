@@ -24,7 +24,9 @@ library(stringr)
 library(ggplot2)
 library(patchwork)
 library(scCustomize)
-library(SeuratExtend)
+# SeuratExtend is loaded (or fallbacks defined) by config.R - see the
+# HAS_SEURATEXTEND block there. Loading it directly here would make the whole
+# script fail on a missing presentation dependency.
 
 dir_clonal    <- file.path(VDJ_ROOT, "Clonal_Visualizations")
 dir_diversity <- file.path(VDJ_ROOT, "Clonal_Diversity")

@@ -140,14 +140,209 @@ rather than biology:
 
 ---
 
+## 3b. Unstimulated cross-reference — the lineages before and after ART
+
+The FACT-Seq clonotypes were matched into CP018's **unstimulated eCITE-seq**
+data, which spans three further timepoints: **1m (pre-ART entry)**, 25m and 42m
+(both suppressed). This extends the observation window to **89 months** and
+adds a pre-ART baseline the stimulation experiment does not have.
+
+### A matching artefact had to be fixed first
+
+Cell Ranger 10.1.0 writes an *empty* D-gene field where earlier versions write a
+literal `NA`:
+
+| Dataset | Aligner | Format |
+|---|---|---|
+| CP003 stim | 9.0.1 | `TRBV6-1` `.NA.` `TRBJ2-5` |
+| Unstimulated eCITE-seq | older | `TRBV15` `.NA.` `TRBJ2-3` |
+| **CP018 stim** | **10.1.0** | `TRBV29-1` `..` `TRBJ1-2` |
+
+3,607 of CP018's 4,295 clonotypes contain `..`, against **0 of 9,191** in the
+unstimulated object — so raw `CTstrict` matched **nothing**, a false negative
+indistinguishable from real clonal absence. Normalising recovers it:
+
+| Matching level | HIV-specific recovered | All clonotypes |
+|---|---:|---:|
+| `CTstrict` raw | **0 / 72** | 5 / 4,295 |
+| `CTstrict` normalised *(used)* | **3 / 72** | 31 / 4,295 |
+| `CTaa` (looser) | 5 / 72 | 36 / 4,295 |
+
+**CP003 is unaffected** — both its stim object and the unstimulated data use
+`.NA.`, so the published cross-reference is valid as run (7 of 165 recovered).
+Recovery rates are near-identical under the same rule: **CP003 4.2%, CP018
+4.2%**. The pipeline now stops with a diagnosis if the chosen level returns zero
+while a looser level finds matches.
+
+### The lineage timeline
+
+Three antigen-validated clonotypes appear in the unstimulated data (9 cells: 6
+at pre-ART entry, 3 at 42m).
+
+| Clonotype (CDR3α_CDR3β) | Timepoints | Span |
+|---|---|---|
+| CALSDLTGGSYIPTF_CASSYSSWGAGANVLTF | 1m pre-ART (2 cells, Tex CD8) → 2m stim (15, Cycling Effector) → 90m stim (1) | **89 months** |
+| CAVGGSQGNLIF_CASSLISQGPYEQYV | 1m pre-ART (4 cells) → 2m stim (4, TEMRA/Effector) | 1 month |
+| CALRGPLSGNTPLVF_CSAFLGVSSYNEQFF | 42m (3 cells, Tex CD8) → 90m stim (4, TEMRA/Effector) | 48 months |
+
+The first is the important one: **detectable before ART started, expanded on
+peptide stimulation at 2 months, and still present at 90 months.** A lineage
+tracked across a treatment transition and two independent experiments.
+
+### These clones are NOT Tscm at rest — a direct answer
+
+The stimulated data could not separate genuine Tscm from stimulation-lowered
+IL7R. The unstimulated data settles it. Comparing antigen-validated CD8 cells
+(n=8) against all other CD8 cells (n=2,180) — CD8-restricted, because pooling
+CD4/B/NK/monocytes would inflate every T-cell signal:
+
+| Panel | Result |
+|---|---|
+| Stemness | **IL7R 0.000, LEF1 0.000, BACH2 0.000, CD28 0.000, FAS 0.000**; CCR7 0.10x, SELL 0.32x, TCF7 0.48x |
+| Exhaustion | **LAG3 5.5x, CTLA4 5.2x, TIGIT 2.4x, TOX 1.8x, PDCD1 1.7x** |
+| Effector | **KLRG1 6.1x, GZMH 4.0x, NKG7 2.5x, PRF1 1.9x** |
+
+Module scores over CD8 cells only: stemness **down** (Δ −0.857, p_adj 0.0038),
+exhaustion **up** (Δ +0.246, p_adj 0.0038), cytotoxicity **up** (Δ +1.163,
+p_adj 0.017). Type I IFN memory was not significant (p_adj 0.60).
+
+The decisive detail: the unstimulated annotation contains a named **Tscm CD8**
+cluster of 41 cells, and **zero** antigen-validated cells are in it. That is a
+direct negative, not an absence of evidence.
+
+**So the low IL7R in the stimulated data was not a stimulation artefact.** These
+are differentiated, cytotoxic, partially exhausted effector cells at rest — and
+5 of 9 sit in the unstimulated **Tex CD8** cluster. This is consistent with the
+53-cell exhausted subpopulation found by integration (section 4a): the
+antigen-specific compartment in CP018 is where its exhaustion is concentrated,
+even though the participant is suppressed and its bulk clusters look unexhausted.
+
+*Caveat: 3 clonotypes, 8–9 cells. Directions are descriptive, and a zero at any
+timepoint means not detected, not proven absent.*
+
+**Do not read cell counts across the two experiments as fold-change.** The
+2-cells-at-1m → 15-cells-at-2m step is not a 7.5-fold expansion: the two
+numbers come from different assays, different cell inputs, and different
+sampling depths. The supportable statement is that the clonotype was
+*detectable pre-ART and reached 15 cells after peptide stimulation*. Only
+within-experiment, within-timepoint counts support a magnitude claim.
+
+---
+
+## 3c. Two audit corrections — read these before quoting section 3b or 4
+
+### The two "Tex" labels are different clusterings, not one finding
+
+Panel F of the Figure 3 mirror shows CP018's antigen-validated cells sitting
+mostly in **"Tex CD8"**, while section 4a says CP018's own clustering has a
+*reduced* exhausted compartment. Both are correct, because the labels come from
+different namespaces:
+
+| Label | Where it is defined |
+|---|---|
+| `Tex CD8` | PBMC-atlas annotation of the **unstimulated** data, defined across **all** TARA participants |
+| `Tex` | CP018's **own** FACT-Seq clustering (resolution 0.4) |
+
+A cell can be assigned to the shared atlas's `Tex CD8` cluster while its
+participant has no Tex cluster of its own. The atlas label is an assignment to a
+reference, not a claim about CP018's internal structure.
+
+**And the atlas cluster does not meet our own exhaustion criterion.** Scoring
+every atlas CD8 cluster with the same exhaustion:stemness ratio used on the
+FACT-Seq clusters:
+
+| Atlas cluster | n | Exhaustion | Stemness | Ratio | Meets Tex criterion (>1.5) |
+|---|---:|---:|---:|---:|:--|
+| TEMRA/CTL CD8 | 464 | 0.258 | 0.248 | 1.00 | No |
+| **Tex CD8** | 85 | 0.355 | 0.489 | **0.71** | **No** |
+| Tscm CD8 | 41 | 0.044 | 1.701 | 0.03 | No |
+| Naive 1 CD8 | 614 | 0.037 | 1.653 | 0.02 | No |
+
+**No atlas CD8 cluster crosses the threshold, including the one named "Tex CD8"**
+— it retains stemness (0.489). So panel F must **not** be read as "CP018's
+antigen-specific cells are terminally exhausted." The defensible statement is
+that they occupy the atlas's most differentiated, highest-inhibitory-receptor
+CD8 compartment. The genuinely exhausted CP018 population is the 53-cell
+subpopulation in section 4a, which was found in CP018's own clustering.
+
+### A specificity-labelling bug was truncating persistent lineages
+
+Figure 3C filters **cells** carrying the HIV-specific label. That silently cuts
+lineages short: CP018's largest persister (TRAV9-2, **15 cells at 2m**) has
+exactly **one** cell at 90m, and a 1-cell clone fails the ">2 cells within a
+timepoint" expansion rule there — so that cell is labelled "Other" and **the 90m
+end of a genuinely persistent clonotype disappears from the plot.**
+
+This is why an earlier analysis showed shared 2m/90m clonotypes and the first
+version of the mirror figure showed none. Antigen specificity is a property of
+the **receptor**, not of an individual cell, so once a TCR is called specific
+anywhere, every cell carrying it belongs to that lineage.
+
+| | Cell-filter (paper's rule) | Clonotype-level (corrected) |
+|---|---:|---:|
+| CP003 persisting ≥2 timepoints | **9** | **11** |
+| CP018 persisting ≥2 timepoints | 3 | 3 |
+
+The cell-filter column reproduces the published Fig3C subtitle exactly (CP003 =
+9), which confirms the construction was read correctly rather than
+misinterpreted. **CP003 has 30 such split-label clonotypes and CP018 has 1**, so
+the published count is an undercount by 2 — small, but it is an undercount, and
+it affects the published figure. Both versions are now produced
+(`Combined_C_Alluvial_paperRule_*` and the clonotype-level default) so the
+difference is visible rather than a silent choice.
+
+CP018's corrected count is unchanged at 3, but the *shape* changes: the
+TRAV9-2 lineage now shows **pre-ART → 2m (15 cells) → 90m**, which is the
+89-month span reported in section 3b.
+
+### A third artefact: alluvial ribbons break at non-detected timepoints
+
+Even after the specificity fix, the corrected alluvial still showed no visible
+2m→90m connection. That was a **third, purely graphical** artefact:
+`geom_flow()` connects only *adjacent* axes, so a lineage absent from an
+intermediate timepoint has no stratum there and its ribbon **breaks** — the
+later timepoint renders as a disconnected island.
+
+CP018's TRAV9-2 lineage is detected at 1m (pre-ART), 2m and 90m but **not** at
+25m or 42m, so the 2m→90m link was invisible despite being present in the data.
+
+**This affects the published figure more than ours.** Of CP003's 11 persisting
+lineages, **5 have a detection gap** — so in Fig3C their ribbons break and a
+first-to-last span cannot be read off the figure at all. Four CP003 lineages are
+present at both the first and last axis point, and this is not visually apparent
+in the published panel.
+
+Two fixes, both produced:
+
+1. **Gap-bridged alluvial** — the clonotype × timepoint grid is completed with
+   zeros and drawn with `geom_alluvium`, giving one continuous band per lineage.
+   Stratum heights remain exact; a non-detected timepoint gets a thin floor
+   ribbon, labelled as such on the panel.
+2. **Lineage trace** (`Fig3C2_*`, `Combined_C2_*`) — one row per lineage, filled
+   point where detected (number = cells), open circle where not. No graphical
+   choice can mislead here, so this is the panel to use when the claim is about
+   span rather than magnitude.
+
+| Artefact | Effect | Status |
+|---|---|---|
+| Cross-experiment `CTstrict` format | 0 matches instead of 3 | fixed (normalisation) |
+| Per-cell specificity filter | truncates lineages at low-count timepoints | fixed (clonotype-level) |
+| `geom_flow` adjacency | ribbon breaks across detection gaps | fixed (bridged + trace) |
+
+All three were false negatives — each one *hid* persistence rather than
+inventing it.
+
+---
+
 ## 4. CP003 vs CP018 — key differences
+
+### 4a. Exhaustion is reduced ~3-fold in CP018, not absent
 
 Both participants' clusters were matched by correlating pseudobulk profiles over
 2,189 shared variable genes, so shared labels are earned rather than assumed.
 
-### 4a. The exhausted population is absent in CP018
-
-Every CP003 population is recovered in CP018 — **except Tex**.
+At whole-cluster level, every CP003 population is recovered in CP018 —
+**except Tex**.
 
 | CP003 population | Best CP018 match | r |
 |---|---|---:|
@@ -158,8 +353,40 @@ Every CP003 population is recovered in CP018 — **except Tex**.
 | TEMRA/Effector | TEMRA/Effector | 0.892 |
 | **Tex** | *(no comparable cluster)* | **0.695** |
 
-Tex sits **0.20 below every other population**. Supporting this at the
-signature level, no CP018 cluster reaches CP003's exhaustion profile:
+Tex sits **0.20 below every other population** at whole-cluster level.
+
+**IMPORTANT CORRECTION — joint integration revised this.** Integrating both
+datasets (CCA, participant as batch) put all 24 of CP003's Tex cells into joint
+cluster 7, which also contains **53 CP018 cells**. Those CP018 cells are
+exhausted *on their own terms*, not pulled there by batch correction:
+
+| Group | n | Exhaustion | Stemness | Ratio |
+|---|---:|---:|---:|---:|
+| CP003 in cluster 7 | 114 | 0.920 | 0.380 | **2.36** |
+| **CP018 in cluster 7** | **53** | **1.038** | **0.417** | **2.43** |
+| CP018 Cycling Effector elsewhere | 355 | 0.439 | 0.998 | 0.44 |
+| All cells outside cluster 7 | 8,994 | 0.213 | 1.228 | 0.17 |
+
+Per gene, CP018's cluster-7 cells **equal or exceed** CP003's on TOX (1.18 vs
+0.95), PDCD1 (0.79 vs 0.36), LAG3 (2.22 vs 1.99), CTLA4 and ENTPD1. Their
+exhaustion:stemness ratio is 5.5x that of cells carrying the same label
+elsewhere in CP018, so this is a genuine rare subpopulation.
+
+**So the difference is one of MAGNITUDE, not absence:**
+
+| | Cells in the exhausted cluster | % of participant |
+|---|---:|---:|
+| CP003 (never suppressed) | 114 | **2.83%** |
+| CP018 (suppressed) | 53 | **1.03%** |
+
+CP018 has a ~2.7-fold *smaller* exhausted compartment, not a missing one. Its
+own per-participant clustering assigned these 53 cells to Cycling Effector,
+and whole-cluster pseudobulk correlation averaged a 1%-of-cells subpopulation
+away — which is exactly the resolution limit of that method, not an error in it.
+The correlation result stands at cluster level; this is the finer-grained view.
+
+At the signature level, CP018's *clusters as a whole* still do not reach
+CP003's exhaustion profile:
 
 | | CP003 (never suppressed) | CP018 (suppressed) |
 |---|---:|---:|
@@ -169,8 +396,11 @@ signature level, no CP018 cluster reaches CP003's exhaustion profile:
 | Worst exhaustion : stemness ratio | **3.05** | **0.56** |
 
 CP003 has three clusters with an exhaustion:stemness ratio above 1.5 — high
-inhibitory receptors *with* collapsed stemness, i.e. terminal exhaustion.
-CP018 has none; its maximum is 0.75.
+inhibitory receptors *with* collapsed stemness, i.e. terminal exhaustion. No
+CP018 *cluster* reaches that at whole-cluster level (maximum 0.75) — but as
+shown above, a 53-cell subpopulation within its Cycling Effector cluster does
+(ratio 2.43). Both statements are true at their own resolution; report the
+prevalence difference rather than presence/absence.
 
 ### 4b. Repertoire structure differs sharply
 
@@ -210,11 +440,18 @@ cycling state. Immunological memory against HIV is not lost during suppression.
 For cure strategies depending on recall responses, that is the encouraging
 direction: the responder population is still there and still functional.
 
-**The open question this raises.** CP018's stem-like compartment retains TCF7,
-ID3 and CD27 without engaging PD-1/TOX. Whether these are *bona fide* Tscm at
-rest — or only look stem-like because peptide stimulation transiently lowered
-IL7R — is directly testable in the unstimulated longitudinal data, and is the
-natural next analysis.
+**The Tscm question is now answered — negatively.** The unstimulated data
+(section 3b) shows the antigen-validated clones are *not* Tscm at rest: IL7R,
+LEF1, BACH2, CD28 and FAS are all zero, exhaustion markers are elevated 1.7–5.5x,
+and the named Tscm CD8 cluster contains none of them. So CP018's bulk stem-like
+signature does not extend to its antigen-specific cells — the cells that
+recognise HIV are differentiated and partially exhausted even under suppression,
+while the participant's overall CD8 compartment remains stem-like and diverse.
+
+**What this reframes.** Suppression preserves the *global* repertoire and stem
+compartment, but the antigen-specific fraction still carries an exhaustion
+signature — concentrated in the 1%-of-cells subpopulation that integration
+exposed. The protection is not uniform across the compartment.
 
 ---
 

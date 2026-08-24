@@ -1,0 +1,5 @@
+"group","n_cells","exhaustion","stemness","exh_stem_ratio"
+"CP003 in cluster 8",129,0.421,0.567,0.73
+"CP018 in cluster 8",29,0.212,0.689,0.3
+"CP018 Cycling Effector elsewhere",406,0.517,0.925,0.55
+"all cells outside the cluster",9003,0.224,1.224,0.18
