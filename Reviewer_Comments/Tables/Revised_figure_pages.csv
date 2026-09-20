@@ -1,0 +1,54 @@
+"page","comment_id","kind","file","title","present"
+2,"R1-m6","fig","R1m6_03_DSB_distributions.png","DSB-normalised protein value distributions, per marker",TRUE
+3,"R1-m6","tab","R1m6_01_DSB_marker_distributions_positive_cells.csv","DSB values: lineage markers versus isotype controls",TRUE
+4,"R1-m6","tab","R1m6_02_DSB_panel_summary.csv","Panel-wide DSB summary",TRUE
+5,"R1-m1","tab","R1m1_01_CD8_central_memory_check.csv","Central-memory CD8 cells in the dedicated CD8 object",TRUE
+6,"R2-M1d","fig","R2M1d_03_ADT_subgating_crosswalk.png","Surface-protein sub-gating of the naive CD8 clusters",TRUE
+7,"R2-m13","fig","R2m13_02_CP003_LineageTrace.png","CP003 antigen-specific lineages, one row per clonotype",TRUE
+8,"R2-m13","fig","R2m13_01_CP003_Alluvial_bridged.png","CP003 clonotype alluvial with detection gaps bridged",TRUE
+9,"R2-m13","tab","R2m13_01_CP003_alluvial_source.csv","CP003 clonotype detections behind both panels",TRUE
+10,"E-1","fig","E1_02_CP018_LineageTrace.png","CP018 antigen-specific lineages, one row per clonotype",TRUE
+11,"E-1","fig","E1_03_CP018_Alluvial.png","CP018 clonotype alluvial with detection gaps bridged",TRUE
+12,"E-1","fig","E1_01_Combined_C2_LineageTrace_CP003_vs_CP018.png","Both participants on a shared layout",TRUE
+13,"R2-M1b","fig","R2M1b_03_Fig1C_bubble_ADT.png","Figure 1C as a bubble plot: surface protein",TRUE
+14,"R2-M1b","fig","R2M1b_04_Fig1C_bubble_RNA.png","Figure 1C as a bubble plot: transcript",TRUE
+15,"R2-M1b","tab","R2M1b_03_Fig1C_bubble_source.csv","Values behind both bubble panels",TRUE
+16,"R2-M1e","fig","R2M1e_02_Fig1E_pct_of_CD8.png","Cluster frequency as a percentage of each sample's CD8 compartment",TRUE
+17,"R2-M1e","tab","R2M1e_02_cluster_frequency_both_denominators.csv","Cluster frequency under both denominators",TRUE
+18,"R2-M2a","fig","R2M2a_02_CD8only_clonotype_UMAP.png","Clonotype expansion on the CD8-only embedding",TRUE
+19,"R2-m2","fig","R2m2_02_UMAP_counts_on_panel.png","Cell numbers annotated on the UMAP panels",TRUE
+20,"R1-M2","tab","R1M2_01_Lineage_annotation_findings.csv","Cluster counts and annotation calls, per lineage",TRUE
+21,"R1-m4","tab","R1m4_01_CD3_detection_by_compartment.csv","CD3 transcript versus surface protein, by compartment",TRUE
+22,"R2-M1a","tab","R2M1a_01_CD8_cell_count_reconciliation.csv","CD8 cell counts at each analysis stage",TRUE
+23,"R2-M1d","tab","R2M1d_01_CD8_annotation_justification.csv","CD8 cluster annotation: evidence per population",TRUE
+24,"R2-M1d","tab","R2M1d_02_CD8_flagged_population_resolution.csv","Identity evidence for CD16+ Effector and Naive CD8 4",TRUE
+25,"R1-m3","fig","R1m3_01_TEMRA.png","Figure 1E: TEMRA/CTL frequency by HIV exposure group",TRUE
+26,"R2-m8","fig","R2m8_01_ClonalSharing.png","Supplementary 2C: clonotypes shared across CD8 clusters",TRUE
+27,"R2-m16","fig","R2m16_01_ADT_gating.png","Supplementary 4C: surface-protein sub-gating of the naive CD8 clusters",TRUE
+28,"R2-M2a","fig","R2M2a_01_CD8_dedicated_UMAP.png","CD8-only UMAP from the dedicated CD8 clustering",TRUE
+29,"R2-M1b","fig","R2M1b_01_bubble_RNA.png","Bubble plot, transcript: fraction expressing and level",TRUE
+30,"R2-M1b","fig","R2M1b_02_bubble_ADT.png","Bubble plot, surface protein: fraction expressing and level",TRUE
+31,"R2-M1e","fig","R2M1e_01_composition_pctCD8.png","Cluster frequency as a percentage of total CD8",TRUE
+32,"R2-M1d","fig","R2M1d_04_naive2_identity.png","Naive CD8 2: identity in the dedicated clustering",TRUE
+33,"R2-M1d","fig","R1M2_02_lineage_identity_RNA_ADT.png","Lineage identity by transcript and surface protein",TRUE
+34,"R2-M1d","fig","R1M2_03_qc_vs_CD8.png","Quality metrics against CD8 signal, per population",TRUE
+35,"R2-M1d","fig","R1M2_04_crosslineage_doublet.png","Cross-lineage and doublet checks per population",TRUE
+36,"R2-M1d","fig","R1M2_05_participant_composition.png","Population composition by participant",TRUE
+37,"R2-M1d","fig","R1M2_06_programme_heatmap.png","Programme scores per population",TRUE
+38,"R2-m2","fig","R2m2_01_cells_per_sample.png","Cells recovered per sample, all lineages",TRUE
+39,"R2-M1c","fig","R2M1c_01_all_CD8_clusters_by_group.png","CD8 population frequencies by HIV exposure group",TRUE
+40,"R2-m15","fig","R2m15_01_S_CD8_composition_alluvial.png","CD8 subset composition across the sampled course",TRUE
+41,"E-5","fig","E5_01_sex_inference.png","Genetic sex inferred from sex-chromosome expression",TRUE
+42,"E-5","fig","E5_02_composition_by_sex.png","CD8 composition by inferred sex, HEI participants",TRUE
+43,"R2-M5c","fig","R2M5c_01_CD16_signature_match.png","CD16+ effector CD8 against the congenital-CMV signature",TRUE
+44,"R2-M5c","tab","R2M5c_02_CD16_signature_comparison.csv","Feature-by-feature comparison with PMID 39531313",TRUE
+45,"R2-M3d","fig","R2M3d_01_CMV_enrichment.png","CMV-annotated clonotypes by CD8 population",TRUE
+46,"R2-M3d","tab","R2M3d_04_CMV_enrichment_gd_controlled.csv","CMV enrichment before and after excluding gamma-delta cells",TRUE
+47,"R2-M2b","fig","R2M2b_02_clonotype_frequency.png","Cells in expanded clonotypes, as a percentage of TCR-recovered cells",TRUE
+48,"R2-M2b","tab","R2M2b_01_clonotype_frequency_by_timepoint.csv","Clonotype frequency per sample",TRUE
+49,"R1-M2","fig","R1M2_07_lineage_pathway_heatmap.png","Shared transcriptional programmes across all annotated lineages",TRUE
+50,"R1-M2","tab","R1M2_08_lineage_pathway_drivers.csv","NF-kB driver genes by number of populations",TRUE
+51,"R1-M2","fig","R1M2_11_nonCD8_lineage_brief.png","Differential expression outside the CD8 compartment",TRUE
+52,"R1-M2","tab","R1M2_10_nonCD8_lineage_brief.csv","Non-CD8 lineages: what was found and whether it is worth pursuing",TRUE
+53,"R1-M3","fig","R1M3_01_HIV_cohort_detection.png","HIV-1 transcript detection at the entry visit",TRUE
+54,"R1-M3","tab","HIV_cohort_per_sample.csv","HIV-1 transcript detection per library",TRUE

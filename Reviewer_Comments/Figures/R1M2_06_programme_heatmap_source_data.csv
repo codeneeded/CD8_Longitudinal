@@ -1,0 +1,121 @@
+"CD8_Annotation","programme","z"
+"Naïve CD8","Naive",0.943445839314717
+"Naïve CD8","Tscm",0.836114339816997
+"Naïve CD8","Tcm",0.894482425236608
+"Naïve CD8","Effector",-0.752985776858543
+"Naïve CD8","Cytotoxicity",-0.793678284519742
+"Naïve CD8","Exhaustion",-0.796305292469028
+"Naïve CD8","Innate_like",-0.451442622053315
+"Naïve CD8","MAIT",-1.0000107811526
+"Naïve CD8","Proliferation",0.688323511930553
+"Naïve CD8","IFN_I",-1.20414906727362
+"Naïve CD8","Stress_HeatShock",-0.581898248825708
+"Naïve CD8","Hypoxia_Glyco",-0.353740058296666
+"Naïve CD8 2","Naive",0.673332911509451
+"Naïve CD8 2","Tscm",0.631697538353325
+"Naïve CD8 2","Tcm",0.679437634605907
+"Naïve CD8 2","Effector",-0.696160943778849
+"Naïve CD8 2","Cytotoxicity",-0.728334044763908
+"Naïve CD8 2","Exhaustion",-0.692488468313178
+"Naïve CD8 2","Innate_like",-0.47992637504593
+"Naïve CD8 2","MAIT",-0.641274235407661
+"Naïve CD8 2","Proliferation",0.64387878316478
+"Naïve CD8 2","IFN_I",0.793162454328291
+"Naïve CD8 2","Stress_HeatShock",-0.551489097827126
+"Naïve CD8 2","Hypoxia_Glyco",1.37400123367405
+"Naïve CD8 3","Naive",0.767569635269731
+"Naïve CD8 3","Tscm",0.402192506698618
+"Naïve CD8 3","Tcm",0.518996667220445
+"Naïve CD8 3","Effector",-0.770115600428421
+"Naïve CD8 3","Cytotoxicity",-0.822918586151208
+"Naïve CD8 3","Exhaustion",-0.912340206531973
+"Naïve CD8 3","Innate_like",-0.888312338069136
+"Naïve CD8 3","MAIT",-1.07115213188706
+"Naïve CD8 3","Proliferation",-0.916781295144809
+"Naïve CD8 3","IFN_I",-0.460619580176404
+"Naïve CD8 3","Stress_HeatShock",1.58886833354498
+"Naïve CD8 3","Hypoxia_Glyco",-1.08415894639977
+"Naïve CD8 4","Naive",0.678781240699345
+"Naïve CD8 4","Tscm",0.525974015190319
+"Naïve CD8 4","Tcm",0.704178230052772
+"Naïve CD8 4","Effector",-0.745588114551273
+"Naïve CD8 4","Cytotoxicity",-0.703832749691953
+"Naïve CD8 4","Exhaustion",-0.654410653262503
+"Naïve CD8 4","Innate_like",-0.724512280310577
+"Naïve CD8 4","MAIT",-0.365063621741267
+"Naïve CD8 4","Proliferation",0.660687648940517
+"Naïve CD8 4","IFN_I",-0.257029726687197
+"Naïve CD8 4","Stress_HeatShock",-0.381137896869735
+"Naïve CD8 4","Hypoxia_Glyco",-0.679072507481901
+"Tscm CD8","Naive",0.707047789897472
+"Tscm CD8","Tscm",0.978114991237436
+"Tscm CD8","Tcm",0.833533594371847
+"Tscm CD8","Effector",-0.73338245840652
+"Tscm CD8","Cytotoxicity",-0.739601838834414
+"Tscm CD8","Exhaustion",-0.817995146332327
+"Tscm CD8","Innate_like",-0.465851532120741
+"Tscm CD8","MAIT",0.1214493533582
+"Tscm CD8","Proliferation",1.30578051747813
+"Tscm CD8","IFN_I",-1.48591171858499
+"Tscm CD8","Stress_HeatShock",0.1078418296007
+"Tscm CD8","Hypoxia_Glyco",1.61255507322168
+"Naïve Intermediate CD8","Naive",0.81350894757854
+"Naïve Intermediate CD8","Tscm",0.906575466516946
+"Naïve Intermediate CD8","Tcm",0.886367473559656
+"Naïve Intermediate CD8","Effector",-0.710524032138178
+"Naïve Intermediate CD8","Cytotoxicity",-0.742293234005116
+"Naïve Intermediate CD8","Exhaustion",-0.760303792171924
+"Naïve Intermediate CD8","Innate_like",-0.344917926207963
+"Naïve Intermediate CD8","MAIT",-0.890159682986578
+"Naïve Intermediate CD8","Proliferation",1.27490209565584
+"Naïve Intermediate CD8","IFN_I",-0.733536887695531
+"Naïve Intermediate CD8","Stress_HeatShock",-0.328746057632376
+"Naïve Intermediate CD8","Hypoxia_Glyco",1.26450724285839
+"TEM CD8","Naive",-0.777467149039872
+"TEM CD8","Tscm",-0.165764976653338
+"TEM CD8","Tcm",-0.587432301959191
+"TEM CD8","Effector",0.290601074047649
+"TEM CD8","Cytotoxicity",0.57715406429736
+"TEM CD8","Exhaustion",1.12780034926461
+"TEM CD8","Innate_like",-0.351768232279632
+"TEM CD8","MAIT",0.49820931548625
+"TEM CD8","Proliferation",-0.641094945748915
+"TEM CD8","IFN_I",0.196175919717943
+"TEM CD8","Stress_HeatShock",-0.491312766777266
+"TEM CD8","Hypoxia_Glyco",-0.545232750159067
+"TEMRA CD8","Naive",-1.3501338140011
+"TEMRA CD8","Tscm",-1.45256746276357
+"TEMRA CD8","Tcm",-1.32552275934341
+"TEMRA CD8","Effector",1.48390938162824
+"TEMRA CD8","Cytotoxicity",1.44627519670864
+"TEMRA CD8","Exhaustion",1.16536140526457
+"TEMRA CD8","Innate_like",0.302493775992857
+"TEMRA CD8","MAIT",1.10891504548497
+"TEMRA CD8","Proliferation",-0.80622154152693
+"TEMRA CD8","IFN_I",0.74789824116498
+"TEMRA CD8","Stress_HeatShock",-0.648926788365197
+"TEMRA CD8","Hypoxia_Glyco",-0.618931918706908
+"CD16+ Effector CD8","Naive",-1.25466978500738
+"CD16+ Effector CD8","Tscm",-1.37256674414778
+"CD16+ Effector CD8","Tcm",-1.30463341837419
+"CD16+ Effector CD8","Effector",1.33494435084205
+"CD16+ Effector CD8","Cytotoxicity",1.23016210460258
+"CD16+ Effector CD8","Exhaustion",1.23803596599975
+"CD16+ Effector CD8","Innate_like",1.02898898594215
+"CD16+ Effector CD8","MAIT",1.99026532165341
+"CD16+ Effector CD8","Proliferation",-1.0707422702435
+"CD16+ Effector CD8","IFN_I",1.65433469585763
+"CD16+ Effector CD8","Stress_HeatShock",-0.784423079341092
+"CD16+ Effector CD8","Hypoxia_Glyco",-0.499124122224658
+"KIR+ innate-like CD8","Naive",-1.2014156162209
+"KIR+ innate-like CD8","Tscm",-1.28976967424895
+"KIR+ innate-like CD8","Tcm",-1.29940754537044
+"KIR+ innate-like CD8","Effector",1.29930211964384
+"KIR+ innate-like CD8","Cytotoxicity",1.27706737235776
+"KIR+ innate-like CD8","Exhaustion",1.10264583855201
+"KIR+ innate-like CD8","Innate_like",2.37524854415229
+"KIR+ innate-like CD8","MAIT",0.248821417192333
+"KIR+ innate-like CD8","Proliferation",-1.13873250450566
+"KIR+ innate-like CD8","IFN_I",0.749675669348902
+"KIR+ innate-like CD8","Stress_HeatShock",2.07122377249282
+"KIR+ innate-like CD8","Hypoxia_Glyco",-0.470803246485148

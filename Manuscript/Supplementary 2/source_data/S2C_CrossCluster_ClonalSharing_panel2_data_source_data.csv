@@ -1,0 +1,22 @@
+"Cluster1","Cluster2","n_shared"
+"Naive 1","Naive 1",0
+"Naive 1","Naive 2",2
+"Naive 2","Naive 2",0
+"Naive 1","Naive Intermediate",0
+"Naive 2","Naive Intermediate",0
+"Naive Intermediate","Naive Intermediate",0
+"Naive 1","Tscm",0
+"Naive 2","Tscm",0
+"Naive Intermediate","Tscm",0
+"Tscm","Tscm",0
+"Naive 1","TEMRA/CTL",4
+"Naive 2","TEMRA/CTL",34
+"Naive Intermediate","TEMRA/CTL",0
+"Tscm","TEMRA/CTL",1
+"TEMRA/CTL","TEMRA/CTL",0
+"Naive 1","Tex",3
+"Naive 2","Tex",17
+"Naive Intermediate","Tex",0
+"Tscm","Tex",1
+"TEMRA/CTL","Tex",143
+"Tex","Tex",0

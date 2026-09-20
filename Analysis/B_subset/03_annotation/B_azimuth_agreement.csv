@@ -1,0 +1,25 @@
+"cluster","azimuth","Freq","pct"
+"0","B naive",3759,74.1
+"0","B intermediate",1092,21.5
+"1","B naive",2600,66.9
+"1","B intermediate",1135,29.2
+"2","B naive",1669,80.3
+"2","B intermediate",387,18.6
+"3","B intermediate",1449,72.7
+"3","B memory",371,18.6
+"3","B naive",172,8.6
+"4","B intermediate",716,48.5
+"4","B memory",671,45.4
+"4","B naive",79,5.3
+"5","B naive",745,67.7
+"5","B intermediate",121,11
+"5","CD4 TCM",73,6.6
+"5","CD4 Naive",55,5
+"6","B intermediate",660,70.4
+"6","B naive",224,23.9
+"7","B intermediate",383,67.3
+"7","B naive",152,26.7
+"7","B memory",34,6
+"8","B naive",36,48
+"8","B intermediate",33,44
+"8","B memory",5,6.7

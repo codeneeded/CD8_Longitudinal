@@ -1,0 +1,5 @@
+viral_UMI,pct_of_cell,azimuth_fine,published_annotation,in_published_object,cd8_programme,qc_verdict,note
+277,1.5,Treg cell,Treg,YES,"absent (CD8A/B, GZMK, GZMB, NKG7, PRF1, CCL5 all 0)",passes every published gate,"CD3E 13, CD3D 9, IL7R 9, CXCR4 21. nFeature 5,065."
+171,2.7,Naive CD4 T cell,(not in object),NO,absent (all CD8/cytotoxic markers 0),PASSES every published gate — absent for another reason,"nFeature 2,463, log10GenesPerUMI 0.894, mito 0.8%, ribo 28.7%. Excluded upstream of the QC subset (hashing/demultiplex call or doublet removal), NOT by a QC threshold."
+116,1.5,Naive CD4 T cell,Th2/Th17 EM CD4,YES,absent,passes every published gate,"CD4 1, CD40LG 1, CD3E 9, CD3D 6. nFeature 2,575."
+93,5.7,Naive CD4 T cell,(not in object),NO,absent,FAILS percent_ribo>5 (ribo 0.4%),"Highest viral fraction of the four. nFeature 1,109, only 1,638 total UMI, and ribosomal content 0.4% against a >5% requirement. A cell whose transcriptome is 5.7% viral with collapsed ribosomal content is what a late-stage productively infected cell looks like — the QC gate removes it as low-quality. Worth stating to the reviewer."

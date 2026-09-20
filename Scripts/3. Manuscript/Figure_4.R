@@ -14,8 +14,36 @@ library(cowplot); library(patchwork); library(qs2); library(scCustomize)
 library(SeuratExtend); library(ggrepel); library(ggpubr); library(pheatmap)
 library(grid)
 
+# Export the data behind every panel (Editor point E-3).
+# Resolves this script's own directory under BOTH `Rscript foo.R` and
+# `source("foo.R")`. sys.frame(1) alone fails under Rscript: there is no
+# frame 1 at top level, which halted every figure script on the first try.
+.sd_shim_dir <- local({
+  a <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", a[grep("^--file=", a)])
+  f <- gsub("~+~", " ", f, fixed = TRUE)   # Rscript encodes spaces
+  if (length(f)) dirname(normalizePath(f[1])) else {
+    d <- NULL
+    for (i in rev(seq_len(sys.nframe()))) {
+      o <- sys.frame(i)$ofile
+      if (!is.null(o)) { d <- dirname(normalizePath(o)); break }
+    }
+    if (is.null(d)) getwd() else d
+  }
+})
+.sd_shim <- file.path(.sd_shim_dir, "00.Source_Data_Shim.R")
+if (file.exists(.sd_shim)) source(.sd_shim) else
+  warning("source-data shim not found at ", .sd_shim,
+          "; panels will not export", call. = FALSE, immediate. = TRUE)
+# Repository root, derived from this script's location. Replaces the
+# hardcoded ~/Documents/CD8_Longitudinal, which does not exist here.
+CD8_ROOT <- if (exists("sd_repo_root")) sd_repo_root(.sd_shim_dir) else
+  Sys.getenv("CD8_BASE", unset = normalizePath(
+    file.path(.sd_shim_dir, "..", ".."), mustWork = FALSE))
+
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
-base_dir     <- "~/Documents/CD8_Longitudinal"
+base_dir     <- CD8_ROOT
 saved_dir    <- file.path(base_dir, "saved_R_data")
 fig4_dir     <- file.path(base_dir, "Manuscript", "Figure 4")
 supp_dir     <- file.path(base_dir, "Manuscript", "Supplementary 4")
@@ -617,3 +645,5 @@ p_G <- if (!is.null(p_G_prot)) (p_G_rna | p_G_prot) else p_G_rna
 ggsave(file.path(fig4_dir, "Fig4G_CD16_FeaturePlots_RNA_protein.png"),
        plot = p_G, width = if (!is.null(p_G_prot)) 16 else 8, height = 7,
        dpi = 300, bg = "white")
+
+if (exists("sd_report")) sd_report()

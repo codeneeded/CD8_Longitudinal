@@ -1,0 +1,15 @@
+"fate","step","state","UMAP1","UMAP2","median_pseudotime"
+"CD16+ Effector CD8",1,"Naïve CD8",4.4564,2.1787,3.0589
+"CD16+ Effector CD8",2,"Naïve CD8 4",1.6864,2.1254,5.8257
+"CD16+ Effector CD8",3,"TEM CD8",-4.7636,-1.3304,14.811
+"CD16+ Effector CD8",4,"TEMRA CD8",-7.8121,-0.9317,21.3653
+"CD16+ Effector CD8",5,"CD16+ Effector CD8",-7.4461,1.8912,24.2676
+"KIR+ innate-like CD8",1,"Naïve CD8",4.4564,2.1787,3.0589
+"KIR+ innate-like CD8",2,"Naïve CD8 4",1.6864,2.1254,5.8257
+"KIR+ innate-like CD8",3,"TEM CD8",-4.7636,-1.3304,14.811
+"KIR+ innate-like CD8",4,"TEMRA CD8",-7.8121,-0.9317,21.3653
+"KIR+ innate-like CD8",5,"KIR+ innate-like CD8",-6.1174,1.7641,24.3451
+"Naïve CD8 2",1,"Naïve CD8",4.4564,2.1787,3.0589
+"Naïve CD8 2",2,"Naïve CD8 2",6.0328,-1.7827,9.4972
+"Naïve CD8 3",1,"Naïve CD8",4.4564,2.1787,3.0589
+"Naïve CD8 3",2,"Naïve CD8 3",3.5888,-2.4311,12.68

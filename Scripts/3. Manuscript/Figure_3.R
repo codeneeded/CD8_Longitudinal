@@ -41,7 +41,35 @@ library(RColorBrewer)
 library(qs2)
 library(ggrepel)
 
-base_dir  <- "~/Documents/CD8_Longitudinal"
+# Export the data behind every panel (Editor point E-3).
+# Resolves this script's own directory under BOTH `Rscript foo.R` and
+# `source("foo.R")`. sys.frame(1) alone fails under Rscript: there is no
+# frame 1 at top level, which halted every figure script on the first try.
+.sd_shim_dir <- local({
+  a <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", a[grep("^--file=", a)])
+  f <- gsub("~+~", " ", f, fixed = TRUE)   # Rscript encodes spaces
+  if (length(f)) dirname(normalizePath(f[1])) else {
+    d <- NULL
+    for (i in rev(seq_len(sys.nframe()))) {
+      o <- sys.frame(i)$ofile
+      if (!is.null(o)) { d <- dirname(normalizePath(o)); break }
+    }
+    if (is.null(d)) getwd() else d
+  }
+})
+.sd_shim <- file.path(.sd_shim_dir, "00.Source_Data_Shim.R")
+if (file.exists(.sd_shim)) source(.sd_shim) else
+  warning("source-data shim not found at ", .sd_shim,
+          "; panels will not export", call. = FALSE, immediate. = TRUE)
+# Repository root, derived from this script's location. Replaces the
+# hardcoded ~/Documents/CD8_Longitudinal, which does not exist here.
+CD8_ROOT <- if (exists("sd_repo_root")) sd_repo_root(.sd_shim_dir) else
+  Sys.getenv("CD8_BASE", unset = normalizePath(
+    file.path(.sd_shim_dir, "..", ".."), mustWork = FALSE))
+
+
+base_dir  <- CD8_ROOT
 saved_dir <- file.path(base_dir, "saved_R_data")
 fig3_dir  <- file.path(base_dir, "Manuscript", "Figure 3")
 supp3_dir <- file.path(base_dir, "Manuscript", "Supplementary 3")
@@ -275,7 +303,7 @@ panelD <- ggplot(gene_stats, aes(x = gene, y = pct_expressing, fill = category))
     plot.subtitle = element_text(size = 30, color = "#2166AC", face = "bold")
   ) +
   labs(x = NULL, y = "% cells expressing",
-       title = "Functional Profile of HIV-Specific Clones",
+       title = "Functional profile of HIV-specific clonotypes",
        subtitle = paste0(n_val_cells, " validated cells in TARA unstimulated data")) +
   guides(fill = guide_legend(nrow = 2))
 
@@ -636,3 +664,5 @@ message("\n",
         "   S3F: Module scores 2m vs 101m\n",
         "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n"
 )
+
+if (exists("sd_report")) sd_report()

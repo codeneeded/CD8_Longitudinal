@@ -1,0 +1,579 @@
+contrast,term,n_lineages_significant,n_lineages_tested
+HEIvsHEU_PreART,AUF1 (hnRNP D0) Binds And Destabilizes mRNA R-HSA-450408,18,30
+HEIvsHEU_PreART,Activation Of NF-kappaB In B Cells R-HSA-1169091,16,30
+HEIvsHEU_PreART,Adaptive Immune System R-HSA-1280218,21,30
+HEIvsHEU_PreART,Allograft Rejection,26,30
+HEIvsHEU_PreART,Allograft rejection,19,30
+HEIvsHEU_PreART,"Antigen Presentation: Folding, Assembly, Peptide Loading Of Class I MHC R-HSA-983170",24,30
+HEIvsHEU_PreART,Antigen Processing And Presentation Of Endogenous Peptide Antigen (GO:0002483),16,30
+HEIvsHEU_PreART,Antigen Processing And Presentation Of Endogenous Peptide Antigen Via MHC Class I Via ER Pathway (GO:0002484),20,30
+HEIvsHEU_PreART,"Antigen Processing And Presentation Of Endogenous Peptide Antigen Via MHC Class I Via ER Pathway, TAP-independent (GO:0002486)",20,30
+HEIvsHEU_PreART,Antigen Processing And Presentation Of Endogenous Peptide Antigen Via MHC Class Ib (GO:0002476),20,30
+HEIvsHEU_PreART,Antigen Processing And Presentation Of Peptide Antigen Via MHC Class Ib (GO:0002428),20,30
+HEIvsHEU_PreART,Antigen processing and presentation,24,30
+HEIvsHEU_PreART,Antigen processing-Cross Presentation R-HSA-1236975,24,30
+HEIvsHEU_PreART,Apoptosis,23,30
+HEIvsHEU_PreART,Apoptosis R-HSA-109581,18,30
+HEIvsHEU_PreART,Assembly Of Pre-Replicative Complex R-HSA-68867,19,30
+HEIvsHEU_PreART,Asymmetric Localization Of PCP Proteins R-HSA-4608870,16,30
+HEIvsHEU_PreART,Autodegradation Of Cdh1 By Cdh1:APC/C R-HSA-174084,16,30
+HEIvsHEU_PreART,Autodegradation Of E3 Ubiquitin Ligase COP1 R-HSA-349425,17,30
+HEIvsHEU_PreART,Autoimmune thyroid disease,16,30
+HEIvsHEU_PreART,Axon Guidance R-HSA-422475,27,30
+HEIvsHEU_PreART,Beta-catenin Independent WNT Signaling R-HSA-3858494,18,30
+HEIvsHEU_PreART,C-type Lectin Receptors (CLRs) R-HSA-5621481,17,30
+HEIvsHEU_PreART,CLEC7A (Dectin-1) Signaling R-HSA-5607764,17,30
+HEIvsHEU_PreART,Cap-dependent Translation Initiation R-HSA-72737,27,30
+HEIvsHEU_PreART,Carbohydrate Catabolic Process (GO:0016052),22,30
+HEIvsHEU_PreART,Cellular Response To Chemical Stress R-HSA-9711123,17,30
+HEIvsHEU_PreART,Cellular Response To Cytokine Stimulus (GO:0071345),22,30
+HEIvsHEU_PreART,Cellular Response To Starvation R-HSA-9711097,27,30
+HEIvsHEU_PreART,Cellular Response To Tumor Necrosis Factor (GO:0071356),17,30
+HEIvsHEU_PreART,Cellular Response To Type II Interferon (GO:0071346),21,30
+HEIvsHEU_PreART,Cellular Responses To Stimuli R-HSA-8953897,27,30
+HEIvsHEU_PreART,Cellular Responses To Stress R-HSA-2262752,27,30
+HEIvsHEU_PreART,Cellular Senescence R-HSA-2559583,17,30
+HEIvsHEU_PreART,Class I MHC Mediated Antigen Processing And Presentation R-HSA-983169,16,30
+HEIvsHEU_PreART,Coronavirus disease,27,30
+HEIvsHEU_PreART,Cyclin A:Cdk2-associated Events At S Phase Entry R-HSA-69656,18,30
+HEIvsHEU_PreART,Cyclin E Associated Events During G1/S Transition R-HSA-69202,18,30
+HEIvsHEU_PreART,Cytokine Signaling In Immune System R-HSA-1280215,27,30
+HEIvsHEU_PreART,Cytoplasmic Translation (GO:0002181),27,30
+HEIvsHEU_PreART,DAP12 Interactions R-HSA-2172127,16,30
+HEIvsHEU_PreART,DNA Replication Pre-Initiation R-HSA-69002,19,30
+HEIvsHEU_PreART,DNA Replication R-HSA-69306,17,30
+HEIvsHEU_PreART,Dectin-1 Mediated Noncanonical NF-kB Signaling R-HSA-5607761,16,30
+HEIvsHEU_PreART,Defective CFTR Causes Cystic Fibrosis R-HSA-5678895,16,30
+HEIvsHEU_PreART,Defense Response To Symbiont (GO:0140546),17,30
+HEIvsHEU_PreART,Defense Response To Virus (GO:0051607),16,30
+HEIvsHEU_PreART,Degradation Of AXIN R-HSA-4641257,16,30
+HEIvsHEU_PreART,Degradation Of Beta-Catenin By Destruction Complex R-HSA-195253,18,30
+HEIvsHEU_PreART,Degradation Of DVL R-HSA-4641258,16,30
+HEIvsHEU_PreART,Degradation Of GLI1 By Proteasome R-HSA-5610780,16,30
+HEIvsHEU_PreART,Degradation Of GLI2 By Proteasome R-HSA-5610783,16,30
+HEIvsHEU_PreART,Developmental Biology R-HSA-1266738,27,30
+HEIvsHEU_PreART,Disease R-HSA-1643685,27,30
+HEIvsHEU_PreART,Diseases Of Signal Transduction By Growth Factor Receptors And Second Messengers R-HSA-5663202,16,30
+HEIvsHEU_PreART,Downstream TCR Signaling R-HSA-202424,21,30
+HEIvsHEU_PreART,ER-Phagosome Pathway R-HSA-1236974,22,30
+HEIvsHEU_PreART,ESR-mediated Signaling R-HSA-8939211,16,30
+HEIvsHEU_PreART,Endosomal/Vacuolar Pathway R-HSA-1236977,27,30
+HEIvsHEU_PreART,Epstein-Barr virus infection,23,30
+HEIvsHEU_PreART,Eukaryotic Translation Elongation R-HSA-156842,27,30
+HEIvsHEU_PreART,Eukaryotic Translation Termination R-HSA-72764,27,30
+HEIvsHEU_PreART,FBXL7 Down-Regulates AURKA During Mitotic Entry And In Early Mitosis R-HSA-8854050,16,30
+HEIvsHEU_PreART,FCERI Mediated NF-kB Activation R-HSA-2871837,16,30
+HEIvsHEU_PreART,Fc Epsilon Receptor (FCERI) Signaling R-HSA-2454202,21,30
+HEIvsHEU_PreART,Formation Of A Pool Of Free 40S Subunits R-HSA-72689,27,30
+HEIvsHEU_PreART,"Formation Of Ternary Complex, And Subsequently, 43S Complex R-HSA-72695",27,30
+HEIvsHEU_PreART,G1/S DNA Damage Checkpoints R-HSA-69615,17,30
+HEIvsHEU_PreART,GLI3 Is Processed To GLI3R By Proteasome R-HSA-5610785,16,30
+HEIvsHEU_PreART,GSK3B And BTRC:CUL1-mediated-degradation Of NFE2L2 R-HSA-9762114,16,30
+HEIvsHEU_PreART,GTP Hydrolysis And Joining Of 60S Ribosomal Subunit R-HSA-72706,27,30
+HEIvsHEU_PreART,Gene Expression (GO:0010467),27,30
+HEIvsHEU_PreART,Gluconeogenesis (GO:0006094),16,30
+HEIvsHEU_PreART,Gluconeogenesis R-HSA-70263,17,30
+HEIvsHEU_PreART,Glycolysis,22,30
+HEIvsHEU_PreART,Glycolysis / Gluconeogenesis,22,30
+HEIvsHEU_PreART,Glycolytic Process (GO:0006096),22,30
+HEIvsHEU_PreART,Graft-versus-host disease,21,30
+HEIvsHEU_PreART,HIF-1 signaling pathway,21,30
+HEIvsHEU_PreART,HIV Infection R-HSA-162906,17,30
+HEIvsHEU_PreART,Hedgehog Ligand Biogenesis R-HSA-5358346,16,30
+HEIvsHEU_PreART,Hedgehog Off State R-HSA-5610787,16,30
+HEIvsHEU_PreART,Hh Mutants Abrogate Ligand Secretion R-HSA-5387390,16,30
+HEIvsHEU_PreART,Hh Mutants Are Degraded By ERAD R-HSA-5362768,16,30
+HEIvsHEU_PreART,Host Interactions Of HIV Factors R-HSA-162909,19,30
+HEIvsHEU_PreART,Human T-cell leukemia virus 1 infection,23,30
+HEIvsHEU_PreART,Human cytomegalovirus infection,18,30
+HEIvsHEU_PreART,Human immunodeficiency virus 1 infection,20,30
+HEIvsHEU_PreART,Hypoxia,25,30
+HEIvsHEU_PreART,IL-2/STAT5 Signaling,23,30
+HEIvsHEU_PreART,Immune System R-HSA-168256,26,30
+HEIvsHEU_PreART,Infection With Mycobacterium Tuberculosis R-HSA-9635486,22,30
+HEIvsHEU_PreART,Infectious Disease R-HSA-5663205,27,30
+HEIvsHEU_PreART,Inflammatory Response,18,30
+HEIvsHEU_PreART,Influenza Infection R-HSA-168255,27,30
+HEIvsHEU_PreART,Influenza Viral RNA Transcription And Replication R-HSA-168273,27,30
+HEIvsHEU_PreART,Innate Immune System R-HSA-168249,25,30
+HEIvsHEU_PreART,Interferon Alpha Response,26,30
+HEIvsHEU_PreART,Interferon Alpha/Beta Signaling R-HSA-909733,26,30
+HEIvsHEU_PreART,Interferon Gamma Response,27,30
+HEIvsHEU_PreART,Interferon Gamma Signaling R-HSA-877300,26,30
+HEIvsHEU_PreART,Interferon Signaling R-HSA-913531,27,30
+HEIvsHEU_PreART,Interleukin-1 Signaling R-HSA-9020702,16,30
+HEIvsHEU_PreART,Interleukin-12 Family Signaling R-HSA-447115,18,30
+HEIvsHEU_PreART,Interleukin-4 And Interleukin-13 Signaling R-HSA-6785807,19,30
+HEIvsHEU_PreART,KEAP1-NFE2L2 Pathway R-HSA-9755511,17,30
+HEIvsHEU_PreART,Kaposi sarcoma-associated herpesvirus infection,24,30
+HEIvsHEU_PreART,L13a-mediated Translational Silencing Of Ceruloplasmin Expression R-HSA-156827,27,30
+HEIvsHEU_PreART,Legionellosis,17,30
+HEIvsHEU_PreART,Leishmaniasis,19,30
+HEIvsHEU_PreART,MAPK6/MAPK4 Signaling R-HSA-5687128,18,30
+HEIvsHEU_PreART,Macromolecule Biosynthetic Process (GO:0009059),27,30
+HEIvsHEU_PreART,Major Pathway Of rRNA Processing In Nucleolus And Cytosol R-HSA-6791226,27,30
+HEIvsHEU_PreART,Measles,16,30
+HEIvsHEU_PreART,Metabolism Of Amino Acids And Derivatives R-HSA-71291,27,30
+HEIvsHEU_PreART,Metabolism Of Proteins R-HSA-392499,25,30
+HEIvsHEU_PreART,Metabolism Of RNA R-HSA-8953854,27,30
+HEIvsHEU_PreART,Metabolism R-HSA-1430728,21,30
+HEIvsHEU_PreART,Modulation By Mtb Of Host Immune System R-HSA-9637628,17,30
+HEIvsHEU_PreART,MyD88 Cascade Initiated On Plasma Membrane R-HSA-975871,16,30
+HEIvsHEU_PreART,MyD88 Dependent Cascade Initiated On Endosome R-HSA-975155,16,30
+HEIvsHEU_PreART,MyD88-independent TLR4 Cascade R-HSA-166166,17,30
+HEIvsHEU_PreART,MyD88:MAL(TIRAP) Cascade Initiated On Plasma Membrane R-HSA-166058,16,30
+HEIvsHEU_PreART,Myc Targets V1,26,30
+HEIvsHEU_PreART,NIK To Noncanonical NF-kB Signaling R-HSA-5676590,16,30
+HEIvsHEU_PreART,NOD-like receptor signaling pathway,17,30
+HEIvsHEU_PreART,Natural killer cell mediated cytotoxicity,17,30
+HEIvsHEU_PreART,Necroptosis,17,30
+HEIvsHEU_PreART,Negative Regulation Of Apoptotic Process (GO:0043066),23,30
+HEIvsHEU_PreART,Negative Regulation Of NOTCH4 Signaling R-HSA-9604323,16,30
+HEIvsHEU_PreART,Negative Regulation Of Programmed Cell Death (GO:0043069),18,30
+HEIvsHEU_PreART,Nervous System Development R-HSA-9675108,27,30
+HEIvsHEU_PreART,Neutrophil Degranulation R-HSA-6798695,21,30
+HEIvsHEU_PreART,Nonsense Mediated Decay (NMD) Enhanced By Exon Junction Complex (EJC) R-HSA-975957,27,30
+HEIvsHEU_PreART,Nonsense Mediated Decay (NMD) Independent Of Exon Junction Complex (EJC) R-HSA-975956,27,30
+HEIvsHEU_PreART,Nuclear Events Mediated By NFE2L2 R-HSA-9759194,16,30
+HEIvsHEU_PreART,Orc1 Removal From Chromatin R-HSA-68949,16,30
+HEIvsHEU_PreART,Osteoclast differentiation,17,30
+HEIvsHEU_PreART,Oxidative Stress Induced Senescence R-HSA-2559580,17,30
+HEIvsHEU_PreART,Oxygen-dependent Proline Hydroxylation Of Hypoxia-inducible Factor Alpha R-HSA-1234176,16,30
+HEIvsHEU_PreART,PCP/CE Pathway R-HSA-4086400,16,30
+HEIvsHEU_PreART,Peptide Biosynthetic Process (GO:0043043),27,30
+HEIvsHEU_PreART,Peptide Chain Elongation R-HSA-156902,27,30
+HEIvsHEU_PreART,Phagosome,19,30
+HEIvsHEU_PreART,Positive Regulation Of Cytokine Production (GO:0001819),18,30
+HEIvsHEU_PreART,Positive Regulation Of Leukocyte Mediated Cytotoxicity (GO:0001912),17,30
+HEIvsHEU_PreART,Positive Regulation Of T Cell Mediated Immunity (GO:0002711),19,30
+HEIvsHEU_PreART,Programmed Cell Death R-HSA-5357801,20,30
+HEIvsHEU_PreART,Pyruvate Metabolic Process (GO:0006090),21,30
+HEIvsHEU_PreART,RUNX1 Regulates Transcription Of Genes Involved In Differentiation Of HSCs R-HSA-8939236,20,30
+HEIvsHEU_PreART,Regulated Necrosis R-HSA-5218859,17,30
+HEIvsHEU_PreART,Regulation Of Activated PAK-2p34 By Proteasome Mediated Degradation R-HSA-211733,17,30
+HEIvsHEU_PreART,Regulation Of Apoptosis R-HSA-169911,16,30
+HEIvsHEU_PreART,Regulation Of Apoptotic Process (GO:0042981),20,30
+HEIvsHEU_PreART,Regulation Of BACH1 Activity R-HSA-9708530,16,30
+HEIvsHEU_PreART,Regulation Of Expression Of SLITs And ROBOs R-HSA-9010553,27,30
+HEIvsHEU_PreART,Regulation Of PTEN Stability And Activity R-HSA-8948751,16,30
+HEIvsHEU_PreART,Regulation Of RAS By GAPs R-HSA-5658442,16,30
+HEIvsHEU_PreART,Regulation Of RUNX2 Expression And Activity R-HSA-8939902,17,30
+HEIvsHEU_PreART,Regulation Of RUNX3 Expression And Activity R-HSA-8941858,18,30
+HEIvsHEU_PreART,Regulation Of Translation (GO:0006417),17,30
+HEIvsHEU_PreART,Regulation Of mRNA Stability By Proteins That Bind AU-rich Elements R-HSA-450531,19,30
+HEIvsHEU_PreART,Response Of EIF2AK4 (GCN2) To Amino Acid Deficiency R-HSA-9633012,27,30
+HEIvsHEU_PreART,Response Of Mtb To Phagocytosis R-HSA-9637690,17,30
+HEIvsHEU_PreART,Response To Type II Interferon (GO:0034341),25,30
+HEIvsHEU_PreART,Rheumatoid arthritis,18,30
+HEIvsHEU_PreART,Ribonucleoprotein Complex Biogenesis (GO:0022613),20,30
+HEIvsHEU_PreART,Ribosomal Scanning And Start Codon Recognition R-HSA-72702,26,30
+HEIvsHEU_PreART,Ribosomal Small Subunit Biogenesis (GO:0042274),20,30
+HEIvsHEU_PreART,Ribosome,27,30
+HEIvsHEU_PreART,Ribosome Biogenesis (GO:0042254),18,30
+HEIvsHEU_PreART,Role Of GTSE1 In G2/M Progression After G2 Checkpoint R-HSA-8852276,18,30
+HEIvsHEU_PreART,SARS-CoV Infections R-HSA-9679506,27,30
+HEIvsHEU_PreART,SARS-CoV-2 Infection R-HSA-9694516,27,30
+HEIvsHEU_PreART,SARS-CoV-2 Modulates Host Translation Machinery R-HSA-9754678,27,30
+HEIvsHEU_PreART,SARS-CoV-2-host Interactions R-HSA-9705683,27,30
+HEIvsHEU_PreART,SCF(Skp2)-mediated Degradation Of P27/P21 R-HSA-187577,16,30
+HEIvsHEU_PreART,SCF-beta-TrCP Mediated Degradation Of Emi1 R-HSA-174113,16,30
+HEIvsHEU_PreART,SRP-dependent Cotranslational Protein Targeting To Membrane R-HSA-1799339,27,30
+HEIvsHEU_PreART,Salmonella infection,19,30
+HEIvsHEU_PreART,Selenoamino Acid Metabolism R-HSA-2408522,27,30
+HEIvsHEU_PreART,Selenocysteine Synthesis R-HSA-2408557,27,30
+HEIvsHEU_PreART,Senescence-Associated Secretory Phenotype (SASP) R-HSA-2559582,18,30
+HEIvsHEU_PreART,Shigellosis,18,30
+HEIvsHEU_PreART,Signal Transduction R-HSA-162582,16,30
+HEIvsHEU_PreART,Signaling By B Cell Receptor (BCR) R-HSA-983705,17,30
+HEIvsHEU_PreART,Signaling By Hedgehog R-HSA-5358351,16,30
+HEIvsHEU_PreART,Signaling By Interleukins R-HSA-449147,24,30
+HEIvsHEU_PreART,Signaling By NOTCH R-HSA-157118,20,30
+HEIvsHEU_PreART,Signaling By NOTCH4 R-HSA-9013694,16,30
+HEIvsHEU_PreART,Signaling By ROBO Receptors R-HSA-376176,27,30
+HEIvsHEU_PreART,Signaling By Receptor Tyrosine Kinases R-HSA-9006934,17,30
+HEIvsHEU_PreART,Signaling By WNT R-HSA-195721,16,30
+HEIvsHEU_PreART,Stabilization Of P53 R-HSA-69541,17,30
+HEIvsHEU_PreART,Systemic lupus erythematosus,18,30
+HEIvsHEU_PreART,TCF Dependent Signaling In Response To WNT R-HSA-201681,17,30
+HEIvsHEU_PreART,TCR Signaling R-HSA-202403,21,30
+HEIvsHEU_PreART,TNF-alpha Signaling via NF-kB,24,30
+HEIvsHEU_PreART,TNFR2 Non-Canonical NF-kB Pathway R-HSA-5668541,21,30
+HEIvsHEU_PreART,TRAF6 Mediated Induction Of NFkB And MAP Kinases Upon TLR7/8 Or 9 Activation R-HSA-975138,16,30
+HEIvsHEU_PreART,Th1 and Th2 cell differentiation,16,30
+HEIvsHEU_PreART,Th17 cell differentiation,16,30
+HEIvsHEU_PreART,Toll Like Receptor 3 (TLR3) Cascade R-HSA-168164,17,30
+HEIvsHEU_PreART,Toll Like Receptor 4 (TLR4) Cascade R-HSA-166016,16,30
+HEIvsHEU_PreART,Toll Like Receptor 7/8 (TLR7/8) Cascade R-HSA-168181,16,30
+HEIvsHEU_PreART,Toll Like Receptor 9 (TLR9) Cascade R-HSA-168138,16,30
+HEIvsHEU_PreART,Toll-like Receptor Cascades R-HSA-168898,17,30
+HEIvsHEU_PreART,Transcriptional Regulation By RUNX1 R-HSA-8878171,16,30
+HEIvsHEU_PreART,Transcriptional Regulation By RUNX2 R-HSA-8878166,16,30
+HEIvsHEU_PreART,Transcriptional Regulation By RUNX3 R-HSA-8878159,18,30
+HEIvsHEU_PreART,Translation (GO:0006412),27,30
+HEIvsHEU_PreART,Translation Initiation Complex Formation R-HSA-72649,26,30
+HEIvsHEU_PreART,Translation R-HSA-72766,27,30
+HEIvsHEU_PreART,Translational Elongation (GO:0006414),19,30
+HEIvsHEU_PreART,Type I diabetes mellitus,21,30
+HEIvsHEU_PreART,UCH Proteinases R-HSA-5689603,16,30
+HEIvsHEU_PreART,Ubiquitin Mediated Degradation Of Phosphorylated Cdc25A R-HSA-69601,16,30
+HEIvsHEU_PreART,Ubiquitin-dependent Degradation Of Cyclin D R-HSA-75815,16,30
+HEIvsHEU_PreART,Vif-mediated Degradation Of APOBEC3G R-HSA-180585,17,30
+HEIvsHEU_PreART,Viral mRNA Translation R-HSA-192823,27,30
+HEIvsHEU_PreART,Viral myocarditis,22,30
+HEIvsHEU_PreART,Vpu Mediated Degradation Of CD4 R-HSA-180534,16,30
+HEIvsHEU_PreART,"mRNA Activation Upon Binding Of Cap-Binding Complex And eIFs, Subsequent Binding To 43S R-HSA-72662",26,30
+HEIvsHEU_PreART,mTORC1 Signaling,24,30
+HEIvsHEU_PreART,p53 Pathway,20,30
+HEIvsHEU_PreART,p53-Dependent G1 DNA Damage Response R-HSA-69563,17,30
+HEIvsHEU_PreART,protein-RNA Complex Assembly (GO:0022618),17,30
+HEIvsHEU_PreART,rRNA Processing In Nucleus And Cytosol R-HSA-8868773,27,30
+HEIvsHEU_PreART,rRNA Processing R-HSA-72312,27,30
+HEUvsHUU,Allograft Rejection,18,27
+HEUvsHUU,Apoptosis,18,27
+HEUvsHUU,Axon Guidance R-HSA-422475,20,27
+HEUvsHUU,Cap-dependent Translation Initiation R-HSA-72737,22,27
+HEUvsHUU,Carbohydrate Catabolic Process (GO:0016052),24,27
+HEUvsHUU,Cellular Response To Starvation R-HSA-9711097,22,27
+HEUvsHUU,Cellular Responses To Stimuli R-HSA-8953897,21,27
+HEUvsHUU,Cellular Responses To Stress R-HSA-2262752,21,27
+HEUvsHUU,Central carbon metabolism in cancer,19,27
+HEUvsHUU,Coronavirus disease,23,27
+HEUvsHUU,Cytokine Signaling In Immune System R-HSA-1280215,14,27
+HEUvsHUU,Cytoplasmic Translation (GO:0002181),22,27
+HEUvsHUU,Developmental Biology R-HSA-1266738,18,27
+HEUvsHUU,Disease R-HSA-1643685,20,27
+HEUvsHUU,Endosomal/Vacuolar Pathway R-HSA-1236977,16,27
+HEUvsHUU,Eukaryotic Translation Elongation R-HSA-156842,23,27
+HEUvsHUU,Eukaryotic Translation Termination R-HSA-72764,22,27
+HEUvsHUU,Formation Of A Pool Of Free 40S Subunits R-HSA-72689,22,27
+HEUvsHUU,"Formation Of Ternary Complex, And Subsequently, 43S Complex R-HSA-72695",20,27
+HEUvsHUU,Fructose and mannose metabolism,20,27
+HEUvsHUU,GTP Hydrolysis And Joining Of 60S Ribosomal Subunit R-HSA-72706,22,27
+HEUvsHUU,Gene Expression (GO:0010467),22,27
+HEUvsHUU,Glucagon signaling pathway,21,27
+HEUvsHUU,Gluconeogenesis (GO:0006094),18,27
+HEUvsHUU,Gluconeogenesis R-HSA-70263,17,27
+HEUvsHUU,Glucose Metabolic Process (GO:0006006),15,27
+HEUvsHUU,Glucose Metabolism R-HSA-70326,22,27
+HEUvsHUU,Glycolysis,24,27
+HEUvsHUU,Glycolysis / Gluconeogenesis,23,27
+HEUvsHUU,Glycolysis R-HSA-70171,23,27
+HEUvsHUU,Glycolytic Process (GO:0006096),25,27
+HEUvsHUU,HIF-1 signaling pathway,26,27
+HEUvsHUU,Hexose Biosynthetic Process (GO:0019319),18,27
+HEUvsHUU,Human T-cell leukemia virus 1 infection,18,27
+HEUvsHUU,Hypoxia,26,27
+HEUvsHUU,IL-2/STAT5 Signaling,21,27
+HEUvsHUU,Immune System R-HSA-168256,16,27
+HEUvsHUU,Infectious Disease R-HSA-5663205,21,27
+HEUvsHUU,Influenza Infection R-HSA-168255,22,27
+HEUvsHUU,Influenza Viral RNA Transcription And Replication R-HSA-168273,22,27
+HEUvsHUU,Interferon Gamma Response,16,27
+HEUvsHUU,Kaposi sarcoma-associated herpesvirus infection,15,27
+HEUvsHUU,L13a-mediated Translational Silencing Of Ceruloplasmin Expression R-HSA-156827,22,27
+HEUvsHUU,Macromolecule Biosynthetic Process (GO:0009059),22,27
+HEUvsHUU,Major Pathway Of rRNA Processing In Nucleolus And Cytosol R-HSA-6791226,22,27
+HEUvsHUU,Metabolism Of Amino Acids And Derivatives R-HSA-71291,19,27
+HEUvsHUU,Metabolism Of Proteins R-HSA-392499,17,27
+HEUvsHUU,Metabolism Of RNA R-HSA-8953854,20,27
+HEUvsHUU,Metabolism R-HSA-1430728,16,27
+HEUvsHUU,Mitophagy,14,27
+HEUvsHUU,Myc Targets V1,19,27
+HEUvsHUU,Nervous System Development R-HSA-9675108,20,27
+HEUvsHUU,Nonsense Mediated Decay (NMD) Enhanced By Exon Junction Complex (EJC) R-HSA-975957,22,27
+HEUvsHUU,Nonsense Mediated Decay (NMD) Independent Of Exon Junction Complex (EJC) R-HSA-975956,22,27
+HEUvsHUU,PI3K/AKT/mTOR  Signaling,14,27
+HEUvsHUU,Peptide Biosynthetic Process (GO:0043043),22,27
+HEUvsHUU,Peptide Chain Elongation R-HSA-156902,23,27
+HEUvsHUU,Pyruvate Metabolic Process (GO:0006090),23,27
+HEUvsHUU,Regulation Of Apoptotic Process (GO:0042981),14,27
+HEUvsHUU,Regulation Of Expression Of SLITs And ROBOs R-HSA-9010553,22,27
+HEUvsHUU,Response Of EIF2AK4 (GCN2) To Amino Acid Deficiency R-HSA-9633012,23,27
+HEUvsHUU,Response Of Mtb To Phagocytosis R-HSA-9637690,18,27
+HEUvsHUU,Ribonucleoprotein Complex Biogenesis (GO:0022613),15,27
+HEUvsHUU,Ribosomal Scanning And Start Codon Recognition R-HSA-72702,20,27
+HEUvsHUU,Ribosomal Small Subunit Biogenesis (GO:0042274),15,27
+HEUvsHUU,Ribosome,22,27
+HEUvsHUU,Ribosome Biogenesis (GO:0042254),15,27
+HEUvsHUU,SARS-CoV Infections R-HSA-9679506,21,27
+HEUvsHUU,SARS-CoV-2 Infection R-HSA-9694516,21,27
+HEUvsHUU,SARS-CoV-2 Modulates Host Translation Machinery R-HSA-9754678,21,27
+HEUvsHUU,SARS-CoV-2-host Interactions R-HSA-9705683,21,27
+HEUvsHUU,SRP-dependent Cotranslational Protein Targeting To Membrane R-HSA-1799339,23,27
+HEUvsHUU,Salmonella infection,16,27
+HEUvsHUU,Selenoamino Acid Metabolism R-HSA-2408522,22,27
+HEUvsHUU,Selenocysteine Synthesis R-HSA-2408557,22,27
+HEUvsHUU,Shigellosis,15,27
+HEUvsHUU,Signaling By ROBO Receptors R-HSA-376176,22,27
+HEUvsHUU,T cell receptor signaling pathway,14,27
+HEUvsHUU,TNF-alpha Signaling via NF-kB,22,27
+HEUvsHUU,Translation (GO:0006412),22,27
+HEUvsHUU,Translation Initiation Complex Formation R-HSA-72649,20,27
+HEUvsHUU,Translation R-HSA-72766,22,27
+HEUvsHUU,Viral mRNA Translation R-HSA-192823,22,27
+HEUvsHUU,"mRNA Activation Upon Binding Of Cap-Binding Complex And eIFs, Subsequent Binding To 43S R-HSA-72662",20,27
+HEUvsHUU,mTORC1 Signaling,26,27
+HEUvsHUU,p53 Pathway,18,27
+HEUvsHUU,rRNA Processing In Nucleus And Cytosol R-HSA-8868773,22,27
+HEUvsHUU,rRNA Processing R-HSA-72312,22,27
+Suppressed_vs_PreART,Activated PKN1 Stimulates Transcription Of Androgen Receptor Regulated KLK2 And KLK3 R-HSA-5625886,22,29
+Suppressed_vs_PreART,Adaptive Immune System R-HSA-1280218,17,29
+Suppressed_vs_PreART,Allograft Rejection,27,29
+Suppressed_vs_PreART,Aminoacyl-tRNA biosynthesis,22,29
+Suppressed_vs_PreART,Antiviral Mechanism By IFN-stimulated Genes R-HSA-1169410,17,29
+Suppressed_vs_PreART,Apoptosis,24,29
+Suppressed_vs_PreART,Apoptosis R-HSA-109581,23,29
+Suppressed_vs_PreART,Assembly Of ORC Complex At Origin Of Replication R-HSA-68616,16,29
+Suppressed_vs_PreART,Assembly Of Pre-Replicative Complex R-HSA-68867,17,29
+Suppressed_vs_PreART,B-WICH Complex Positively Regulates rRNA Expression R-HSA-5250924,24,29
+Suppressed_vs_PreART,CLEC7A (Dectin-1) Signaling R-HSA-5607764,17,29
+Suppressed_vs_PreART,Cap-dependent Translation Initiation R-HSA-72737,24,29
+Suppressed_vs_PreART,Carbohydrate Catabolic Process (GO:0016052),18,29
+Suppressed_vs_PreART,Cellular Response To Chemical Stress R-HSA-9711123,15,29
+Suppressed_vs_PreART,Cellular Response To Starvation R-HSA-9711097,21,29
+Suppressed_vs_PreART,Cellular Responses To Stimuli R-HSA-8953897,26,29
+Suppressed_vs_PreART,Cellular Responses To Stress R-HSA-2262752,26,29
+Suppressed_vs_PreART,Cellular Senescence R-HSA-2559583,25,29
+Suppressed_vs_PreART,Central carbon metabolism in cancer,15,29
+Suppressed_vs_PreART,Cleavage Of Damaged Purine R-HSA-110331,18,29
+Suppressed_vs_PreART,Condensation Of Prophase Chromosomes R-HSA-2299718,15,29
+Suppressed_vs_PreART,Coronavirus disease,19,29
+Suppressed_vs_PreART,Cytokine Signaling In Immune System R-HSA-1280215,27,29
+Suppressed_vs_PreART,Cytoplasmic Translation (GO:0002181),22,29
+Suppressed_vs_PreART,Cytosolic tRNA Aminoacylation R-HSA-379716,28,29
+Suppressed_vs_PreART,DNA Damage/Telomere Stress Induced Senescence R-HSA-2559586,16,29
+Suppressed_vs_PreART,DNA Methylation R-HSA-5334118,19,29
+Suppressed_vs_PreART,Defective Pyroptosis R-HSA-9710421,15,29
+Suppressed_vs_PreART,Diseases Of Programmed Cell Death R-HSA-9645723,22,29
+Suppressed_vs_PreART,Downstream Signaling Events Of B Cell Receptor (BCR) R-HSA-1168372,16,29
+Suppressed_vs_PreART,Downstream TCR Signaling R-HSA-202424,16,29
+Suppressed_vs_PreART,ERCC6 (CSB) And EHMT2 (G9a) Positively Regulate rRNA Expression R-HSA-427389,21,29
+Suppressed_vs_PreART,ESR-mediated Signaling R-HSA-8939211,23,29
+Suppressed_vs_PreART,Epigenetic Regulation Of Gene Expression R-HSA-212165,19,29
+Suppressed_vs_PreART,Epstein-Barr virus infection,20,29
+Suppressed_vs_PreART,Estrogen-dependent Gene Expression R-HSA-9018519,26,29
+Suppressed_vs_PreART,Eukaryotic Translation Elongation R-HSA-156842,24,29
+Suppressed_vs_PreART,Eukaryotic Translation Termination R-HSA-72764,26,29
+Suppressed_vs_PreART,Formation Of A Pool Of Free 40S Subunits R-HSA-72689,25,29
+Suppressed_vs_PreART,"Formation Of Ternary Complex, And Subsequently, 43S Complex R-HSA-72695",23,29
+Suppressed_vs_PreART,Formation Of beta-catenin:TCF Transactivating Complex R-HSA-201722,18,29
+Suppressed_vs_PreART,Fructose and mannose metabolism,20,29
+Suppressed_vs_PreART,GTP Hydrolysis And Joining Of 60S Ribosomal Subunit R-HSA-72706,24,29
+Suppressed_vs_PreART,Gene Expression (GO:0010467),16,29
+Suppressed_vs_PreART,Generation Of Second Messenger Molecules R-HSA-202433,17,29
+Suppressed_vs_PreART,Glycolysis,24,29
+Suppressed_vs_PreART,Glycolysis / Gluconeogenesis,20,29
+Suppressed_vs_PreART,Glycolytic Process (GO:0006096),23,29
+Suppressed_vs_PreART,HIF-1 signaling pathway,23,29
+Suppressed_vs_PreART,Human cytomegalovirus infection,17,29
+Suppressed_vs_PreART,Human immunodeficiency virus 1 infection,18,29
+Suppressed_vs_PreART,Hypoxia,28,29
+Suppressed_vs_PreART,IL-2/STAT5 Signaling,23,29
+Suppressed_vs_PreART,Immune System R-HSA-168256,25,29
+Suppressed_vs_PreART,Infectious Disease R-HSA-5663205,25,29
+Suppressed_vs_PreART,Influenza Infection R-HSA-168255,22,29
+Suppressed_vs_PreART,Influenza Viral RNA Transcription And Replication R-HSA-168273,20,29
+Suppressed_vs_PreART,Inhibition Of DNA Recombination At Telomere R-HSA-9670095,19,29
+Suppressed_vs_PreART,Innate Immune System R-HSA-168249,20,29
+Suppressed_vs_PreART,Interferon Alpha Response,25,29
+Suppressed_vs_PreART,Interferon Alpha/Beta Signaling R-HSA-909733,25,29
+Suppressed_vs_PreART,Interferon Gamma Response,27,29
+Suppressed_vs_PreART,Interferon Gamma Signaling R-HSA-877300,15,29
+Suppressed_vs_PreART,Interferon Signaling R-HSA-913531,24,29
+Suppressed_vs_PreART,Interleukin-21 Signaling R-HSA-9020958,17,29
+Suppressed_vs_PreART,Interleukin-4 And Interleukin-13 Signaling R-HSA-6785807,15,29
+Suppressed_vs_PreART,Kaposi sarcoma-associated herpesvirus infection,18,29
+Suppressed_vs_PreART,L13a-mediated Translational Silencing Of Ceruloplasmin Expression R-HSA-156827,24,29
+Suppressed_vs_PreART,Macromolecule Biosynthetic Process (GO:0009059),21,29
+Suppressed_vs_PreART,Metabolism Of RNA R-HSA-8953854,15,29
+Suppressed_vs_PreART,Myc Targets V1,27,29
+Suppressed_vs_PreART,NOD-like receptor signaling pathway,17,29
+Suppressed_vs_PreART,Necroptosis,23,29
+Suppressed_vs_PreART,Negative Epigenetic Regulation Of rRNA Expression R-HSA-5250941,23,29
+Suppressed_vs_PreART,Negative Regulation Of NOTCH4 Signaling R-HSA-9604323,15,29
+Suppressed_vs_PreART,Negative Regulators Of DDX58/IFIH1 Signaling R-HSA-936440,18,29
+Suppressed_vs_PreART,Neutrophil Degranulation R-HSA-6798695,18,29
+Suppressed_vs_PreART,Neutrophil extracellular trap formation,19,29
+Suppressed_vs_PreART,NoRC Negatively Regulates rRNA Expression R-HSA-427413,23,29
+Suppressed_vs_PreART,Nonsense Mediated Decay (NMD) Enhanced By Exon Junction Complex (EJC) R-HSA-975957,23,29
+Suppressed_vs_PreART,Nonsense Mediated Decay (NMD) Independent Of Exon Junction Complex (EJC) R-HSA-975956,25,29
+Suppressed_vs_PreART,Oxidative Stress Induced Senescence R-HSA-2559580,20,29
+Suppressed_vs_PreART,PRC2 Methylates Histones And DNA R-HSA-212300,17,29
+Suppressed_vs_PreART,Packaging Of Telomere Ends R-HSA-171306,15,29
+Suppressed_vs_PreART,Peptide Biosynthetic Process (GO:0043043),21,29
+Suppressed_vs_PreART,Peptide Chain Elongation R-HSA-156902,24,29
+Suppressed_vs_PreART,Positive Epigenetic Regulation Of rRNA Expression R-HSA-5250913,22,29
+Suppressed_vs_PreART,Pre-NOTCH Expression And Processing R-HSA-1912422,17,29
+Suppressed_vs_PreART,Pre-NOTCH Transcription And Translation R-HSA-1912408,16,29
+Suppressed_vs_PreART,Programmed Cell Death R-HSA-5357801,24,29
+Suppressed_vs_PreART,Pyruvate Metabolic Process (GO:0006090),16,29
+Suppressed_vs_PreART,RHO GTPases Activate PKNs R-HSA-5625740,21,29
+Suppressed_vs_PreART,RNA Polymerase I Promoter Clearance R-HSA-73854,27,29
+Suppressed_vs_PreART,RNA Polymerase I Promoter Escape R-HSA-73772,25,29
+Suppressed_vs_PreART,RNA Polymerase I Promoter Opening R-HSA-73728,24,29
+Suppressed_vs_PreART,RNA Polymerase I Transcription R-HSA-73864,26,29
+Suppressed_vs_PreART,RUNX1 Regulates Genes Involved In Megakaryocyte Differentiation And Platelet Function R-HSA-8936459,16,29
+Suppressed_vs_PreART,RUNX1 Regulates Transcription Of Genes Involved In Differentiation Of HSCs R-HSA-8939236,21,29
+Suppressed_vs_PreART,Regulated Necrosis R-HSA-5218859,16,29
+Suppressed_vs_PreART,Regulation Of Expression Of SLITs And ROBOs R-HSA-9010553,24,29
+Suppressed_vs_PreART,Regulation Of mRNA Stability By Proteins That Bind AU-rich Elements R-HSA-450531,18,29
+Suppressed_vs_PreART,Response Of EIF2AK4 (GCN2) To Amino Acid Deficiency R-HSA-9633012,25,29
+Suppressed_vs_PreART,Ribosomal Scanning And Start Codon Recognition R-HSA-72702,23,29
+Suppressed_vs_PreART,Ribosome,15,29
+Suppressed_vs_PreART,SARS-CoV Infections R-HSA-9679506,20,29
+Suppressed_vs_PreART,SARS-CoV-2 Modulates Host Translation Machinery R-HSA-9754678,18,29
+Suppressed_vs_PreART,SIRT1 Negatively Regulates rRNA Expression R-HSA-427359,17,29
+Suppressed_vs_PreART,SRP-dependent Cotranslational Protein Targeting To Membrane R-HSA-1799339,25,29
+Suppressed_vs_PreART,Salmonella infection,20,29
+Suppressed_vs_PreART,Selenoamino Acid Metabolism R-HSA-2408522,28,29
+Suppressed_vs_PreART,Selenocysteine Synthesis R-HSA-2408557,25,29
+Suppressed_vs_PreART,Senescence-Associated Secretory Phenotype (SASP) R-HSA-2559582,26,29
+Suppressed_vs_PreART,Shigellosis,26,29
+Suppressed_vs_PreART,Signaling By Interleukins R-HSA-449147,23,29
+Suppressed_vs_PreART,Signaling By NOTCH R-HSA-157118,26,29
+Suppressed_vs_PreART,Signaling By Nuclear Receptors R-HSA-9006931,16,29
+Suppressed_vs_PreART,Signaling By ROBO Receptors R-HSA-376176,26,29
+Suppressed_vs_PreART,TCR Signaling R-HSA-202403,25,29
+Suppressed_vs_PreART,TNF-alpha Signaling via NF-kB,27,29
+Suppressed_vs_PreART,Th17 cell differentiation,15,29
+Suppressed_vs_PreART,Transcriptional Regulation By Small RNAs R-HSA-5578749,17,29
+Suppressed_vs_PreART,Transcriptional Regulation Of Granulopoiesis R-HSA-9616222,23,29
+Suppressed_vs_PreART,Translation (GO:0006412),26,29
+Suppressed_vs_PreART,Translation Initiation Complex Formation R-HSA-72649,22,29
+Suppressed_vs_PreART,Translation R-HSA-72766,28,29
+Suppressed_vs_PreART,Unfolded Protein Response,20,29
+Suppressed_vs_PreART,Viral mRNA Translation R-HSA-192823,24,29
+Suppressed_vs_PreART,Yersinia infection,20,29
+Suppressed_vs_PreART,"mRNA Activation Upon Binding Of Cap-Binding Complex And eIFs, Subsequent Binding To 43S R-HSA-72662",23,29
+Suppressed_vs_PreART,mTORC1 Signaling,28,29
+Suppressed_vs_PreART,p53 Pathway,20,29
+Suppressed_vs_PreART,tRNA Aminoacylation (GO:0043039),17,29
+Suppressed_vs_PreART,tRNA Aminoacylation For Protein Translation (GO:0006418),27,29
+Suppressed_vs_PreART,tRNA Aminoacylation R-HSA-379724,28,29
+Suppressed_vs_Unsuppressed,Allograft Rejection,16,28
+Suppressed_vs_Unsuppressed,Antigen processing and presentation,18,28
+Suppressed_vs_Unsuppressed,Antiviral Mechanism By IFN-stimulated Genes R-HSA-1169410,17,28
+Suppressed_vs_Unsuppressed,Attenuation Phase R-HSA-3371568,16,28
+Suppressed_vs_Unsuppressed,Axon Guidance R-HSA-422475,25,28
+Suppressed_vs_Unsuppressed,Cap-dependent Translation Initiation R-HSA-72737,26,28
+Suppressed_vs_Unsuppressed,Cellular Response To Cytokine Stimulus (GO:0071345),16,28
+Suppressed_vs_Unsuppressed,Cellular Response To Starvation R-HSA-9711097,26,28
+Suppressed_vs_Unsuppressed,Cellular Responses To Stimuli R-HSA-8953897,26,28
+Suppressed_vs_Unsuppressed,Cellular Responses To Stress R-HSA-2262752,26,28
+Suppressed_vs_Unsuppressed,Coronavirus disease,26,28
+Suppressed_vs_Unsuppressed,Cytokine Signaling In Immune System R-HSA-1280215,20,28
+Suppressed_vs_Unsuppressed,Cytoplasmic Translation (GO:0002181),25,28
+Suppressed_vs_Unsuppressed,Defense Response To Symbiont (GO:0140546),18,28
+Suppressed_vs_Unsuppressed,Defense Response To Virus (GO:0051607),17,28
+Suppressed_vs_Unsuppressed,Developmental Biology R-HSA-1266738,24,28
+Suppressed_vs_Unsuppressed,Disease R-HSA-1643685,22,28
+Suppressed_vs_Unsuppressed,Epstein-Barr virus infection,15,28
+Suppressed_vs_Unsuppressed,Eukaryotic Translation Elongation R-HSA-156842,26,28
+Suppressed_vs_Unsuppressed,Eukaryotic Translation Termination R-HSA-72764,26,28
+Suppressed_vs_Unsuppressed,Formation Of A Pool Of Free 40S Subunits R-HSA-72689,26,28
+Suppressed_vs_Unsuppressed,"Formation Of Ternary Complex, And Subsequently, 43S Complex R-HSA-72695",25,28
+Suppressed_vs_Unsuppressed,GTP Hydrolysis And Joining Of 60S Ribosomal Subunit R-HSA-72706,26,28
+Suppressed_vs_Unsuppressed,Gene Expression (GO:0010467),26,28
+Suppressed_vs_Unsuppressed,HSF1 Activation R-HSA-3371511,15,28
+Suppressed_vs_Unsuppressed,HSP90 Chaperone Cycle For Steroid Hormone Receptors (SHR) In Presence Of Ligand R-HSA-3371497,18,28
+Suppressed_vs_Unsuppressed,ISG15 Antiviral Mechanism R-HSA-1169408,16,28
+Suppressed_vs_Unsuppressed,Immune System R-HSA-168256,18,28
+Suppressed_vs_Unsuppressed,Inactivation Of CSF3 (G-CSF) Signaling R-HSA-9705462,17,28
+Suppressed_vs_Unsuppressed,Infectious Disease R-HSA-5663205,25,28
+Suppressed_vs_Unsuppressed,Influenza Infection R-HSA-168255,26,28
+Suppressed_vs_Unsuppressed,Influenza Viral RNA Transcription And Replication R-HSA-168273,26,28
+Suppressed_vs_Unsuppressed,Interferon Alpha Response,19,28
+Suppressed_vs_Unsuppressed,Interferon Alpha/Beta Signaling R-HSA-909733,19,28
+Suppressed_vs_Unsuppressed,Interferon Gamma Response,19,28
+Suppressed_vs_Unsuppressed,Interferon Gamma Signaling R-HSA-877300,18,28
+Suppressed_vs_Unsuppressed,Interferon Signaling R-HSA-913531,21,28
+Suppressed_vs_Unsuppressed,Interleukin-4 And Interleukin-13 Signaling R-HSA-6785807,15,28
+Suppressed_vs_Unsuppressed,L13a-mediated Translational Silencing Of Ceruloplasmin Expression R-HSA-156827,26,28
+Suppressed_vs_Unsuppressed,Macromolecule Biosynthetic Process (GO:0009059),26,28
+Suppressed_vs_Unsuppressed,Major Pathway Of rRNA Processing In Nucleolus And Cytosol R-HSA-6791226,26,28
+Suppressed_vs_Unsuppressed,Measles,15,28
+Suppressed_vs_Unsuppressed,Metabolism Of Amino Acids And Derivatives R-HSA-71291,26,28
+Suppressed_vs_Unsuppressed,Metabolism Of Proteins R-HSA-392499,22,28
+Suppressed_vs_Unsuppressed,Metabolism Of RNA R-HSA-8953854,24,28
+Suppressed_vs_Unsuppressed,Metabolism R-HSA-1430728,17,28
+Suppressed_vs_Unsuppressed,Myc Targets V1,15,28
+Suppressed_vs_Unsuppressed,Negative Regulation Of Viral Process (GO:0048525),15,28
+Suppressed_vs_Unsuppressed,Nervous System Development R-HSA-9675108,25,28
+Suppressed_vs_Unsuppressed,Nonsense Mediated Decay (NMD) Enhanced By Exon Junction Complex (EJC) R-HSA-975957,26,28
+Suppressed_vs_Unsuppressed,Nonsense Mediated Decay (NMD) Independent Of Exon Junction Complex (EJC) R-HSA-975956,26,28
+Suppressed_vs_Unsuppressed,Peptide Biosynthetic Process (GO:0043043),26,28
+Suppressed_vs_Unsuppressed,Peptide Chain Elongation R-HSA-156902,26,28
+Suppressed_vs_Unsuppressed,Positive Regulation Of Cytokine Production (GO:0001819),16,28
+Suppressed_vs_Unsuppressed,Positive Regulation Of Gene Expression (GO:0010628),16,28
+Suppressed_vs_Unsuppressed,Positive Regulation Of Macromolecule Metabolic Process (GO:0010604),15,28
+Suppressed_vs_Unsuppressed,Regulation Of Erythrocyte Differentiation (GO:0045646),15,28
+Suppressed_vs_Unsuppressed,Regulation Of Expression Of SLITs And ROBOs R-HSA-9010553,26,28
+Suppressed_vs_Unsuppressed,Response Of EIF2AK4 (GCN2) To Amino Acid Deficiency R-HSA-9633012,26,28
+Suppressed_vs_Unsuppressed,Ribonucleoprotein Complex Biogenesis (GO:0022613),23,28
+Suppressed_vs_Unsuppressed,Ribosomal Scanning And Start Codon Recognition R-HSA-72702,25,28
+Suppressed_vs_Unsuppressed,Ribosomal Small Subunit Assembly (GO:0000028),21,28
+Suppressed_vs_Unsuppressed,Ribosomal Small Subunit Biogenesis (GO:0042274),22,28
+Suppressed_vs_Unsuppressed,Ribosome,26,28
+Suppressed_vs_Unsuppressed,Ribosome Assembly (GO:0042255),22,28
+Suppressed_vs_Unsuppressed,Ribosome Biogenesis (GO:0042254),21,28
+Suppressed_vs_Unsuppressed,SARS-CoV Infections R-HSA-9679506,25,28
+Suppressed_vs_Unsuppressed,SARS-CoV-2 Infection R-HSA-9694516,26,28
+Suppressed_vs_Unsuppressed,SARS-CoV-2 Modulates Host Translation Machinery R-HSA-9754678,25,28
+Suppressed_vs_Unsuppressed,SARS-CoV-2-host Interactions R-HSA-9705683,25,28
+Suppressed_vs_Unsuppressed,SRP-dependent Cotranslational Protein Targeting To Membrane R-HSA-1799339,26,28
+Suppressed_vs_Unsuppressed,Selenoamino Acid Metabolism R-HSA-2408522,26,28
+Suppressed_vs_Unsuppressed,Selenocysteine Synthesis R-HSA-2408557,26,28
+Suppressed_vs_Unsuppressed,Signaling By CSF3 (G-CSF) R-HSA-9674555,17,28
+Suppressed_vs_Unsuppressed,Signaling By Interleukins R-HSA-449147,15,28
+Suppressed_vs_Unsuppressed,Signaling By ROBO Receptors R-HSA-376176,26,28
+Suppressed_vs_Unsuppressed,TCR Signaling R-HSA-202403,17,28
+Suppressed_vs_Unsuppressed,Th17 cell differentiation,15,28
+Suppressed_vs_Unsuppressed,Translation (GO:0006412),26,28
+Suppressed_vs_Unsuppressed,Translation Initiation Complex Formation R-HSA-72649,25,28
+Suppressed_vs_Unsuppressed,Translation R-HSA-72766,26,28
+Suppressed_vs_Unsuppressed,Viral mRNA Translation R-HSA-192823,26,28
+Suppressed_vs_Unsuppressed,"mRNA Activation Upon Binding Of Cap-Binding Complex And eIFs, Subsequent Binding To 43S R-HSA-72662",25,28
+Suppressed_vs_Unsuppressed,protein-RNA Complex Assembly (GO:0022618),19,28
+Suppressed_vs_Unsuppressed,rRNA Metabolic Process (GO:0016072),16,28
+Suppressed_vs_Unsuppressed,rRNA Processing (GO:0006364),16,28
+Suppressed_vs_Unsuppressed,rRNA Processing In Nucleus And Cytosol R-HSA-8868773,26,28
+Suppressed_vs_Unsuppressed,rRNA Processing R-HSA-72312,26,28
+Unsuppressed_vs_PreART,Allograft Rejection,19,28
+Unsuppressed_vs_PreART,Cap-dependent Translation Initiation R-HSA-72737,18,28
+Unsuppressed_vs_PreART,Carbohydrate Catabolic Process (GO:0016052),16,28
+Unsuppressed_vs_PreART,Cellular Responses To Stimuli R-HSA-8953897,15,28
+Unsuppressed_vs_PreART,Cellular Responses To Stress R-HSA-2262752,15,28
+Unsuppressed_vs_PreART,Coronavirus disease,17,28
+Unsuppressed_vs_PreART,Cytoplasmic Translation (GO:0002181),17,28
+Unsuppressed_vs_PreART,Eukaryotic Translation Elongation R-HSA-156842,18,28
+Unsuppressed_vs_PreART,Eukaryotic Translation Termination R-HSA-72764,18,28
+Unsuppressed_vs_PreART,Formation Of A Pool Of Free 40S Subunits R-HSA-72689,18,28
+Unsuppressed_vs_PreART,GTP Hydrolysis And Joining Of 60S Ribosomal Subunit R-HSA-72706,18,28
+Unsuppressed_vs_PreART,Glycolysis,16,28
+Unsuppressed_vs_PreART,Glycolysis / Gluconeogenesis,18,28
+Unsuppressed_vs_PreART,Glycolytic Process (GO:0006096),18,28
+Unsuppressed_vs_PreART,HIF-1 signaling pathway,17,28
+Unsuppressed_vs_PreART,Hypoxia,19,28
+Unsuppressed_vs_PreART,Influenza Infection R-HSA-168255,17,28
+Unsuppressed_vs_PreART,Influenza Viral RNA Transcription And Replication R-HSA-168273,16,28
+Unsuppressed_vs_PreART,L13a-mediated Translational Silencing Of Ceruloplasmin Expression R-HSA-156827,17,28
+Unsuppressed_vs_PreART,Macromolecule Biosynthetic Process (GO:0009059),15,28
+Unsuppressed_vs_PreART,Major Pathway Of rRNA Processing In Nucleolus And Cytosol R-HSA-6791226,15,28
+Unsuppressed_vs_PreART,Myc Targets V1,18,28
+Unsuppressed_vs_PreART,Nonsense Mediated Decay (NMD) Enhanced By Exon Junction Complex (EJC) R-HSA-975957,17,28
+Unsuppressed_vs_PreART,Nonsense Mediated Decay (NMD) Independent Of Exon Junction Complex (EJC) R-HSA-975956,18,28
+Unsuppressed_vs_PreART,Peptide Biosynthetic Process (GO:0043043),16,28
+Unsuppressed_vs_PreART,Peptide Chain Elongation R-HSA-156902,18,28
+Unsuppressed_vs_PreART,Pyruvate Metabolic Process (GO:0006090),17,28
+Unsuppressed_vs_PreART,Regulation Of Expression Of SLITs And ROBOs R-HSA-9010553,16,28
+Unsuppressed_vs_PreART,Response Of EIF2AK4 (GCN2) To Amino Acid Deficiency R-HSA-9633012,18,28
+Unsuppressed_vs_PreART,Ribosome,16,28
+Unsuppressed_vs_PreART,SARS-CoV-2 Modulates Host Translation Machinery R-HSA-9754678,17,28
+Unsuppressed_vs_PreART,SRP-dependent Cotranslational Protein Targeting To Membrane R-HSA-1799339,18,28
+Unsuppressed_vs_PreART,Selenoamino Acid Metabolism R-HSA-2408522,18,28
+Unsuppressed_vs_PreART,Selenocysteine Synthesis R-HSA-2408557,18,28
+Unsuppressed_vs_PreART,Signaling By ROBO Receptors R-HSA-376176,17,28
+Unsuppressed_vs_PreART,Translation (GO:0006412),17,28
+Unsuppressed_vs_PreART,Translation R-HSA-72766,16,28
+Unsuppressed_vs_PreART,Viral mRNA Translation R-HSA-192823,18,28
+Unsuppressed_vs_PreART,mTORC1 Signaling,19,28

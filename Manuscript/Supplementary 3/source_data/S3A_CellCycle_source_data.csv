@@ -1,0 +1,18 @@
+"Fig3_Annotation","Phase","n","proportion"
+"Naive/Bystander","G1",1274,0.854460093896714
+"Naive/Bystander","G2M",9,0.00603621730382294
+"Naive/Bystander","S",208,0.139503688799463
+"Transitional Tem","G1",339,0.93646408839779
+"Transitional Tem","G2M",2,0.00552486187845304
+"Transitional Tem","S",21,0.0580110497237569
+"Tpex","G1",536,0.865912762520194
+"Tpex","G2M",29,0.0468497576736672
+"Tpex","S",54,0.0872374798061389
+"TEMRA/Effector","G1",685,0.894255874673629
+"TEMRA/Effector","G2M",12,0.0156657963446475
+"TEMRA/Effector","S",69,0.0900783289817232
+"Cycling Effector","G1",117,0.151948051948052
+"Cycling Effector","G2M",344,0.446753246753247
+"Cycling Effector","S",309,0.401298701298701
+"Tex","G1",9,0.375
+"Tex","S",15,0.625

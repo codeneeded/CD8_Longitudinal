@@ -28,7 +28,8 @@
 
 # ── Libraries ─────────────────────────────────────────────────────────────────
 library(Seurat)
-library(tidyverse)
+library(dplyr); library(tidyr); library(purrr); library(stringr)
+library(readr); library(tibble); library(forcats)
 library(ggplot2)
 library(cowplot)
 library(patchwork)
@@ -37,13 +38,42 @@ library(scRepertoire)
 library(SeuratExtend)
 library(qs2)
 library(Trex)
-library(readxl)
+# readxl is loaded on demand by .read_any_xlsx() below, with an openxlsx
+# fallback, so a missing readxl no longer halts this script.
 library(RColorBrewer)
 library(ggrepel)
 
+# Export the data behind every panel (Editor point E-3).
+# Resolves this script's own directory under BOTH `Rscript foo.R` and
+# `source("foo.R")`. sys.frame(1) alone fails under Rscript: there is no
+# frame 1 at top level, which halted every figure script on the first try.
+.sd_shim_dir <- local({
+  a <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", a[grep("^--file=", a)])
+  f <- gsub("~+~", " ", f, fixed = TRUE)   # Rscript encodes spaces
+  if (length(f)) dirname(normalizePath(f[1])) else {
+    d <- NULL
+    for (i in rev(seq_len(sys.nframe()))) {
+      o <- sys.frame(i)$ofile
+      if (!is.null(o)) { d <- dirname(normalizePath(o)); break }
+    }
+    if (is.null(d)) getwd() else d
+  }
+})
+.sd_shim <- file.path(.sd_shim_dir, "00.Source_Data_Shim.R")
+if (file.exists(.sd_shim)) source(.sd_shim) else
+  warning("source-data shim not found at ", .sd_shim,
+          "; panels will not export", call. = FALSE, immediate. = TRUE)
+# Repository root, derived from this script's location. Replaces the
+# hardcoded ~/Documents/CD8_Longitudinal, which does not exist here.
+CD8_ROOT <- if (exists("sd_repo_root")) sd_repo_root(.sd_shim_dir) else
+  Sys.getenv("CD8_BASE", unset = normalizePath(
+    file.path(.sd_shim_dir, "..", ".."), mustWork = FALSE))
+
+
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-base_dir   <- "~/Documents/CD8_Longitudinal"
+base_dir   <- CD8_ROOT
 saved_dir  <- file.path(base_dir, "saved_R_data")
 fig2_dir   <- file.path(base_dir, "Manuscript", "Figure 2")
 supp2_dir  <- file.path(base_dir, "Manuscript", "Supplementary 2")
@@ -165,7 +195,7 @@ for (i in seq_along(conditions)) {
 legend_plot <- ggplot(data.frame(x = 1:5, y = 1, cs = factor(clone_order, levels = clone_order)),
                       aes(x = x, y = y, fill = cs)) +
   geom_tile() +
-  scale_fill_manual(values = clone_colors, name = "Clone Size") +
+  scale_fill_manual(values = clone_colors, name = "Clonotype size") +
   theme_void(base_size = 32) +
   theme(legend.position = "bottom",
         legend.title = element_text(face = "bold", size = 32),
@@ -215,7 +245,7 @@ bar_data <- meta_cd8 %>%
 fig2a_bar <- ggplot(bar_data, aes(x = Cluster, y = n, fill = cloneSize)) +
   geom_bar(stat = "identity", position = position_stack(reverse = TRUE),
            width = 0.75, color = "white", linewidth = 0.3) +
-  scale_fill_manual(values = clone_colors, name = "Clone Size", drop = FALSE) +
+  scale_fill_manual(values = clone_colors, name = "Clonotype size", drop = FALSE) +
   scale_y_continuous(expand = c(0, 0)) +
   labs(x = NULL, y = "Number of Cells") +
   theme_classic(base_size = 32) +
@@ -259,15 +289,39 @@ message("\u2713 Fig 2A(ii) saved\n")
 message("Generating Fig 2B...")
 
 # ── Load clinical data ────────────────────────────────────────────────────────
-vl_cd4 <- read_excel(vl_path) %>%
-  rename(
-    PID = `STUDY ID`,
-    Age_months = `AGE IN MONTHS`,
-    VL = `HIV cp/mL`,
-    VL_log = `VL Log`,
-    CD4_mm3 = mm3,
-    CD4_pct = `CD4%`
-  ) %>%
+# Read with whichever Excel reader is installed. readxl is not present on every
+# machine that has this repo, openxlsx is (the source-data workbook needs it),
+# and the two differ in how they mangle header names - openxlsx turns
+# "STUDY ID" into "STUDY.ID". So the columns are matched on a normalised form of
+# the header rather than on its literal spelling, and the script works either
+# way instead of failing on a missing package.
+.read_any_xlsx <- function(path) {
+  if (requireNamespace("readxl", quietly = TRUE))
+    return(as.data.frame(readxl::read_excel(path)))
+  if (requireNamespace("openxlsx", quietly = TRUE))
+    return(openxlsx::read.xlsx(path, sheet = 1))
+  stop("need either readxl or openxlsx to read ", basename(path),
+       "\n  install one:  sudo apt install r-cran-readxl", call. = FALSE)
+}
+.norm <- function(x) tolower(gsub("[^A-Za-z0-9]+", "", x))
+.pick <- function(df, key, label) {
+  i <- match(key, .norm(names(df)))
+  if (is.na(i)) stop("column for ", label, " not found in ", basename(vl_path),
+                     "\n  headers present: ", paste(names(df), collapse=", "),
+                     call. = FALSE)
+  df[[i]]
+}
+
+.raw_vl <- .read_any_xlsx(vl_path)
+vl_cd4 <- data.frame(
+  PID        = as.character(.pick(.raw_vl, "studyid",      "STUDY ID")),
+  Age_months = .pick(.raw_vl, "ageinmonths", "AGE IN MONTHS"),
+  VL         = .pick(.raw_vl, "hivcpml",     "HIV cp/mL"),
+  VL_log     = .pick(.raw_vl, "vllog",       "VL Log"),
+  CD4_mm3    = .pick(.raw_vl, "mm3",         "mm3"),
+  CD4_pct    = .pick(.raw_vl, "cd4",         "CD4%"),
+  stringsAsFactors = FALSE
+) %>%
   filter(PID %in% c("CP003", "CP006", "CP013", "CP018", "CP020")) %>%
   mutate(
     Age_months = as.numeric(Age_months),
@@ -277,25 +331,80 @@ vl_cd4 <- read_excel(vl_path) %>%
   filter(!is.na(Age_months))
 
 # ── Rebuild combined.TCR.TARA ────────────────────────────────────────────────
-in.path <- "~/Documents/10x_Genomics/"
-
-get_folder_names <- function(in.path) {
-  folder_names <- list.dirs(in.path, full.names = FALSE, recursive = FALSE)
-  folder_names <- folder_names[folder_names != ""]
-  return(folder_names)
+# Raw cellranger per-sample outputs, needed only to rebuild the TCR list that
+# Fig 2B's alluvial panels use. This is NOT in the repository - it is the raw
+# 10x output tree. Set TARA_10X if it lives somewhere else.
+in.path <- Sys.getenv("TARA_10X", unset = NA)
+if (is.na(in.path)) {
+  .cand <- c("~/Documents/10x_Genomics", "~/Desktop/Projects/cellranger_out",
+             "/mnt/data/10x_Genomics", "/mnt/data/TARA_10x")
+  # Existing but EMPTY is the trap: ~/Desktop/Projects/cellranger_out exists and
+  # holds only two pilot runs with no TCR contigs, so a dir.exists() test alone
+  # would select it and then fail obscurely inside mget(). A candidate counts
+  # only if it actually contains a per-sample TCR contig table.
+  .has_contigs <- function(d) {
+    d <- path.expand(d)
+    if (!dir.exists(d)) return(FALSE)
+    length(Sys.glob(file.path(
+      d, "*", "per_sample_outs", "*", "TCR", "filtered_contig_annotations.csv"))) > 0 ||
+    length(Sys.glob(file.path(
+      d, "*", "per_sample_outs", "TCR", "filtered_contig_annotations.csv"))) > 0
+  }
+  .hit <- .cand[vapply(.cand, .has_contigs, logical(1))]
+  if (length(.hit)) in.path <- .hit[1] else in.path <- NA
 }
+# TWO SOURCES FOR THE SAME LIST, and the second is not a degraded substitute.
+#
+#   "contigs" - the raw 10x tree, rebuilt with combineTCR(). This is what the
+#               published panels used, so it is preferred whenever present.
+#   "object"  - TARA_ALL itself. combineExpression() wrote CTgene/CTnt/CTaa/
+#               CTstrict/cloneSize onto each cell FROM that same list, and
+#               scRepertoire 2.x accepts a Seurat object directly:
+#               clonalCompare() -> .dataWrangle() -> .expression2List(), which
+#               splits the metadata by `group.by` and keeps cells with a
+#               non-NA cloneSize. With proportion = FALSE the panel is just
+#               table(CTstrict) per sample, which the metadata supports exactly.
+#
+# Measured agreement between the two, per sample x clonotype, on this object:
+# 67,935 of 68,271 pairs (99.51%) have an in-object cell count identical to the
+# clonalFrequency combineExpression recorded from the raw list; the remaining
+# 336 are LOWER in the object and none are higher. Those are cells the raw
+# contigs had and QC removed, so the object-derived panel counts clonotypes
+# among the cells actually analysed - consistent with every other panel here.
+# The difference is real but small and one-directional; say which source was
+# used in the legend if the panel is regenerated this way.
+if (!is.na(in.path)) {
+  TCR_SOURCE <- "contigs"
+  in.path <- paste0(sub("/+$", "", path.expand(in.path)), "/")
+  cat("Fig 2B TCR source: raw 10x tree at", in.path, "\n")
 
-f_names    <- get_folder_names(in.path)
-TARA_names <- f_names[grepl("^C", f_names)]
+  get_folder_names <- function(in.path) {
+    folder_names <- list.dirs(in.path, full.names = FALSE, recursive = FALSE)
+    folder_names <- folder_names[folder_names != ""]
+    return(folder_names)
+  }
 
-for (name in TARA_names) {
-  t_file <- paste0(in.path, name, "/per_sample_outs/TCR/filtered_contig_annotations.csv")
-  if (file.exists(t_file)) assign(paste0(name, ".TCR"), read.csv(t_file))
+  f_names    <- get_folder_names(in.path)
+  TARA_names <- f_names[grepl("^C", f_names)]
+
+  for (name in TARA_names) {
+    t_file <- paste0(in.path, name, "/per_sample_outs/TCR/filtered_contig_annotations.csv")
+    if (file.exists(t_file)) assign(paste0(name, ".TCR"), read.csv(t_file))
+  }
+
+  TARA.TCR             <- paste0(TARA_names, ".TCR")
+  TARA.contig_list.TCR <- as.list(mget(TARA.TCR))
+  combined.TCR.TARA    <- combineTCR(TARA.contig_list.TCR, samples = TARA_names)
+} else {
+  TCR_SOURCE <- "object"
+  combined.TCR.TARA <- NULL
+  .n_tcr <- sum(!is.na(TARA_ALL@meta.data$CTstrict))
+  cat("Fig 2B TCR source: TARA_ALL metadata (no raw 10x tree found);",
+      .n_tcr, "cells carry a CTstrict call\n")
+  if (!.n_tcr)
+    stop("TARA_ALL carries no CTstrict, so Fig 2B has no TCR source at all. ",
+         "Point TARA_10X at the raw 10x tree.", call. = FALSE)
 }
-
-TARA.TCR             <- paste0(TARA_names, ".TCR")
-TARA.contig_list.TCR <- as.list(mget(TARA.TCR))
-combined.TCR.TARA    <- combineTCR(TARA.contig_list.TCR, samples = TARA_names)
 
 # ── Patient info (TCR folder names → new orig.ident mapping) ─────────────────
 patient_info <- list(
@@ -349,11 +458,30 @@ for (pt in names(patient_info)) {
   info <- patient_info[[pt]]
   
   # ── ALLUVIAL PLOT ──────────────────────────────────────────────────────────
+  # With the raw list, the element names ARE the TCR folder names. With the
+  # object, .expression2List() names the list by the group.by column, so the
+  # samples/order.by vectors must be the matching orig.ident values instead —
+  # passing the folder names there would filter Con.df down to nothing.
+  # order.by drives the x-axis order, and info$labels is applied positionally
+  # by scale_x_discrete() below, so the two vectors must stay in the same
+  # order or the timepoints would be silently mislabelled.
+  if (TCR_SOURCE == "object") {
+    .tcr_in  <- TARA_ALL
+    .tcr_grp <- "orig.ident"
+    .tcr_smp <- unname(tcr_to_orig[info$samples])
+  } else {
+    .tcr_in  <- combined.TCR.TARA
+    .tcr_grp <- NULL
+    .tcr_smp <- info$samples
+  }
+  stopifnot(length(.tcr_smp) == length(info$labels), !anyNA(.tcr_smp))
+
   p_alluv <- clonalCompare(
-    combined.TCR.TARA,
+    .tcr_in,
+    group.by       = .tcr_grp,
     top.clones     = 20,
-    samples        = info$samples,
-    order.by       = info$samples,
+    samples        = .tcr_smp,
+    order.by       = .tcr_smp,
     cloneCall      = "strict",
     relabel.clones = TRUE,
     proportion     = FALSE,
@@ -635,7 +763,7 @@ for (pid in hei_patients) {
     scale_y_reverse() +
     coord_equal(xlim = c(0.5, ncol_waffle + 0.5),
                 ylim = c(nrow_waffle + 0.5, 0.5)) +
-    labs(title = pid, subtitle = paste0("n = ", total_clones, " clones")) +
+    labs(title = pid, subtitle = paste0("n = ", total_clones, " clonotypes")) +
     theme_void() +
     theme(
       plot.title    = element_text(size = 28, face = "bold", hjust = 0.5),
@@ -846,8 +974,12 @@ if (sum(clone_cluster_span$n_clusters >= 2) > 0) {
 p_s2c_span <- ggplot(clone_cluster_span, aes(x = factor(n_clusters))) +
   geom_bar(fill = "#4E79A7", width = 0.6) +
   geom_text(stat = "count", aes(label = after_stat(count)), vjust = -0.5, size = 6, fontface = "bold") +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, NA)) +
-  labs(x = "Clusters per Clone", y = "N Clonotypes",
+  # Rev 2, minor 8: expand = c(0, 0) with limits = c(0, NA) puts the upper
+  # limit at EXACTLY the tallest bar, so that bar's count label is drawn
+  # outside the panel and silently clipped. Headroom on the upper side only
+  # keeps the bars anchored at zero while leaving room for every label.
+  scale_y_continuous(expand = expansion(mult = c(0, 0.10)), limits = c(0, NA)) +
+  labs(x = "Clusters per clonotype", y = "N Clonotypes",
        title = "Cluster span") +
   theme_classic(base_size = 18) +
   theme(
@@ -958,7 +1090,7 @@ p_s2d <- ggplot(temporal_counts,
   facet_wrap(~PID, ncol = 5, scales = "free_x") +
   scale_fill_manual(values = epitope_colors, name = "Epitope") +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 120)) +
-  labs(x = "Age (months)", y = "% of Expanded Clones") +
+  labs(x = "Age (months)", y = "% of expanded clonotypes") +
   theme_classic(base_size = 18) +
   theme(
     strip.text      = element_text(size = 20, face = "bold"),
@@ -1067,12 +1199,12 @@ print(as.data.frame(epitope_by_patient))
 # No supplementary figure renumbering needed — this is just a table.
 ################################################################################
 
-library(tidyverse)
+# (redundant library(tidyverse) removed - loaded at the top)
 
 stopifnot(exists("TARA_ALL"), exists("persistence_df"), exists("hei_5"),
           exists("waffle_data"), exists("age_lookup"))
 
-supp2_dir <- file.path("~/Documents/CD8_Longitudinal", "Manuscript", "Supplementary 2")
+supp2_dir <- file.path(CD8_ROOT, "Manuscript", "Supplementary 2")
 dir.create(supp2_dir, recursive = TRUE, showWarnings = FALSE)
 
 
@@ -1244,3 +1376,5 @@ cat("their second transition (J = 0.13-0.28; Supplementary Table S1).\n")
 
 cat("\n  DONE — 3 CSVs saved to:", supp2_dir, "\n")
 
+
+if (exists("sd_report")) sd_report()

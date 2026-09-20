@@ -1,0 +1,9 @@
+cluster,n_cells,n_expanded,pct_expanded,max_clone_size,excluded_from_HIV_call
+Naive/Bystander,1491,21,1.4,3,YES (clusters 0 and 1)
+Cycling Effector,770,555,72.1,48,no
+TEMRA/Effector,766,502,65.5,48,no
+Tpex,619,230,37.2,44,no
+Transitional Tem,362,205,56.6,27,no
+Tex,24,23,95.8,40,no
+ALL RESPONSIVE (pooled),2541,1515,59.6,48,no
+FOLD DIFFERENCE (responsive/naive),,,42.3,,derived

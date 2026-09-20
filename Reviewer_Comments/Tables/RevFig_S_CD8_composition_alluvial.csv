@@ -1,0 +1,61 @@
+"Timepoint_Group","CD8_Annotation","pct","n_participants","tp"
+"PostART_Suppressed","CD16+ Effector CD8",7.6051534925477,3,"On ART
+(suppressed)"
+"PostART_Suppressed","KIR+ innate-like CD8",5.73499412326883,3,"On ART
+(suppressed)"
+"PostART_Suppressed","Naïve CD8",20.8853266090901,3,"On ART
+(suppressed)"
+"PostART_Suppressed","Naïve CD8 2",2.59298992347438,3,"On ART
+(suppressed)"
+"PostART_Suppressed","Naïve CD8 3",13.5658363774181,3,"On ART
+(suppressed)"
+"PostART_Suppressed","Naïve CD8 4",5.60772658261216,3,"On ART
+(suppressed)"
+"PostART_Suppressed","Naïve Intermediate CD8",4.83001619994887,3,"On ART
+(suppressed)"
+"PostART_Suppressed","TEM CD8",13.4585071629046,3,"On ART
+(suppressed)"
+"PostART_Suppressed","TEMRA CD8",25.5193738589131,3,"On ART
+(suppressed)"
+"PostART_Suppressed","Tscm CD8",0.200075669822165,3,"On ART
+(suppressed)"
+"PostART_Unsuppressed","CD16+ Effector CD8",9.14360062070428,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","KIR+ innate-like CD8",3.78325696752773,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","Naïve CD8",17.9016467654886,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","Naïve CD8 2",4.64729057694378,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","Naïve CD8 3",8.91416239004053,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","Naïve CD8 4",1.4947860182648,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","Naïve Intermediate CD8",0.296484540448962,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","TEM CD8",18.1038668973859,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","TEMRA CD8",34.9539854300906,2,"On ART
+(unsuppressed)"
+"PostART_Unsuppressed","Tscm CD8",0.760919793104842,2,"On ART
+(unsuppressed)"
+"PreART_Entry","CD16+ Effector CD8",0.939885709687873,11,"Pre-ART
+(entry)"
+"PreART_Entry","KIR+ innate-like CD8",0.193377249936364,11,"Pre-ART
+(entry)"
+"PreART_Entry","Naïve CD8",37.9502988024026,11,"Pre-ART
+(entry)"
+"PreART_Entry","Naïve CD8 2",13.2583060983643,11,"Pre-ART
+(entry)"
+"PreART_Entry","Naïve CD8 3",3.01908110352657,11,"Pre-ART
+(entry)"
+"PreART_Entry","Naïve CD8 4",3.24319708131892,11,"Pre-ART
+(entry)"
+"PreART_Entry","Naïve Intermediate CD8",18.4441404499305,11,"Pre-ART
+(entry)"
+"PreART_Entry","TEM CD8",5.52110681461276,11,"Pre-ART
+(entry)"
+"PreART_Entry","TEMRA CD8",13.606470206417,11,"Pre-ART
+(entry)"
+"PreART_Entry","Tscm CD8",3.82413648380311,11,"Pre-ART
+(entry)"

@@ -1,0 +1,47 @@
+comment_id,reviewer,ref,kind,old,new
+R1-M2,Rev 1,Major 2,tab,Lineage_annotation_findings.csv,R1M2_01_Lineage_annotation_findings.csv
+R1-M2,Rev 1,Major 2,fig,RevFig_5A_lineage_identity_RNA_ADT.png,R1M2_02_lineage_identity_RNA_ADT.png
+R1-M2,Rev 1,Major 2,fig,RevFig_5B_qc_vs_CD8.png,R1M2_03_qc_vs_CD8.png
+R1-M2,Rev 1,Major 2,fig,RevFig_5C_crosslineage_doublet.png,R1M2_04_crosslineage_doublet.png
+R1-M2,Rev 1,Major 2,fig,RevFig_5D_participant_composition.png,R1M2_05_participant_composition.png
+R1-M2,Rev 1,Major 2,fig,RevFig_5E_programme_heatmap.png,R1M2_06_programme_heatmap.png
+R1-M3,Rev 1,Major 3,tab,HIV_pilot_detection_results.csv,R1M3_01_HIV_pilot_detection_results.csv
+R1-M3,Rev 1,Major 3,tab,HIV_pilot_highburden_cells.csv,R1M3_02_HIV_pilot_highburden_cells.csv
+R1-M3,Rev 1,Major 3,tab,HIV_realignment_scale_options.csv,R1M3_03_HIV_realignment_scale_options.csv
+R1-M3,Rev 1,Major 3,fig,RevFig_HIV_projected_UMAP.png,R1M3_04_HIV_projected_UMAP.png
+R1-m1,Rev 1,Minor 1,tab,CD8_central_memory_check.csv,R1m1_01_CD8_central_memory_check.csv
+R1-m3,Rev 1,Minor 3,fig,RevFig_1E_TEMRA_fixed.png,R1m3_01_TEMRA.png
+R1-m4,Rev 1,Minor 4,tab,CD3_detection_by_compartment.csv,R1m4_01_CD3_detection_by_compartment.csv
+R1-m6,Rev 1,Minor 6,tab,DSB_marker_distributions_positive_cells.csv,R1m6_01_DSB_marker_distributions_positive_cells.csv
+R1-m6,Rev 1,Minor 6,tab,DSB_panel_summary.csv,R1m6_02_DSB_panel_summary.csv
+R1-m6,Rev 1,Minor 6,fig,RevFig_S1A_DSB_distributions.png,R1m6_03_DSB_distributions.png
+R2-M1a,Rev 2,Major 1a,tab,CD8_cell_count_reconciliation.csv,R2M1a_01_CD8_cell_count_reconciliation.csv
+R2-M1b,Rev 2,Major 1b,fig,RevFig_4C_bubble_RNA.png,R2M1b_01_bubble_RNA.png
+R2-M1b,Rev 2,Major 1b,fig,RevFig_4D_bubble_ADT.png,R2M1b_02_bubble_ADT.png
+R2-M1c,Rev 2,Major 1c,fig,RevFig_1E_all_CD8_clusters_by_group.png,R2M1c_01_all_CD8_clusters_by_group.png
+R2-M1d,Rev 2,Major 1d,tab,CD8_annotation_justification.csv,R2M1d_01_CD8_annotation_justification.csv
+R2-M1d,Rev 2,Major 1d,tab,CD8_flagged_population_resolution.csv,R2M1d_02_CD8_flagged_population_resolution.csv
+R2-M1d,Rev 2,Major 1d,fig,RevFig_4B_ADT_subgating_crosswalk.png,R2M1d_03_ADT_subgating_crosswalk.png
+R2-M1d,Rev 2,Major 1d,fig,RevFig_4F_naive2_identity.png,R2M1d_04_naive2_identity.png
+R2-M1e,Rev 2,Major 1e,fig,RevFig_4E_composition_pctCD8.png,R2M1e_01_composition_pctCD8.png
+R2-M2a,Rev 2,Major 2a,fig,RevFig_4A_CD8_dedicated_UMAP.png,R2M2a_01_CD8_dedicated_UMAP.png
+R2-m2,Rev 2,Minor 2,fig,RevFig_S1_cells_per_sample.png,R2m2_01_cells_per_sample.png
+R2-m8,Rev 2,Minor 8,fig,RevFig_S2C_ClonalSharing_fixed.png,R2m8_01_ClonalSharing.png
+R2-m13,Rev 2,Minor 13,fig,Combined_C2_LineageTrace_CP003_vs_CP018.png,R2m13_01_Combined_C2_LineageTrace_CP003_vs_CP018.png
+R2-m13,Rev 2,Minor 13,fig,Fig3C2_CP018_LineageTrace.png,R2m13_02_CP018_LineageTrace.png
+R2-m13,Rev 2,Minor 13,fig,Fig3C_CP018_Alluvial.png,R2m13_03_CP018_Alluvial.png
+R2-m15,Rev 2,Minor 15,fig,RevFig_S_CD8_composition_alluvial.png,R2m15_01_S_CD8_composition_alluvial.png
+R2-m16,Rev 2,Minor 16,fig,RevFig_S4C_ADT_gating_fixed.png,R2m16_01_ADT_gating.png
+E-5,Editor,Sex/gender reporting,fig,E5_01_sex_inference.png,E5_01_sex_inference.png
+E-5,Editor,Sex/gender reporting,fig,E5_02_composition_by_sex.png,E5_02_composition_by_sex.png
+E-5,Editor,Sex/gender reporting,tab,Sex_inference_from_transcriptome.csv,E5_03_sex_inference_per_participant.csv
+E-5,Editor,Sex/gender reporting,tab,Sex_inference_per_library.csv,E5_04_sex_inference_per_library.csv
+E-5,Editor,Sex/gender reporting,tab,E5_sex_by_exposure_group.csv,E5_05_sex_by_exposure_group.csv
+E-5,Editor,Sex/gender reporting,tab,E5_composition_by_sex_descriptive.csv,E5_06_composition_by_sex_descriptive.csv
+R2-M5c,Rev 2,Major 5c,fig,R2M5c_01_CD16_signature_match.png,R2M5c_01_CD16_signature_match.png
+R2-M5c,Rev 2,Major 5c,tab,R2M5c_CD16_signature_comparison.csv,R2M5c_02_CD16_signature_comparison.csv
+R2-M5c,Rev 2,Major 5c,tab,R2M5c_CD16_paper_signature.csv,R2M5c_03_paper_signature_PMID39531313.csv
+R2-M3d,Rev 2,Major 3d,fig,R2M3d_01_CMV_enrichment.png,R2M3d_01_CMV_enrichment.png
+R2-M3d,Rev 2,Major 3d,tab,R2M3d_CMV_enrichment_by_population.csv,R2M3d_02_CMV_enrichment_by_population.csv
+R2-M3d,Rev 2,Major 3d,tab,R2M3d_gammadelta_by_population.csv,R2M3d_03_gammadelta_by_population.csv
+R2-M3d,Rev 2,Major 3d,tab,R2M3d_CMV_enrichment_gd_controlled.csv,R2M3d_04_CMV_enrichment_gd_controlled.csv

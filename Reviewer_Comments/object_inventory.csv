@@ -1,0 +1,48 @@
+file,size_MB,class,cells,genes,assays,samples,key_cols,producing_script,referenced_in_scripts
+cp003_annotated_fig3.qs2,144,Seurat,4032,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;HIV_Specific_TCR;Fig3_Annotation,,no
+CP003_CP018_integrated.qs2,336,Seurat,9161,14197,RNA+mnn.reconstructed,2,predicted.celltype.l1.score;predicted.celltype.l1;Fig_Annotation;CTstrict;CTstrict_norm,,yes
+cp003_fig3_annotated.qs2,144,Seurat,4032,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;HIV_Specific_TCR;Fig3_Annotation,Scripts/CP003 - Longitudinal HIV Stim/7.HIV_Specific_TCR_TARA_bulk.R:501,yes
+CP003_postQC_cellcycle_scDblFinder_singlets.qs2,81,Seurat,4397,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3,1,predicted.celltype.l1.score;predicted.celltype.l1,,yes
+CP003_RNA_integrated_CCA_MNN_withTCR.qs2,157,Seurat,4397,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict,,yes
+CP003_RNA_integrated_CCA_MNN.qs2,156,Seurat,4397,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1,,yes
+cp003_with_cc_epitope.qs2,156,Seurat,4397,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;HIV_Specific_TCR,,no
+CP018_HIVSpecificTCR_annotated.qs2,170,Seurat,5129,14222,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;Fig_Annotation;CTstrict;CTstrict_norm,,yes
+CP018_postQC_cellcycle_scDblFinder_singlets.qs2,88,Seurat,5131,14222,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3,1,predicted.celltype.l1.score;predicted.celltype.l1,,yes
+CP018_RNA_integrated_CCA_MNN_withTCR.qs2,170,Seurat,5129,14222,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;Fig_Annotation;CTstrict;CTstrict_norm,,yes
+CP018_RNA_integrated_CCA_MNN.qs2,169,Seurat,5129,14222,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;Fig_Annotation,,yes
+EARTH_CMV_vs_OtherExpanding_ED1_markers.qs2,0,data.frame,NA,NA,NA,NA,NA,,no
+EARTH_TRB_ED1_CMVgroup.qs2,849,Seurat,59695,22416,RNA+ADT+mnn.reconstructed,12,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict,,no
+seu_CP003_HIVSpecificTCR_annotated.qs2,157,Seurat,4397,21125,RNA+prediction.score.celltype.l1+prediction.score.celltype.l2+prediction.score.celltype.l3+mnn.reconstructed,1,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;HIV_Specific_TCR,,yes
+TARA_ALL_annotated_final.qs2,1753,Seurat,126435,22416,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/2. WNN_Annotation.R:969,yes
+TARA_ALL_checkpoint.qs2,1752,Seurat,126435,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/2. WNN_Annotation.R:591,yes
+TARA_ALL_ModuleScored.qs2,1773,Seurat,126435,22416,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/3.Module_Scoring.R:750,yes
+TARA_ALL_pass1.qs2,1889,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Rough_Annotation;Annotation,,no
+TARA_ALL_post_annotation_comparisonsplit.rds,2427,Seurat,142434,137,RNA+ADT+mnn.reconstructed,27,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation,,no
+TARA_ALL_post_annotation.rds,2310,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation,,no
+TARA_ALL_sorted_refined.qs2,1888,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_ALL_sorted_v2.qs2,1888,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_ALL_sorted_v3.qs2,1888,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_ALL_sorted_v4.qs2,1888,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_ALL_sorted.qs2,1888,Seurat,135765,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_B_cell_subset.qs2,294,Seurat,17671,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,,no
+TARA_CD4_subset.qs2,700,Seurat,51660,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,,no
+TARA_cd8_annotated.qs2,541,Seurat,32065,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_cd8_final.qs2,368,Seurat,25629,22416,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/2. WNN_Annotation.R:976,yes
+TARA_cd8_HEI_annotated_final.qs2,332,Seurat,18843,137,RNA+ADT+mnn.reconstructed,21,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/4.CD8_Subseting.R:1934,yes
+TARA_cd8_HEI_annotated.qs2,332,Seurat,18843,137,RNA+ADT+mnn.reconstructed,21,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/4.CD8_Subseting.R:944,yes
+TARA_cd8_HEI_integrated.qs2,337,Seurat,18984,137,RNA+ADT+mnn.reconstructed,21,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/4.CD8_Subseting.R:375,yes
+TARA_cd8_HEI_with_trajectory.qs2,332,Seurat,18843,137,RNA+ADT+mnn.reconstructed,21,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/2. Analysis/4.CD8_Subseting.R:1478,yes
+TARA_cd8_revised_v2.qs2,427,Seurat,29978,22416,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_cd8_revised_v3.qs2,427,Seurat,29978,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_cd8_revised_v4.qs2,427,Seurat,29978,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+TARA_CD8_subset.qs2,427,Seurat,29978,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,,no
+tara_cdnk_annotated.rds,926,Seurat,49562,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+tara_cdnk_vdj.rds,942,Seurat,49768,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation,,no
+tara_cdnk_with_cp003_matches.qs2,443,Seurat,26211,137,RNA+ADT+mnn.reconstructed,21,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+tara_cdnk.rds,942,Seurat,49768,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation,,no
+TARA_CMV_vs_OtherExpanding_ED1_markers.qs2,0,data.frame,NA,NA,NA,NA,NA,,no
+tara_cp003_fig3_annotated.qs2,106,Seurat,5087,137,RNA+ADT+mnn.reconstructed,3,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Manual_Annotation;Timepoint_Group,,no
+tara_cp003_fig3.qs2,216,Seurat,14719,22416,RNA+ADT+mnn.reconstructed,3,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/CP003 - Longitudinal HIV Stim/7.HIV_Specific_TCR_TARA_bulk.R:506,yes
+tara_cp018_crossref.qs2,205,Seurat,13880,22416,RNA+ADT+mnn.reconstructed,3,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,Scripts/CP018 - FACTseq/6.HIV_Specific_TCR_TARA_bulk.R:387,yes
+TARA_NK_subset.qs2,243,Seurat,16877,137,RNA+ADT+mnn.reconstructed,26,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict;Annotation;Timepoint_Group,,no
+TARA_TRB_ED1_CMVgroup.qs2,2020,Seurat,142481,22416,RNA+ADT+mnn.reconstructed,27,predicted.celltype.l1.score;predicted.celltype.l1;CTstrict,,no

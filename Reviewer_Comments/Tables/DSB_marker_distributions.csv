@@ -1,0 +1,15 @@
+"marker","group","class","n_cells","median","q95","q99","max"
+"Hamster-IgG","all cells","isotype control",126435,0,0,0,17.49
+"Mouse-IgG1","all cells","isotype control",126435,0,0,0,1.74
+"Mouse-IgG2a","all cells","isotype control",126435,0,0,0,13.44
+"Mouse-IgG2b","all cells","isotype control",126435,0,0,0,12
+"Rat-IgG1","all cells","isotype control",126435,0,0,0,8.63
+"Rat-IgG2a","all cells","isotype control",126435,0,0,0,32.4
+"Rat-IgG2b","all cells","isotype control",126435,0,0,0,7.12
+"CD8A","CD8 T cells","lineage marker",26713,16.7,30.06,34.28,46.98
+"CD19","B cells","lineage marker",17191,6.99,18.51,24.89,36.24
+"CD14","Monocytes","lineage marker",5837,0,9.5,13.44,22.36
+"CD3D","CD4 T cells","lineage marker",52594,4.54,10.54,12.7,20.06
+"CD27","CD4 T cells","lineage marker",52594,3.28,9.31,12.2,31
+"CD4","CD4 T cells","lineage marker",52594,4.97,10.52,11.92,17.01
+"CD45RA","Naive T/B cells","lineage marker",53665,3.21,7.67,9.25,13.49

@@ -1,0 +1,13 @@
+"metric","value"
+"antibodies in panel",137
+"isotype controls",7
+"markers with q99 > 5",61
+"markers with q99 > 10",29
+"markers with q99 > 20",4
+"whole-matrix q99.9",21.65
+"isotype median",0
+"isotype q99",0
+"real-marker q99",11.14
+"real-marker max",53.05
+"stored minimum",0
+"exact zeros in stored matrix (pct)",81.7

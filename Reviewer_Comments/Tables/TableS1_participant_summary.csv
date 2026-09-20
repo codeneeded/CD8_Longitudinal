@@ -1,0 +1,17 @@
+"PID","Condition","Cohort","n_timepoints","timepoints","groups_sampled","total_PBMC","total_CD8_T","total_CD8_subclust"
+"CP013","HEI","TARA",3,"1, 12, 25","PostART_Suppressed; PreART_Entry",18249,3349,3702
+"CP006","HEI","TARA",3,"1, 12, 24","PostART_Suppressed; PreART_Entry",16226,4141,3180
+"CP003","HEI","TARA",3,"1, 12, 24","PostART_Unsuppressed; PreART_Entry",14719,3940,3146
+"CP018","HEI","TARA",3,"1, 25, 42","PostART_Suppressed; PreART_Entry",13880,2188,1804
+"CP020","HEI","TARA",3,"1, 12, 44","PostART_Unsuppressed; PreART_Entry",12850,2644,2429
+"CE025","HEU","TARA",1,"1","",6904,1538,0
+"CE021","HEU","TARA",1,"1","",6581,1800,0
+"CP002","HEI","TARA",1,"1","PreART_Entry",5862,1677,1493
+"CS005","HUU","TARA",1,"2","",5554,972,0
+"CP022","HEI","TARA",1,"1","PreART_Entry",5147,1204,1082
+"CP016","HEI","TARA",1,"2","PreART_Entry",5070,676,608
+"CP011","HEI","TARA",1,"2","PreART_Entry",4057,1054,823
+"CP042","HEI","TARA",1,"1","PreART_Entry",2989,316,292
+"CE037","HEU","TARA",1,"1","",2965,592,0
+"CS015","HUU","TARA",1,"2","",2887,478,0
+"CP017","HEI","TARA",1,"2","PreART_Entry",2495,339,284

@@ -15,8 +15,36 @@ library(Seurat); library(ggplot2); library(dplyr); library(tidyr)
 library(cowplot); library(patchwork); library(qs2)
 library(SeuratExtend); library(ggrepel); library(ggpubr)
 
+# Export the data behind every panel (Editor point E-3).
+# Resolves this script's own directory under BOTH `Rscript foo.R` and
+# `source("foo.R")`. sys.frame(1) alone fails under Rscript: there is no
+# frame 1 at top level, which halted every figure script on the first try.
+.sd_shim_dir <- local({
+  a <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", a[grep("^--file=", a)])
+  f <- gsub("~+~", " ", f, fixed = TRUE)   # Rscript encodes spaces
+  if (length(f)) dirname(normalizePath(f[1])) else {
+    d <- NULL
+    for (i in rev(seq_len(sys.nframe()))) {
+      o <- sys.frame(i)$ofile
+      if (!is.null(o)) { d <- dirname(normalizePath(o)); break }
+    }
+    if (is.null(d)) getwd() else d
+  }
+})
+.sd_shim <- file.path(.sd_shim_dir, "00.Source_Data_Shim.R")
+if (file.exists(.sd_shim)) source(.sd_shim) else
+  warning("source-data shim not found at ", .sd_shim,
+          "; panels will not export", call. = FALSE, immediate. = TRUE)
+# Repository root, derived from this script's location. Replaces the
+# hardcoded ~/Documents/CD8_Longitudinal, which does not exist here.
+CD8_ROOT <- if (exists("sd_repo_root")) sd_repo_root(.sd_shim_dir) else
+  Sys.getenv("CD8_BASE", unset = normalizePath(
+    file.path(.sd_shim_dir, "..", ".."), mustWork = FALSE))
+
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
-base_dir     <- "~/Documents/CD8_Longitudinal"
+base_dir     <- CD8_ROOT
 saved_dir    <- file.path(base_dir, "saved_R_data")
 fig5_dir     <- file.path(base_dir, "Manuscript", "Figure 5")
 analysis_dir <- file.path(base_dir, "Analysis", "CD8_subset")
@@ -370,3 +398,5 @@ ggsave(file.path(fig5_dir, "Fig5_Row3_EF_combined.png"),
 
 cat("\n=== Figure 5 complete ===\n")
 cat("Output:", fig5_dir, "\n")
+
+if (exists("sd_report")) sd_report()

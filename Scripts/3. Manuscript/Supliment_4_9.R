@@ -17,8 +17,36 @@ library(Seurat); library(ggplot2); library(dplyr); library(tidyr)
 library(cowplot); library(pheatmap); library(grid); library(qs2)
 library(ggrepel); library(ggpubr); library(SeuratExtend); library(patchwork)
 
+# Export the data behind every panel (Editor point E-3).
+# Resolves this script's own directory under BOTH `Rscript foo.R` and
+# `source("foo.R")`. sys.frame(1) alone fails under Rscript: there is no
+# frame 1 at top level, which halted every figure script on the first try.
+.sd_shim_dir <- local({
+  a <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", a[grep("^--file=", a)])
+  f <- gsub("~+~", " ", f, fixed = TRUE)   # Rscript encodes spaces
+  if (length(f)) dirname(normalizePath(f[1])) else {
+    d <- NULL
+    for (i in rev(seq_len(sys.nframe()))) {
+      o <- sys.frame(i)$ofile
+      if (!is.null(o)) { d <- dirname(normalizePath(o)); break }
+    }
+    if (is.null(d)) getwd() else d
+  }
+})
+.sd_shim <- file.path(.sd_shim_dir, "00.Source_Data_Shim.R")
+if (file.exists(.sd_shim)) source(.sd_shim) else
+  warning("source-data shim not found at ", .sd_shim,
+          "; panels will not export", call. = FALSE, immediate. = TRUE)
+# Repository root, derived from this script's location. Replaces the
+# hardcoded ~/Documents/CD8_Longitudinal, which does not exist here.
+CD8_ROOT <- if (exists("sd_repo_root")) sd_repo_root(.sd_shim_dir) else
+  Sys.getenv("CD8_BASE", unset = normalizePath(
+    file.path(.sd_shim_dir, "..", ".."), mustWork = FALSE))
+
+
 # ── Paths ─────────────────────────────────────────────────────────────────────
-base_dir     <- "~/Documents/CD8_Longitudinal"
+base_dir     <- CD8_ROOT
 saved_dir    <- file.path(base_dir, "saved_R_data")
 analysis_dir <- file.path(base_dir, "Analysis", "CD8_subset")
 csv_dir      <- file.path(analysis_dir, "CSV_outputs")
@@ -141,7 +169,7 @@ DefaultAssay(TARA_cd8) <- "ADT"
 adt_feats <- names(adt_heatmap_markers)[names(adt_heatmap_markers) %in% rownames(TARA_cd8)]
 
 # FIXED: manual rowMeans instead of AverageExpression (avoids expm1 bug)
-adt_raw <- GetAssayData(TARA_cd8, slot = "data")[adt_feats, , drop = FALSE]
+adt_raw <- GetAssayData(TARA_cd8, layer = "data")[adt_feats, , drop = FALSE]
 clusters_vec <- TARA_cd8$CD8_Annotation
 avg_adt <- sapply(levels(factor(clusters_vec)), function(cl) {
   cells <- which(clusters_vec == cl)
@@ -208,7 +236,7 @@ DefaultAssay(TARA_cd8) <- "RNA"
 rna_feats <- names(rna_heatmap_markers)[names(rna_heatmap_markers) %in% rownames(TARA_cd8)]
 
 avg_rna <- AverageExpression(TARA_cd8, assays = "RNA", features = rna_feats,
-                             group.by = "CD8_Annotation", slot = "data")$RNA
+                             group.by = "CD8_Annotation", layer = "data")$RNA
 avg_rna_s <- scale_01(as.matrix(avg_rna))
 colnames(avg_rna_s) <- gsub("^g ", "", colnames(avg_rna_s))
 avg_rna_s <- avg_rna_s[, col_order_cd8[col_order_cd8 %in% colnames(avg_rna_s)]]
@@ -250,7 +278,7 @@ naive_mask <- TARA_cd8$CD8_Annotation %in% naive_clusters
 if (sum(naive_mask) > 0) {
   naive_cells <- colnames(TARA_cd8)[naive_mask]
   DefaultAssay(TARA_cd8) <- "ADT"
-  adt_data <- GetAssayData(TARA_cd8, slot = "data")
+  adt_data <- GetAssayData(TARA_cd8, layer = "data")
   
   gate_plot_df <- data.frame(
     CD45RO = as.numeric(adt_data["CD45RO", naive_cells]),
@@ -269,7 +297,15 @@ if (sum(naive_mask) > 0) {
   
   if ("source_cluster" %in% colnames(TARA_cd8@meta.data)) {
     gate_plot_df$source <- TARA_cd8$source_cluster[naive_cells]
-    gate_plot_df$facet <- paste0("Source cluster ", gate_plot_df$source)
+    # Rev 2, minor 16: a source-cluster NUMBER means nothing to a reader - the
+    # manuscript uses cluster numbers nowhere else. Label each facet with the
+    # subset name(s) the cluster resolves to, keeping the number in parentheses
+    # so the panel stays traceable to the clustering.
+    .src_names <- tapply(as.character(gate_plot_df$annotation),
+                         as.character(gate_plot_df$source),
+                         function(v) paste(sort(unique(v)), collapse = " / "))
+    gate_plot_df$facet <- paste0(.src_names[as.character(gate_plot_df$source)],
+                                 "\n(source cluster ", gate_plot_df$source, ")")
   } else {
     gate_plot_df$facet <- "All naïve clusters"
   }
@@ -699,7 +735,7 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
   
   p_s9b <- ggplot(kir_clone, aes(x = Timepoint_Group, fill = cloneSize)) +
     geom_bar(position = "fill", width = 0.6) +
-    scale_fill_viridis_d(name = "Clone size", option = "mako", direction = -1) +
+    scale_fill_viridis_d(name = "Clonotype size", option = "mako", direction = -1) +
     scale_x_discrete(labels = c("Pre-ART","Suppressed","Unsuppressed")) +
     scale_y_continuous(labels = scales::percent) +
     labs(x = "", y = "Proportion", title = "Clonal expansion in KIR+ CD8") +
@@ -805,3 +841,5 @@ if ("KIR+ innate-like CD8" %in% unique(TARA_cd8$CD8_Annotation)) {
 cat("\n=== SUPPLEMENTARY COMPLETE ===\n")
 cat("Figures: Manuscript/Supplementary 4 through 9\n")
 cat("CSVs:   ", csv_dir, "\n")
+
+if (exists("sd_report")) sd_report()

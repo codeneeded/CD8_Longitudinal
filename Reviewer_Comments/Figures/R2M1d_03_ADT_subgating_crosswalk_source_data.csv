@@ -1,0 +1,17 @@
+"source_cluster","CD8_Annotation","Freq","pct_of_source"
+"0","Naïve CD8",4781,82.3
+"2","Naïve CD8 2",1884,56.3
+"4","Naïve CD8 3",1323,96.7
+"6","Naïve CD8 4",608,83.9
+"0","Tscm CD8",114,2
+"2","Tscm CD8",260,7.8
+"4","Tscm CD8",26,1.9
+"6","Tscm CD8",38,5.2
+"0","Naïve Intermediate CD8",912,15.7
+"2","Naïve Intermediate CD8",1201,35.9
+"4","Naïve Intermediate CD8",19,1.4
+"6","Naïve Intermediate CD8",79,10.9
+"3","TEM CD8",1899,100
+"1","TEMRA CD8",4347,100
+"5","CD16+ Effector CD8",860,100
+"7","KIR+ innate-like CD8",492,100

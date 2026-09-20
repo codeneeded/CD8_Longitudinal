@@ -1,0 +1,7 @@
+metric,value,note
+CD8 cells in dedicated object,18843,TARA_cd8_HEI_annotated_final.qs2
+Cells with an RNA Tcm profile,450,"CCR7+ and SELL+ and CD27+ by RNA detection, with surface CD45RA below 1 (DSB)"
+Percent of CD8 compartment,2.4,
+Clusters these cells span,9,of 10 CD8 clusters
+Highest share within any one cluster,7.2,"Naive CD8 4 (44 of 608 cells); next highest Naive Intermediate CD8 at 5.2% (114 of 2,211)"
+CCR7 present in ADT panel,NO,Tcm cannot be gated on surface CCR7 in this dataset; the profile above is RNA-based

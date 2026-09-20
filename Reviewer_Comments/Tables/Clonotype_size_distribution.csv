@@ -1,0 +1,8 @@
+metric,value
+unique clonotypes (CD8 object),12758
+expanded clonotypes (size > 1),834
+expanded as % of all clonotypes,6.5
+size-2 clonotypes,304
+size-2 as % of expanded clonotypes,36.5
+cells in size-2 clonotypes,608
+size-2 cells as % of all expanded cells,11.3

@@ -1,0 +1,9 @@
+"metric","value"
+"k",30
+"reference_cells_same_library",6233
+"features_used",1952
+"null_similarity_99pct",0.2
+"leave_one_out_lineage_accuracy",0.94
+"query_cells",7
+"query_placeable",6
+"lineage_agreement",0.857

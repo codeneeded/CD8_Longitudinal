@@ -1,0 +1,12 @@
+metric,value,note
+Sample,CP006_1m,"pre-ART entry visit, viral load 10,000,000 copies/mL (assay ceiling), GSE254645 (public)"
+Reference,"GRCh38 + HIV1_HXB2_subB (9,719 bp) + HIV1_subC (9,011 bp)",Both viral contigs confirmed present as Gene Expression features in the filtered matrix — a dropped contig would have produced a false negative
+Cells recovered,"8,580","mean 53,898 reads/cell, median 2,616 genes, 71.6% confidently mapped to transcriptome, 78.1% saturation"
+Viral UMIs in cells,688,HIV1_subC 551 + HIV1_HXB2_subB 137
+Cells with >=1 viral UMI,19,"of 8,580 (0.22%)"
+Cells with >=10 viral UMI,4,"viral burden per cell: 93 UMIs (5.7% of that cell's transcriptome), 116 UMIs (1.5% of that cell's transcriptome), 171 UMIs (2.7% of that cell's transcriptome), 277 UMIs (1.5% of that cell's transcriptome). Note the fraction is NOT monotonic with UMI count - burden depends on library size, so the 93-UMI cell (1,638 total UMIs) carries the highest viral fraction and the 277-UMI cell (18,644 total) among the lowest. Per-cell values in HIV_pilot_highburden_cells.csv"
+CONTROL 1 — ambient background,90.4% of viral signal inside cells,"761 viral UMIs across all 475,998 barcodes vs 688 in the 8,580 cell-containing ones; only 73 UMIs in 24 of 467,418 empty droplets. Ambient viral RNA is therefore NOT the source of the high-burden cells"
+CONTROL 2 — lineage restriction,4 of 4 high-burden cells are T cells,"By Cell Ranger's own reference annotation. Marker-level confirmation: CD3E+CD3D = 22, 8 and 15 UMIs in three of them, with zero MS4A1/CD79A (B) and zero CD14/LYZ (monocyte). HIV targets CD4 T cells, so this is the expected restriction"
+CONTROL 2b — dose-response,every cell with >=3 viral UMI is a T cell,"The 1-2 UMI cells scatter across Monocyte, NK and Macrophage — the signature of ambient contamination, not infection. Signal and lineage restriction rise together"
+Detection frequency,"0.089% of T cells (1 in 1,128)","4 high-burden cells of 4,513 T cells. CD4 transcript is low or absent in these cells, which is expected: HIV Nef and Vpu downregulate CD4"
+VERDICT,DETECTABLE — proceed,"Signal is well above ambient, lineage-restricted, and dose-responsive. Realigning the remaining viremic samples is justified. Expected total yield remains modest: at this rate the 15 viremic samples would give roughly 30-60 high-burden cells, which supports a frequency estimate and descriptive phenotype but NOT a powered differential expression comparison. State that limit explicitly to the reviewer"

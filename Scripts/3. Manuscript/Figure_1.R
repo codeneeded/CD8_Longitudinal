@@ -48,9 +48,37 @@ library(grid)
 library(scales)
 library(viridis)
 
+# Export the data behind every panel (Editor point E-3).
+# Resolves this script's own directory under BOTH `Rscript foo.R` and
+# `source("foo.R")`. sys.frame(1) alone fails under Rscript: there is no
+# frame 1 at top level, which halted every figure script on the first try.
+.sd_shim_dir <- local({
+  a <- commandArgs(trailingOnly = FALSE)
+  f <- sub("^--file=", "", a[grep("^--file=", a)])
+  f <- gsub("~+~", " ", f, fixed = TRUE)   # Rscript encodes spaces
+  if (length(f)) dirname(normalizePath(f[1])) else {
+    d <- NULL
+    for (i in rev(seq_len(sys.nframe()))) {
+      o <- sys.frame(i)$ofile
+      if (!is.null(o)) { d <- dirname(normalizePath(o)); break }
+    }
+    if (is.null(d)) getwd() else d
+  }
+})
+.sd_shim <- file.path(.sd_shim_dir, "00.Source_Data_Shim.R")
+if (file.exists(.sd_shim)) source(.sd_shim) else
+  warning("source-data shim not found at ", .sd_shim,
+          "; panels will not export", call. = FALSE, immediate. = TRUE)
+# Repository root, derived from this script's location. Replaces the
+# hardcoded ~/Documents/CD8_Longitudinal, which does not exist here.
+CD8_ROOT <- if (exists("sd_repo_root")) sd_repo_root(.sd_shim_dir) else
+  Sys.getenv("CD8_BASE", unset = normalizePath(
+    file.path(.sd_shim_dir, "..", ".."), mustWork = FALSE))
+
+
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
-base_dir  <- "~/Documents/CD8_Longitudinal"
+base_dir  <- CD8_ROOT
 saved_dir <- file.path(base_dir, "saved_R_data")
 fig1_dir  <- file.path(base_dir, "Manuscript", "Figure 1")
 supp1_dir <- file.path(base_dir, "Manuscript", "Supplementary 1")
@@ -462,7 +490,7 @@ cat("ADT markers:", length(adt_heatmap_feats),
 #       assuming log-normalization. For DSB-normalized ADT this produces
 #       exponentially inflated values. Use manual rowMeans() instead.
 DefaultAssay(TARA_cd8) <- "ADT"
-adt_mat_raw <- GetAssayData(TARA_cd8, slot = "data")[adt_heatmap_feats, , drop = FALSE]
+adt_mat_raw <- GetAssayData(TARA_cd8, layer = "data")[adt_heatmap_feats, , drop = FALSE]
 clusters_cd8 <- TARA_cd8$Annotation
 avg_adt_hm <- sapply(levels(factor(clusters_cd8)), function(cl) {
   cells <- which(clusters_cd8 == cl)
@@ -475,7 +503,7 @@ rownames(avg_adt_hm) <- adt_heatmap_feats
 DefaultAssay(TARA_cd8) <- "RNA"
 avg_rna_hm <- AverageExpression(
   TARA_cd8, assays = "RNA", features = rna_heatmap_feats,
-  group.by = "Annotation", slot = "data"
+  group.by = "Annotation", layer = "data"
 )$RNA
 
 # ADT: scale_01 directly on DSB averages (no log10 — DSB is already meaningful)
@@ -880,11 +908,15 @@ p_temra <- ggplot(temra_freq, aes(x = Condition, y = percent,
     plot.title   = element_text(face = "bold", size = 18, hjust = 0.5),
     axis.text.x  = element_text(face = "bold", size = 14),
     axis.text.y  = element_text(size = 14),
-    axis.title.y = element_text(face = "bold", size = 16)
+    axis.title.y = element_text(face = "bold", size = 16),
+    # Rev 1 minor 3 / Rev 2 minor 4: at 5 in wide a 16 pt bold rotated y-title
+    # runs past the left edge of the canvas and is cropped. A left plot margin
+    # plus a slightly wider canvas gives the rotated title its own space.
+    plot.margin  = margin(6, 8, 6, 16)
   )
 
 ggsave(file.path(fig1_dir, "Fig1E_TEMRA_Proportion.png"),
-       p_temra, width = 5, height = 6, dpi = 600, bg = "white")
+       p_temra, width = 5.9, height = 6, dpi = 600, bg = "white")
 
 message("\u2713 Fig 1E saved\n")
 
@@ -1042,7 +1074,7 @@ TARA_cl1 <- subset(TARA_cd8,
                    subset = Annotation %in% cl1_clusters)
 
 DefaultAssay(TARA_cl1) <- "ADT"
-adt_cl1 <- GetAssayData(TARA_cl1, slot = "data")
+adt_cl1 <- GetAssayData(TARA_cl1, layer = "data")
 
 gate_df <- data.frame(
   CD45RO = as.numeric(adt_cl1["CD45RO", ]),
@@ -1105,7 +1137,7 @@ message("\u2713 S1B saved\n")
 message("Generating Supplementary S1C...")
 
 DefaultAssay(TARA_cd8) <- "ADT"
-adt_cd8_data <- GetAssayData(TARA_cd8, slot = "data")
+adt_cd8_data <- GetAssayData(TARA_cd8, layer = "data")
 
 # CHANGED: uses Annotation column
 n1_cells <- WhichCells(TARA_cd8,
@@ -1279,3 +1311,5 @@ message("\n",
         "   S1E: VL correlations % PBMC (5, excl Tex)\n",
         "\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n"
 )
+
+if (exists("sd_report")) sd_report()

@@ -1,0 +1,13 @@
+feature,gene,paper_direction,paper_detail
+FCGR3A (CD16/FcγRIII),FCGR3A,defining — population is sorted on it,FcγRIII-expressing CD8+ T cells expand after in utero HCMV exposure
+Differentiation state,—,TEMRA-dominant,most FcγRIII+ CD8+ T cells were Temra
+CD57,B3GAT1,up vs FcγRIII-negative CD8,increased CD57 compared with CD8+ T cells lacking FcγRIII
+PD-1,PDCD1,up vs FcγRIII-negative CD8,increased PD-1 compared with CD8+ T cells lacking FcγRIII
+NKG2C,KLRC2,up vs FcγRIII-negative CD8,increased NKG2C compared with CD8+ T cells lacking FcγRIII
+Perforin,PRF1,up,increased PRF1 indicates polyfunctional and highly cytotoxic
+Granulysin,GNLY,up,increased GNLY
+NKG7,NKG7,up,increased NKG7
+Granzymes,GZMB/GZMH/GZMA,up,increased granzyme expression
+T-bet,TBX21,UP,upregulate T-bet — TF governing T/NK fate
+BCL11B,BCL11B,DOWN,downregulate BCL11B — TF governing T/NK fate
+γδ TCR fraction,TRDC/TRGC1/TRGC2,"minority, median 19%",γδ TCR on a minority (median 19%); αβ TCR on a majority (median 76%)

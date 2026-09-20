@@ -1,0 +1,37 @@
+"Comparison","Module","CD8_Annotation","cohens_d","p_value","p_adj","star","Module_Label","Cluster_Short","star_x","star_hjust"
+"Suppressed vs Unsuppressed","Cytotoxicity","TEM CD8",1.0097135171081,0,0,"***","Cytotoxicity","TEM",1.05010205779242,0
+"Suppressed vs Unsuppressed","Cytotoxicity","TEMRA CD8",0.163682773388187,0.00180986429169039,0.00377149878906816,"**","Cytotoxicity","TEMRA",0.204071314072511,0
+"Suppressed vs Unsuppressed","Cytotoxicity","CD16+ Effector CD8",-0.0267793818599284,0.467484729277513,0.545398850823765,"","Cytotoxicity","CD16+ Eff.",-0.0671679225442523,1
+"Suppressed vs Unsuppressed","Stress_IFN","TEM CD8",-0.262297453993953,0.0362665717890893,0.0537684531466929,"","Stress / IFN (acute)","TEM",-0.302685994678277,1
+"Suppressed vs Unsuppressed","Stress_IFN","TEMRA CD8",-0.435409178144237,5.03542205297695e-11,2.01193742061519e-10,"***","Stress / IFN (acute)","TEMRA",-0.475797718828561,1
+"Suppressed vs Unsuppressed","Stress_IFN","CD16+ Effector CD8",-0.356154531006507,0.00197554698474999,0.00377149878906816,"**","Stress / IFN (acute)","CD16+ Eff.",-0.396543071690831,1
+"Suppressed vs Unsuppressed","Inflammatory_Chemokines","TEM CD8",0.0296976669013684,0.576666445517263,0.637368176624344,"","Inflammatory chemokines","TEM",0.0700862075856923,0
+"Suppressed vs Unsuppressed","Inflammatory_Chemokines","TEMRA CD8",-0.343883764145806,2.63421395454334e-13,1.38296232613525e-12,"***","Inflammatory chemokines","TEMRA",-0.38427230483013,1
+"Suppressed vs Unsuppressed","Inflammatory_Chemokines","CD16+ Effector CD8",-0.167455511047283,0.860235256589147,0.860235256589147,"","Inflammatory chemokines","CD16+ Eff.",-0.207844051731607,1
+"Suppressed vs Unsuppressed","Terminal_Differentiation","TEM CD8",0.279389132909653,0.0144548851870527,0.023350199148316,"*","Terminal differentiation","TEM",0.319777673593977,0
+"Suppressed vs Unsuppressed","Terminal_Differentiation","TEMRA CD8",-0.163719021763613,0.000117763296672795,0.000274781025569855,"***","Terminal differentiation","TEMRA",-0.204107562447937,1
+"Suppressed vs Unsuppressed","Terminal_Differentiation","CD16+ Effector CD8",-0.0151788286372209,0.689994082107999,0.724493786213399,"","Terminal differentiation","CD16+ Eff.",-0.0555673693215448,1
+"Suppressed vs Pre-ART","Cytotoxicity","TEM CD8",0.198691651074462,0.051716404175526,0.077574606263289,"","Cytotoxicity","TEM",0.239080191758786,0
+"Suppressed vs Pre-ART","Cytotoxicity","TEMRA CD8",-0.77457450552258,4.08239034327137e-74,2.85767324028996e-73,"***","Cytotoxicity","TEMRA",-0.814963046206904,1
+"Suppressed vs Pre-ART","Cytotoxicity","CD16+ Effector CD8",-0.691964009810632,6.54803232335418e-06,1.52787420878264e-05,"***","Cytotoxicity","CD16+ Eff.",-0.732352550494955,1
+"Suppressed vs Pre-ART","Stress_IFN","TEM CD8",-0.112892553943306,0.162461486347793,0.200687718429627,"","Stress / IFN (acute)","TEM",-0.15328109462763,1
+"Suppressed vs Pre-ART","Stress_IFN","TEMRA CD8",-0.138444510544003,2.7748784764126e-06,7.28405600058308e-06,"***","Stress / IFN (acute)","TEMRA",-0.178833051228326,1
+"Suppressed vs Pre-ART","Stress_IFN","CD16+ Effector CD8",0.0456587884872805,0.575439005640609,0.629571786753178,"","Stress / IFN (acute)","CD16+ Eff.",0.0860473291716044,0
+"Suppressed vs Pre-ART","Inflammatory_Chemokines","TEM CD8",-0.527436073989965,7.87473092346297e-07,2.36241927703889e-06,"***","Inflammatory chemokines","TEM",-0.567824614674289,1
+"Suppressed vs Pre-ART","Inflammatory_Chemokines","TEMRA CD8",-0.834901091735686,1.38804794655614e-81,1.45745034388395e-80,"***","Inflammatory chemokines","TEMRA",-0.87528963242001,1
+"Suppressed vs Pre-ART","Inflammatory_Chemokines","CD16+ Effector CD8",-0.672080798906825,0.000282249431706351,0.000592723806583338,"***","Inflammatory chemokines","CD16+ Eff.",-0.712469339591149,1
+"Suppressed vs Pre-ART","Terminal_Differentiation","TEM CD8",0.836153346031783,6.73239242132695e-13,2.82760481695732e-12,"***","Terminal differentiation","TEM",0.876541886716106,0
+"Suppressed vs Pre-ART","Terminal_Differentiation","TEMRA CD8",-0.0203399749787825,0.647758385963131,0.647758385963131,"","Terminal differentiation","TEMRA",-0.0607285156631064,1
+"Suppressed vs Pre-ART","Terminal_Differentiation","CD16+ Effector CD8",-0.246993955575424,0.0673644554918117,0.0943102376885363,"","Terminal differentiation","CD16+ Eff.",-0.287382496259748,1
+"Unsuppressed vs Pre-ART","Cytotoxicity","TEM CD8",-0.803786361051507,1.27697514351188e-12,6.70411950343735e-12,"***","Cytotoxicity","TEM",-0.844174901735831,1
+"Unsuppressed vs Pre-ART","Cytotoxicity","TEMRA CD8",-0.912242502245607,9.25958675447991e-89,1.94451321844078e-87,"***","Cytotoxicity","TEMRA",-0.952631042929931,1
+"Unsuppressed vs Pre-ART","Cytotoxicity","CD16+ Effector CD8",-0.617585047411742,0.000540508342797243,0.00189177919979035,"**","Cytotoxicity","CD16+ Eff.",-0.657973588096066,1
+"Unsuppressed vs Pre-ART","Stress_IFN","TEM CD8",0.187240428246807,0.522795487611842,0.548935261992434,"","Stress / IFN (acute)","TEM",0.227628968931131,0
+"Unsuppressed vs Pre-ART","Stress_IFN","TEMRA CD8",0.370033689034244,0.00720972178237056,0.0151404157429782,"*","Stress / IFN (acute)","TEMRA",0.410422229718568,0
+"Unsuppressed vs Pre-ART","Stress_IFN","CD16+ Effector CD8",0.375465285892553,0.0197689674585115,0.0345956930523952,"*","Stress / IFN (acute)","CD16+ Eff.",0.415853826576877,0
+"Unsuppressed vs Pre-ART","Inflammatory_Chemokines","TEM CD8",-0.520583035970808,2.76341658015926e-08,1.16063496366689e-07,"***","Inflammatory chemokines","TEM",-0.560971576655132,1
+"Unsuppressed vs Pre-ART","Inflammatory_Chemokines","TEMRA CD8",-0.383867775738093,2.20491551308229e-26,2.3151612887364e-25,"***","Inflammatory chemokines","TEMRA",-0.424256316422417,1
+"Unsuppressed vs Pre-ART","Inflammatory_Chemokines","CD16+ Effector CD8",-0.3695888840755,0.00526511015025076,0.0122852570172518,"*","Inflammatory chemokines","CD16+ Eff.",-0.409977424759824,1
+"Unsuppressed vs Pre-ART","Terminal_Differentiation","TEM CD8",0.671602034441875,3.08642000845794e-13,2.16049400592055e-12,"***","Terminal differentiation","TEM",0.711990575126198,0
+"Unsuppressed vs Pre-ART","Terminal_Differentiation","TEMRA CD8",0.137141976120722,0.00143526620547663,0.00376757378937614,"**","Terminal differentiation","TEMRA",0.177530516805046,0
+"Unsuppressed vs Pre-ART","Terminal_Differentiation","CD16+ Effector CD8",-0.240168777228577,0.134563250604441,0.188388550846218,"","Terminal differentiation","CD16+ Eff.",-0.280557317912901,1

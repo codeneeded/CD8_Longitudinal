@@ -43,6 +43,20 @@ FIG3M   <- file.path(CP018_ANALYSIS, "Figure3_Mirror"); mkdirs(FIG3M)
 csv_f3  <- file.path(FIG3M, "tables");                  mkdirs(csv_f3)
 CMB     <- file.path(FIG3M, "Combined");                mkdirs(CMB)
 
+# REVIEWER-KEYED PANELS GO STRAIGHT TO Reviewer_Comments/Figures.
+# 98.Build_Revision_Figure_PDF.R resolves figures from that directory ONLY, so
+# writing them under Analysis/ and copying by hand left the PDF citing a copy
+# from 13 September while the re-run refreshed a file nobody read. Anything
+# named R2m13_* or E1_* is a deliverable and is written where the PDF looks.
+REVFIG  <- file.path(dirname(dirname(FIG3M)), "..", "Reviewer_Comments", "Figures")
+REVFIG  <- normalizePath(REVFIG, mustWork = FALSE)
+if (!dir.exists(REVFIG)) {
+  .try <- Sys.glob(file.path(dirname(FIG3M), "..", "..", "Reviewer_Comments", "Figures"))
+  if (length(.try)) REVFIG <- normalizePath(.try[1])
+}
+stopifnot(dir.exists(REVFIG))
+cat("reviewer-keyed panels ->", REVFIG, "\n")
+
 CROSSREF   <- file.path(SAVED_DIR, "tara_cp018_crossref.qs2")
 TARA_CP003 <- file.path(SAVED_DIR, "tara_cp003_fig3.qs2")
 require_file(QS_ANNOTATED, "CP018 annotated stim object (script 5)")
@@ -59,7 +73,7 @@ theme_fig3 <- function(base_size = FIG3_BASE) {
     theme(axis.text      = element_text(size = base_size - 4, face = "bold"),
           axis.title     = element_text(size = base_size, face = "bold"),
           plot.title     = element_text(size = base_size + 8, face = "bold"),
-          plot.subtitle  = element_text(size = base_size - 4, colour = HIV_RED,
+          plot.subtitle  = element_text(size = base_size - 4, colour = "grey25",
                                         face = "bold"),
           plot.title.position = "plot")
 }
@@ -267,20 +281,21 @@ make_alluvial <- function(dat, tp_levels, title, participant,
     theme_fig3() +
     theme(axis.text.x = element_text(size = FIG3_BASE - 4, hjust = 0.5,
                                      lineheight = 0.9, face = "bold"),
-          plot.subtitle = element_text(size = FIG3_BASE - 12, colour = HIV_RED,
+          plot.subtitle = element_text(size = FIG3_BASE - 12, colour = "grey25",
                                        face = "bold", lineheight = 1.05),
           plot.margin = margin(12, 26, 12, 12)) +
     labs(x = NULL, y = "Number of cells", title = title,
          # Short enough not to clip; the mechanism is documented in the
          # script header and the trace panel shows it per lineage.
-         subtitle = paste0(n_cl, " clonotypes detected at \u22652 timepoints\n",
-                           "thin ribbon = lineage not detected there"))
+         # Encoding (what a thin ribbon means) is documented in the figure
+         # caption, not as instruction text inside the panel.
+         subtitle = paste0(n_cl, " clonotypes detected at \u22652 timepoints"))
 }
 
 panelC18 <- make_alluvial(multi18, CP018_TP,
                           paste0("Three HIV-specific clonotypes carry\n",
                                  "through 90 months of suppression"), "CP018")
-save_png(file.path(FIG3M, "Fig3C_CP018_Alluvial.png"), panelC18,
+save_png(file.path(REVFIG, "E1_03_CP018_Alluvial.png"), panelC18,
          width = 17, height = 13, dpi = 400)
 
 ################################################################################
@@ -325,7 +340,7 @@ make_trace <- function(dat, tp_levels, title, subtitle) {
 
 trace18 <- make_trace(multi18, CP018_TP, "CP018 lineage traces",
   "Filled point = detected (number = cells) | open circle = not detected in this sample")
-save_png(file.path(FIG3M, "Fig3C2_CP018_LineageTrace.png"), trace18,
+save_png(file.path(REVFIG, "E1_02_CP018_LineageTrace.png"), trace18,
          width = 15, height = 7, dpi = 400)
 save_csv(multi18 %>% arrange(clone, tp),
          file.path(csv_f3, "Fig3C2_CP018_lineage_trace_source.csv"))
@@ -651,7 +666,7 @@ if (file.exists(QS_CP003_ANNOT_FIG3) && file.exists(TARA_CP003)) {
       "confirming the construction was read correctly; the clonotype-level column\n",
       "is the corrected count.\n", sep = "")
 
-  save_png(file.path(CMB, "Combined_C2_LineageTrace_CP003_vs_CP018.png"),
+  save_png(file.path(REVFIG, "E1_01_Combined_C2_LineageTrace_CP003_vs_CP018.png"),
            (make_trace(multi03, CP003_TP, "CP003 (never suppressed)",
                        "filled = detected (n cells) | open = not detected") /
             make_trace(multi18, CP018_TP, "CP018 (suppressed)",
@@ -682,6 +697,29 @@ if (file.exists(QS_CP003_ANNOT_FIG3) && file.exists(TARA_CP003)) {
 
   # ── Combined C: alluvials side by side ──
   pC03 <- make_alluvial(multi03, CP003_TP, "CP003 (never suppressed)", "CP003")
+
+  # CP003 ALONE - answers Reviewer 2 minor 13. The published Figure 3C is CP003;
+  # the CP018 FACT-Seq experiment was run after submission and is not part of
+  # this answer, so it must not appear in the panel the reviewer is pointed at.
+  # STANDALONE SIZING. make_alluvial() sets its type from FIG3_BASE = 36,
+  # tuned for the side-by-side composite saved at width 34 - about 17 in per
+  # panel. Saving the same object alone at width 11 ran the title off the
+  # right edge mid-word and overlapped the five x-axis labels into each
+  # other. Give the panel the width its own type was designed for, rather
+  # than rescaling the PNG afterwards.
+  #
+  # Subtitles dropped: what a thin ribbon or an open marker means is encoding
+  # documentation and belongs in the figure caption, not as red instruction
+  # text inside the panel.
+  save_png(file.path(REVFIG, "R2m13_01_CP003_Alluvial_bridged.png"),
+           pC03 + labs(title = "CP003 antigen-specific clonotypes, gaps bridged",
+                       subtitle = NULL),
+           width = 17, height = 9.5)
+  save_png(file.path(REVFIG, "R2m13_02_CP003_LineageTrace.png"),
+           make_trace(multi03, CP003_TP,
+                      "CP003 antigen-specific lineages, one row per clonotype",
+                      NULL),
+           width = 17, height = 8.5)
   pC18 <- make_alluvial(multi18, CP018_TP, "CP018 (suppressed)",      "CP018")
   save_png(file.path(CMB, "Combined_C_Alluvial_CP003_vs_CP018.png"),
            (pC03 | pC18) +
