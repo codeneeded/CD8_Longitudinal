@@ -70,3 +70,9 @@ TARA_SourceData.xlsx
 # filename. It is a side effect of running the figure scripts, not an output.
 Rplots.pdf
 **/Rplots.pdf
+
+# Python bytecode cache, written whenever a script in Scripts/ is imported
+# rather than run. Language debris, not analysis.
+__pycache__/
+**/__pycache__/
+*.pyc
