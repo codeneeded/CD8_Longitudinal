@@ -22,11 +22,11 @@ library(SeuratExtend)   # for DimPlot2 / VlnPlot2
 # -----------------------------
 # 0) Paths
 # -----------------------------
-save_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data"
+save_dir <- path.expand("~/Documents/CD8_Longitudinal/saved_R_data")
 in_qs2   <- file.path(save_dir, "CP003_postQC_cellcycle_scDblFinder_singlets.qs2")
 out_qs2  <- file.path(save_dir, "CP003_RNA_integrated_CCA_MNN.qs2")
 
-plot_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/Integration"
+plot_dir <- path.expand("~/Documents/CD8_Longitudinal/CP003/Integration")
 dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 
 # -----------------------------
@@ -208,7 +208,7 @@ qs_save(seu, file = out_qs2)
 # - Loads integrated qs2 object
 # - Makes VlnPlot2 + FeaturePlot2 for RNA features
 # - Makes ClusterDistrBar for cluster composition
-# - Saves to /home/akshay-iyer/Documents/CD8_Longitudinal/CP003/Annotation_Plots/...
+# - Saves to ~/Documents/CD8_Longitudinal/CP003/Annotation_Plots/...
 ############################################################
 
 
@@ -229,7 +229,7 @@ Idents(seu) <- "mnn_clusters_rna"
 # -----------------------------
 # 1) Output folders
 # -----------------------------
-out_root <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/Annotation_Plots"
+out_root <- path.expand("~/Documents/CD8_Longitudinal/CP003/Annotation_Plots")
 dir_vln  <- file.path(out_root, "VlnPlot2_RNA")
 dir_ftr  <- file.path(out_root, "FeaturePlot2_RNA")
 dir_dist <- file.path(out_root, "Cluster_Distribution")

@@ -1,6 +1,6 @@
 ################################################################################
 # Single definition of the alpha-beta CD8 cells used by every two-donor panel
-# (CP003 + CP018, CP003_CP018_integrated.qs2). Sourced by scripts 14, 17, 20-23.
+# (CP003 + CP018, CP003_CP018_integrated.qs2). Sourced by 13-17 in this folder.
 #
 # Removed, in this order of precedence:
 #   1. joint cluster 10 - heat-shock genes (HSPA1A/HSPA1B), a handling-stress state

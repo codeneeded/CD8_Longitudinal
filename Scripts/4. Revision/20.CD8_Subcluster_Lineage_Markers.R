@@ -1,10 +1,8 @@
 ################################################################################
-# Lesley item 23
-#   "Add bubble plots to Supplementary Figure 5 that include the lineage
-#    celltypes (non-CD8) and these 10 clusters to establish relative expression
-#    of lineage markers in this subclustering analysis."
+# Supplementary Figure 5: lineage-marker dot plots for the ten dedicated CD8
+# clusters, with the non-CD8 PBMC lineages as reference rows
 #
-# Same correction as item 12 on the Figure 1C panels: a dot plot z-scores each
+# Same correction as for the Figure 1C panels (17.Lineage_Markers_PBMC_Scale.R): a dot plot z-scores each
 # feature across the groups plotted, so a panel containing only CD8 subclusters
 # cannot establish that they are CD8. Including the non-CD8 PBMC lineages as
 # reference rows puts the scale on a total-PBMC footing.
@@ -14,11 +12,21 @@
 # (Broad_CellType), restricted to the same HEI cells so the comparison is within
 # one cohort rather than across different participants.
 #
-# Out: Reviewer_Comments/Figures/L3_item23_S5_bubble_RNA.png
-#      Reviewer_Comments/Figures/L3_item23_S5_bubble_ADT.png
+# Out: Reviewer_Comments/Figures/FigS5_lineage_markers_RNA.png
+#      Reviewer_Comments/Figures/FigS5_lineage_markers_ADT.png
 ################################################################################
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr); library(ggplot2)})
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures")
 
 cd8 <- qs_read(file.path(R,"saved_R_data","TARA_cd8_HEI_annotated_final.qs2"))
@@ -62,8 +70,8 @@ mk("RNA", c("CD3D","CD3E","CD8A","CD8B","CD4","TRAC","TRDC","KLRB1","SLC4A10",
             "MS4A1","CD79A","LYZ","CD14","FCN1","PPBP","HBB",
             "CCR7","SELL","TCF7","LEF1","IL7R","GZMB","PRF1","TOX","PDCD1","MKI67"),
    "Dedicated CD8 clusters and PBMC lineages on one expression scale (RNA)",
-   "L3_item23_S5_bubble_RNA.png")
+   "FigS5_lineage_markers_RNA.png")
 mk("ADT", c("CD3","CD8A","CD4","CD19","CD14","CD16","CD56","CD45RA","CD45RO",
             "CD27","CD28","CD95","KLRG1","KIR3DL1","CX3CR1","PD-1","TIGIT","HLA-DRA"),
    "Dedicated CD8 clusters and PBMC lineages on one expression scale (protein, DSB)",
-   "L3_item23_S5_bubble_ADT.png")
+   "FigS5_lineage_markers_ADT.png")

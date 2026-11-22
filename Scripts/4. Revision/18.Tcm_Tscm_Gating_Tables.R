@@ -1,10 +1,6 @@
 ################################################################################
-# Lesley item 4 and manuscript comment 142
-#
-#   "Please identify what this table is so I can include in supplementary data.
-#    Also can you make the same table for the Tscm, since these were also
-#    manually gated rather than WNN cluster derived analysis."
-#   "Question: Are we justified in manually gating Tscm but not Tcm?"
+# Supplementary Tables S3 and S4: per-cluster tables for the manually gated
+# central-memory (Tcm) and stem-cell memory (Tscm) populations
 #
 # The existing R1m1_01_CD8_central_memory_check.csv is a 7-row SUMMARY. A
 # supplementary table needs the per-cluster breakdown, so both are rebuilt in
@@ -15,10 +11,20 @@
 # CD45RO <= 0 AND FAS > 0 in DSB units.
 #
 # Out: Reviewer_Comments/Tables/TableS3_Tcm_profile_by_cluster.csv
-#      Reviewer_Comments/Tables/TableS4_Tscm_gate_by_cluster.csv
+#      Reviewer_Comments/Tables/TableS4_Tscm_gate_by_source_cluster.csv
 ################################################################################
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr)})
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 TAB <- file.path(R, "Reviewer_Comments", "Tables")
 
 cd8 <- qs_read(file.path(R,"saved_R_data","TARA_cd8_HEI_annotated_final.qs2"))
@@ -65,7 +71,7 @@ mk(tcm_tbl, "Tcm transcriptional profile", "TableS3_Tcm_profile_by_cluster.csv",
 # the gate IS the annotation, so it returns 438 of 438 in one cluster. The
 # informative table is what the gate did to the naive clusters it was applied to
 # - i.e. the cluster each Tscm cell belonged to BEFORE gating. That column is
-# source_cluster, which is also what Lesley's item 24 asks about.
+# source_cluster, the facet shown in Supplementary Figure S5C.
 sc <- if ("source_cluster" %in% names(cd8@meta.data)) as.character(cd8$source_cluster) else NA
 cat("\n=== Tscm surface gate, by the cluster each cell came FROM ===\n")
 if (all(is.na(sc))) {

@@ -1,35 +1,45 @@
 ################################################################################
 # Integrated CP003 + CP018 UMAPs, annotated, one panel per file
 #
-# CELLS: alpha-beta CD8 T cells only (00.Joint_abCD8_filter.R), re-clustered on
-# those cells alone (21a.Recluster_abCD8.R), as the main analysis removes
+# CELLS: alpha-beta CD8 T cells only (12.abCD8_Filter.R), re-clustered on
+# those cells alone (13.Recluster_abCD8.R), as the main analysis removes
 # gamma-delta and MAIT cells before clustering CD8 T cells.
 #
 # LABELS are the published Figure 3 labels. Each joint cluster takes the Figure 3
 # label carried by most of its CP003 cells (CP003 is the Figure 3 participant); the
-# agreement is written to L3_jointUMAP_label_agreement.csv. The one cluster with
+# agreement is written to Fig3B_label_agreement.csv. The one cluster with
 # too few CP003 cells (68 cells, 7 from CP003; KLRB1 100%, CCR6 44%, IL23R 19%,
 # SLC4A10 3%) is Tc17. Colours are those of Figure_3.R.
 #
 # Format follows Figure_1.R exactly: point size 0.8 / alpha 0.7, white centroid
 # labels with leader lines, corner UMAP arrows, theme_void, coord_fixed, 12x11.
 #
-# Out: Reviewer_Comments/Figures/L3_jointUMAP_{annotated,HIVresponsive,donor}.png
-#      Reviewer_Comments/Tables/L3_jointUMAP_{excluded_cells,cluster_annotation}.csv
+# Out: Reviewer_Comments/Figures/Fig3B_UMAP_{annotated,HIV_responsive,donor}.png
+#      Reviewer_Comments/Tables/Fig3B_{excluded_cells,cluster_annotation,label_agreement}.csv
 ################################################################################
 suppressPackageStartupMessages({
   library(Seurat); library(qs2); library(dplyr); library(ggplot2); library(ggrepel)
 })
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures"); TAB <- file.path(R,"Reviewer_Comments","Tables")
 o <- qs_read(file.path(R,"saved_R_data","CP003_CP018_integrated.qs2")); m <- o@meta.data
 
-source(file.path(R, "Scripts", "5. Exploratory", "00.Joint_abCD8_filter.R"))
+source(file.path(R, "Scripts", "CP018 - FACTseq", "12.abCD8_Filter.R"))
 why <- joint_exclusion(o)
 ex <- as.data.frame(table(reason = why[!is.na(why)], participant = m[names(why)[!is.na(why)], "participant"]))
 ex <- tidyr::pivot_wider(ex, names_from = participant, values_from = Freq)
 ex$Total <- ex$CP003 + ex$CP018
-write.csv(ex, file.path(TAB, "L3_jointUMAP_excluded_cells.csv"), row.names = FALSE)
+write.csv(ex, file.path(TAB, "Fig3B_excluded_cells.csv"), row.names = FALSE)
 keep <- joint_keep(o)
 o <- qs_read(file.path(R, "saved_R_data", "CP003_CP018_abCD8.qs2")); m <- o@meta.data
 stopifnot("re-clustered object is out of date: re-run 21a" = setequal(colnames(o), keep))
@@ -57,7 +67,7 @@ ag <- as.data.frame(table(cluster = ag$abcd8_clusters, label = ag$label,
                           published_Fig3 = as.character(ag$Fig3_Annotation)))
 ag <- ag[ag$Freq > 0, ]
 ag <- do.call(rbind, lapply(split(ag, ag$cluster), function(x) { x$pct <- round(100*x$Freq/sum(x$Freq), 1); x[order(-x$Freq), ] }))
-write.csv(ag, file.path(TAB, "L3_jointUMAP_label_agreement.csv"), row.names = FALSE)
+write.csv(ag, file.path(TAB, "Fig3B_label_agreement.csv"), row.names = FALSE)
 cat("labels:", paste(names(ANNO), ANNO, sep="=", collapse="  "), "\n")
 
 m$joint_anno <- factor(unname(ANNO[as.character(m$abcd8_clusters)]), levels=LABS)
@@ -77,10 +87,10 @@ stopifnot("unlabelled cluster" = !any(is.na(m$joint_anno)))
 emb <- as.data.frame(Embeddings(o,"umap.abcd8")); names(emb) <- c("UMAP1","UMAP2")
 d <- cbind(emb, m[, c("joint_anno","participant","HIV_Specific_TCR")])
 d$resp <- d$HIV_Specific_TCR == "HIV-Specific TCR"
-write.csv(cbind(cell=rownames(d), d), file.path(FIG,"L3_jointUMAP_source_data.csv"), row.names=FALSE)
+write.csv(cbind(cell=rownames(d), d), file.path(FIG,"Fig3B_UMAP_source_data.csv"), row.names=FALSE)
 write.csv(as.data.frame(m %>% count(cluster = abcd8_clusters, joint_anno, participant) %>%
           tidyr::pivot_wider(names_from=participant, values_from=n, values_fill=0)),
-          file.path(TAB,"L3_jointUMAP_cluster_annotation.csv"), row.names=FALSE)
+          file.path(TAB,"Fig3B_cluster_annotation.csv"), row.names=FALSE)
 
 # house arrow placement, from Figure_1.R
 pad <- 0.08 * diff(range(d$UMAP1, na.rm=TRUE))
@@ -109,13 +119,13 @@ p1 <- ggplot(d, aes(UMAP1, UMAP2, color=joint_anno)) +
                    box.padding=2.2, point.padding=0.6, segment.color="grey40", segment.size=0.8,
                    min.segment.length=0, max.overlaps=Inf, force=14, seed=1,
                    show.legend=FALSE)
-ggsave(file.path(FIG,"L3_jointUMAP_annotated.png"), arrows_(p1),
+ggsave(file.path(FIG,"Fig3B_UMAP_annotated.png"), arrows_(p1),
        width=W_IN, height=H_IN, dpi=300, bg="white")
 
 p2 <- ggplot(d[!d$resp, ], aes(UMAP1, UMAP2)) +
   geom_point(size=0.8, alpha=0.5, colour="grey82") +
   geom_point(data=d[d$resp, ], aes(UMAP1, UMAP2), size=0.9, alpha=0.85, colour="#C00000")
-ggsave(file.path(FIG,"L3_jointUMAP_HIVresponsive.png"), arrows_(p2),
+ggsave(file.path(FIG,"Fig3B_UMAP_HIV_responsive.png"), arrows_(p2),
        width=W_IN, height=H_IN, dpi=300, bg="white")
 
 DON <- c(CP003="#1F77B4", CP018="#FF7F0E")
@@ -124,7 +134,7 @@ DON <- c(CP003="#1F77B4", CP018="#FF7F0E")
 p3 <- ggplot(d, aes(UMAP1, UMAP2, color=participant)) +
   geom_point(size=0.8, alpha=0.7) + scale_color_manual(values=DON, name=NULL) +
   guides(color=guide_legend(override.aes=list(size=7, alpha=1)))
-ggsave(file.path(FIG,"L3_jointUMAP_donor.png"),
+ggsave(file.path(FIG,"Fig3B_UMAP_donor.png"),
        arrows_(p3) + theme(legend.position=c(0.92, 0.9), legend.text=element_text(size=22, face="bold")),
        width=W_IN, height=H_IN, dpi=300, bg="white")
 

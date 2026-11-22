@@ -37,7 +37,7 @@ import collections
 
 import pandas as pd
 
-REPO = pathlib.Path("/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal")
+REPO = pathlib.Path(__file__).resolve().parents[2]
 PA = REPO / "Analysis" / "Pathway_Analysis"
 DE = REPO / "Analysis" / "Differential_Expression"
 OUT = REPO / "Reviewer_Comments" / "Tables"

@@ -1,10 +1,6 @@
 ################################################################################
-# Lesley comments 12 and 13  (reviewer 2, major 1b / 1d)
-#
-# C12: "the relative expression using only CD8 subclusters makes it seem like some
-#       of the clusters are not even CD8 T cells due to low (blue) scaled mean
-#       expression... he/she wants to see relative expression of these markers in
-#       these clusters but relative to total PBMC."
+# Figure 1C CD8 clusters: lineage-marker dot plots on a total-PBMC scale, and
+# Naive 2 compared between the two clusterings (reviewer 2, major 1b / 1d)
 #
 #   A dot plot z-scores each feature ACROSS THE PLOTTED GROUPS ONLY. When every
 #   group is a CD8 subcluster, z-scoring removes the signal that establishes
@@ -21,7 +17,7 @@
 # Cluster names and both marker panels are READ OUT OF Figure_1.R rather than
 # retyped, so this panel cannot drift from the published one.
 #
-# C13: "does naive 2 have the same number of cells and composition?" - compares
+# Naive 2: compares
 #      the Figure 1 cluster "Naive 2 CD8" against the dedicated-clustering
 #      "Naive CD8 2" by actual cell overlap, not by count alone.
 #
@@ -30,7 +26,17 @@
 #      Reviewer_Comments/Tables/R2M1d_05_Naive2_wholePBMC_vs_dedicated.csv
 ################################################################################
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr); library(ggplot2)})
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R, "Reviewer_Comments", "Figures")
 TAB <- file.path(R, "Reviewer_Comments", "Tables")
 for (d in c(FIG, TAB)) dir.create(d, recursive = TRUE, showWarnings = FALSE)

@@ -2,7 +2,7 @@
 # CP018 FACT-Seq — central configuration
 #
 # source() this at the top of every CP018 script so paths live in ONE place.
-# (The CP003 scripts hardcode /home/akshay-iyer/... in ~40 places; this avoids
+# (The CP003 scripts hardcode paths under one home folder in ~40 places; this avoids
 #  repeating that when the project moves machines.)
 #
 #   source("Scripts/CP018 - FACTseq/config.R")
@@ -42,7 +42,7 @@ RDATA_TARA_TCR <- file.path(SAVED_DIR, "TARA_TCR_Combined.RData")
 #
 # NOTE: CellType_Sort is constant "CD8+" here — unlike CP003, where OCM 004 was
 # a CD8- fraction. FACT-Seq sorts proliferating (CellTrace-low) CD8+ T cells,
-# and A/B are technical replicates of the SAME sort. If Lesley confirms a
+# and A/B are technical replicates of the SAME sort. If the sort record shows a
 # different sort for any lane, change it here only.
 CP018_SAMPLES <- data.frame(
   Sample_Subfolder = c("CP018_2m_A", "CP018_2m_B", "CP018_90m_A", "CP018_90m_B"),

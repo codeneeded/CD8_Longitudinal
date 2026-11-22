@@ -15,7 +15,7 @@ library(qs2)
 # -----------------------------
 # 0) Paths
 # -----------------------------
-save_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data"
+save_dir <- path.expand("~/Documents/CD8_Longitudinal/saved_R_data")
 in_qs2  <- file.path(save_dir, "CP003_RNA_integrated_CCA_MNN_withTCR.qs2")
 
 
@@ -40,10 +40,10 @@ seu$CTstrict
 # ----------------------------- #
 # 0) Paths
 # ----------------------------- #
-plot_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/Proliferation"
+plot_dir <- path.expand("~/Documents/CD8_Longitudinal/CP003/Proliferation")
 dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 
-save_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data"
+save_dir <- path.expand("~/Documents/CD8_Longitudinal/saved_R_data")
 dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
 
 # ----------------------------- #
@@ -409,7 +409,7 @@ target_clone_table
 # 4) Visualizations of HIV-specific TCRs
 # ----------------------------- #
 
-plot_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/Proliferation"
+plot_dir <- path.expand("~/Documents/CD8_Longitudinal/CP003/Proliferation")
 dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
 
 ############################################################

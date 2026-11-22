@@ -1,16 +1,26 @@
 ################################################################################
-# Lesley items 3, 9 and 10 - proposed replacements, written to Reviewer_Comments
+# Supplementary Figures S2C (naive comparisons) and S3C (cluster span and
+# clonotype sharing), rebuilt
 #
-#  9: left panel - remove the "Cluster span" title, x-axis to "Number of
-#     Clusters Occupied", restore the number on top of the bar for "1".
-# 10: right panel - title to "Shared clonotypes between clusters".
-#  3: the naive comparison panels become Tscm vs Naive Intermediate (left) and
-#     Naive 1 vs Naive Intermediate (right), with larger legend dots and font.
+# S3C left:  no title, x-axis "Number of Clusters Occupied", count on every bar.
+# S3C right: title "Shared clonotypes between clusters".
+# S2C: Tscm vs Naive Intermediate (left) and Naive 1 vs Naive Intermediate
+#      (right), with larger legend dots and font.
 #     This is NOT a retitle: the published panel compares Naive 1 vs Naive 2, so
 #     the comparison is recomputed from the CD8 object.
 ################################################################################
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr); library(ggplot2); library(patchwork)})
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures")
 S2  <- file.path(R,"Manuscript","Supplementary 2","source_data")
 
@@ -26,7 +36,7 @@ spanc <- p1 %>% mutate(bucket = ifelse(n_clusters >= 3, "3+", as.character(n_clu
 cat("  cluster span:\n"); print(as.data.frame(spanc), row.names=FALSE)
 gA <- ggplot(spanc, aes(bucket, n_clonotypes)) +
   geom_col(fill="#4C72B0", width=.7) +
-  # item 9: the number is restored on EVERY bar, including "1"
+  # the count is shown on EVERY bar, including "1"
   geom_text(aes(label=n_clonotypes), vjust=-0.35, size=5.6, fontface="bold") +
   scale_y_continuous(expand=expansion(mult=c(0,.16))) +
   labs(title=NULL, x="Number of Clusters Occupied", y="Number of clonotypes") +
@@ -48,11 +58,11 @@ gB <- ggplot(sh, aes(reorder(pair, n_shared), n_shared)) +
   theme_classic(base_size=16) +
   theme(plot.title=element_text(face="bold", size=18),
         axis.text=element_text(colour="black", size=13))
-ggsave(file.path(FIG,"L3_item09_10_cluster_span_and_sharing.png"), gA | gB,
+ggsave(file.path(FIG,"FigS3C_cluster_span_and_sharing.png"), gA | gB,
        width=17, height=6.4, dpi=300, bg="white")
-cat("  wrote L3_item09_10_cluster_span_and_sharing.png\n")
+cat("  wrote FigS3C_cluster_span_and_sharing.png\n")
 
-# ---- item 3 --------------------------------------------------------------
+# ---- S2C -------------------------------------------------------------------
 cd8 <- qs_read(file.path(R,"saved_R_data","TARA_cd8_HEI_annotated_final.qs2"))
 DefaultAssay(cd8) <- "ADT"
 adt <- GetAssayData(cd8, layer="data")
@@ -84,10 +94,10 @@ mkpair <- function(a, b, ttl) {
           axis.text.y=element_text(size=13, face="bold", colour="black")) +
     guides(colour=guide_legend(override.aes=list(size=6)))
 }
-# Titles and legend labels are the ones Lesley asked for (item 3), not the
+# Titles and legend labels are the population names used in the text, not the
 # CD8_Annotation strings, which carry a "CD8" suffix and call Naive 1 "Naive CD8".
 SHORT <- setNames(c("Tscm", "Naïve Intermediate", "Naïve 1"), c(TS, NI, N1))
 g3 <- mkpair(TS, NI, "Tscm vs Naïve Intermediate") | mkpair(N1, NI, "Naïve 1 vs Naïve Intermediate")
-ggsave(file.path(FIG,"L3_item03_naive_comparisons.png"), g3,
+ggsave(file.path(FIG,"FigS2C_naive_comparisons.png"), g3,
        width=16, height=8, dpi=300, bg="white")
-cat("  wrote L3_item03_naive_comparisons.png\n")
+cat("  wrote FigS2C_naive_comparisons.png\n")

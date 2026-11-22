@@ -30,9 +30,20 @@
 
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr)})
 
-REPO <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
-PKGS <- "/home/ammasakshay/Desktop/Projects/Packages"
-OUT  <- "/home/ammasakshay/Desktop/Projects/Analysis_Exploratory/CoNGA"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+REPO <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
+PROJ <- dirname(dirname(REPO))   # the projects folder that holds Repositories/
+PKGS <- file.path(PROJ, "Packages")
+OUT  <- file.path(PROJ, "Analysis_Exploratory/CoNGA")
 dir.create(OUT, recursive = TRUE, showWarnings = FALSE)
 
 seu <- qs_read(file.path(REPO, "saved_R_data", "TARA_cd8_HEI_annotated_final.qs2"))

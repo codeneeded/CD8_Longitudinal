@@ -8,19 +8,29 @@
 # timepoint. Absolute counts hide it, because the two donors have different cell
 # yields at different timepoints.
 #
-# Out: Reviewer_Comments/Figures/L3_factseq_responsive_fraction.png
-#      Reviewer_Comments/Tables/L3_factseq_two_donor_summary.csv
+# Out: Reviewer_Comments/Figures/FACTseq_responsive_fraction_both_donors.png
+#      Reviewer_Comments/Tables/FACTseq_responsive_fraction_summary.csv
 ################################################################################
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr); library(ggplot2); library(patchwork)})
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures"); TAB <- file.path(R,"Reviewer_Comments","Tables")
 o <- qs_read(file.path(R,"saved_R_data","CP003_CP018_integrated.qs2")); m <- o@meta.data
-# alpha-beta CD8 cells only, defined once in 00.Joint_abCD8_filter.R (same cells as item 11).
-source(file.path(R, "Scripts", "5. Exploratory", "00.Joint_abCD8_filter.R"))
+# alpha-beta CD8 cells only, defined once in 12.abCD8_Filter.R (same cells as the Figure 3B UMAPs).
+source(file.path(R, "Scripts", "CP018 - FACTseq", "12.abCD8_Filter.R"))
 m <- m[joint_keep(o), ]
-src <- read.csv(file.path(FIG, "L3_jointUMAP_source_data.csv"), check.names = FALSE)
+src <- read.csv(file.path(FIG, "Fig3B_UMAP_source_data.csv"), check.names = FALSE)
 stopifnot(setequal(rownames(m), src$cell)); m <- m[src$cell, ]
-m$HIV_Specific_TCR <- ifelse(src$resp, "HIV-Specific TCR", "Other")   # one rule for both donors, set in 21
+m$HIV_Specific_TCR <- ifelse(src$resp, "HIV-Specific TCR", "Other")   # one rule for both donors, set in 14
 
 s <- m %>% mutate(resp = HIV_Specific_TCR == "HIV-Specific TCR") %>%
   group_by(participant, ART_group, Timepoint, cellranger) %>%
@@ -32,7 +42,7 @@ s <- m %>% mutate(resp = HIV_Specific_TCR == "HIV-Specific TCR") %>%
                  levels = c("2 months", "Late\n(CP003 101m, CP018 90m)")),
          label = paste0(participant, "\n", ART_group))
 cat("=== two-donor FACT-seq summary ===\n"); print(as.data.frame(s), row.names=FALSE)
-write.csv(s, file.path(TAB,"L3_factseq_two_donor_summary.csv"), row.names=FALSE)
+write.csv(s, file.path(TAB,"FACTseq_responsive_fraction_summary.csv"), row.names=FALSE)
 
 DON <- c(CP003="#1F77B4", CP018="#FF7F0E")
 pA <- ggplot(s, aes(visit, pct_resp, group=participant, colour=participant)) +
@@ -63,7 +73,7 @@ pB <- ggplot(pl, aes(visit, v, fill=participant)) +
         strip.background=element_rect(fill="grey95", colour=NA),
         strip.text=element_text(face="bold", size=13),
         axis.text=element_text(colour="black", size=12))
-ggsave(file.path(FIG,"L3_factseq_responsive_fraction.png"),
+ggsave(file.path(FIG,"FACTseq_responsive_fraction_both_donors.png"),
        (pA | pB) + plot_layout(widths=c(1,1.35), guides="collect"),
 width=17, height=6.8, dpi=300, bg="white")
-cat("  wrote L3_factseq_responsive_fraction.png\n")
+cat("  wrote FACTseq_responsive_fraction_both_donors.png\n")

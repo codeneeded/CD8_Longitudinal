@@ -17,7 +17,7 @@ library(Azimuth)
 # -----------------------------
 # 0) Paths
 # -----------------------------
-base_dir <- "/home/akshay-iyer/CP003_multi_out/outs/per_sample_outs"
+base_dir <- path.expand("~/CP003_multi_out/outs/per_sample_outs")
 
 subfolders <- c(
   "CP003_2m_001A",
@@ -108,14 +108,14 @@ seu_CP003 <- Reduce(function(x, y) merge(x, y), objs)
 ############################################################
 # CP003 longitudinal RNA QC
 # - Uses your existing QC style, adapted to CP003 object
-# - Saves outputs to: /home/akshay-iyer/Documents/CD8_Longitudinal/CP003/QC/Pre-QC + Post-QC
+# - Saves outputs to: ~/Documents/CD8_Longitudinal/CP003/QC/Pre-QC + Post-QC
 ############################################################
 
 
 DefaultAssay(seu_CP003) <- "RNA"
 ############################################################
 # CP003 longitudinal RNA QC (split by Timepoint + CellType_Sort)
-# Saves to: /home/akshay-iyer/Documents/CD8_Longitudinal/CP003/QC
+# Saves to: ~/Documents/CD8_Longitudinal/CP003/QC
 ############################################################
 
 
@@ -127,7 +127,7 @@ seu_CP003$Sample <- seu_CP003$Sample_Subfolder
 # -----------------------------
 # 1) Output folders
 # -----------------------------
-out_root <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003"
+out_root <- path.expand("~/Documents/CD8_Longitudinal/CP003")
 qc_root  <- file.path(out_root, "QC")
 pre_root <- file.path(qc_root, "Pre-QC")
 post_root<- file.path(qc_root, "Post-QC")
@@ -342,7 +342,7 @@ for (g in group_vars) {
 # CP003: Cell cycle scoring + scDblFinder doublet removal
 # - Input: filtered_CP003  (post-QC singlets not yet removed)
 # - Output: CP003_postQC_cellcycle_scDblFinder_singlets.qs2 (saved_R_data only)
-# - Also writes QC plots under: /home/akshay-iyer/Documents/CD8_Longitudinal/CP003/QC
+# - Also writes QC plots under: ~/Documents/CD8_Longitudinal/CP003/QC
 ############################################################
 
 
@@ -351,13 +351,13 @@ for (g in group_vars) {
 # -----------------------------
 # 0) Paths
 # -----------------------------
-qc_root   <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/QC"
+qc_root   <- path.expand("~/Documents/CD8_Longitudinal/CP003/QC")
 cc_dir    <- file.path(qc_root, "Cell_Cycle")
 dbl_dir   <- file.path(qc_root, "Doublets")
 dir.create(cc_dir,  recursive = TRUE, showWarnings = FALSE)
 dir.create(dbl_dir, recursive = TRUE, showWarnings = FALSE)
 
-save_dir  <- "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data"
+save_dir  <- path.expand("~/Documents/CD8_Longitudinal/saved_R_data")
 dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
 
 out_qs2   <- file.path(save_dir, "CP003_postQC_cellcycle_scDblFinder_singlets.qs2")

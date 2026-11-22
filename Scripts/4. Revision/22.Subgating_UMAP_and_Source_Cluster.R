@@ -1,24 +1,33 @@
 ################################################################################
-# Lesley items 1, 13 and 24 - proposed replacements, written to Reviewer_Comments
+# Supplementary Figure S1B sub-gating UMAP at manuscript size, and the S5C
+# source-cluster legend
 #
-#  1: S1B sub-gating - legend, dots and axis text are illegible at manuscript
-#     size. The text was already 22-28 pt, but the canvas was 18 x 9 in, so
-#     everything shrinks when the panel is placed at column width. Fix is the
-#     canvas, not the font: 13 x 7 in, larger dots, large legend keys.
-# 13: Fig 3D and 3F for both donors.
-# 24: S5C - say what "source cluster" means in the facet label and the caption.
+# S1B: drawn on a 13 x 7 in canvas (was 18 x 9 in, which shrinks the text at
+#      column width), with larger dots and legend keys.
+# S5C: the facet label and caption state that "source cluster" is the cluster a
+#      cell belonged to before Tscm sub-gating.
 ################################################################################
 suppressPackageStartupMessages({
   library(Seurat); library(qs2); library(dplyr); library(ggplot2); library(patchwork); library(tidyr)
 })
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures"); TAB <- file.path(R,"Reviewer_Comments","Tables")
 
 cd8 <- qs_read(file.path(R,"saved_R_data","TARA_cd8_HEI_annotated_final.qs2"))
 DefaultAssay(cd8) <- "ADT"; adt <- GetAssayData(cd8, layer="data")
 ann <- as.character(cd8$CD8_Annotation)
 
-# ---- item 1 -----------------------------------------------------------------
+# ---- S1B --------------------------------------------------------------------
 # Replotted from the PUBLISHED panel's own source data, so the cells, the
 # grouping and the labels are identical to S1B by construction - no risk of
 # rebuilding it on the wrong object or the wrong annotation vocabulary.
@@ -26,7 +35,7 @@ ann <- as.character(cd8$CD8_Annotation)
 # so the fix is the canvas and the mark size, not the font size.
 S1 <- file.path(R,"Manuscript","Supplementary 1","source_data")
 g  <- read.csv(file.path(S1,"S1B_CD8_SubGating_panel1_data_source_data.csv"), check.names=FALSE)
-cat("item 1: replotted from published source data,", nrow(g), "cells\n")
+cat("S1B: replotted from published source data,", nrow(g), "cells\n")
 print(table(g$Gate))
 g$Gate <- factor(g$Gate, levels=c("Naive 1","Naive Intermediate","Tscm"))
 # Naive 1 is a real population, so it gets a real colour. Grey stays for
@@ -48,11 +57,11 @@ sg <- function(x, xlab, ttl) ggplot(g, aes(.data[[x]], CD45RO, colour=Gate)) +
         legend.text=element_text(size=17), legend.position="bottom")
 p1 <- (sg("FAS","CD95/FAS (DSB)","CD45RO vs CD95") | sg("CD45RA","CD45RA (DSB)","CD45RO vs CD45RA")) +
   plot_layout(guides="collect") & theme(legend.position="bottom")
-ggsave(file.path(FIG,"L3_item01_S1B_subgating_legible.png"), p1,
+ggsave(file.path(FIG,"FigS1B_subgating.png"), p1,
        width=13, height=7, dpi=300, bg="white")
-cat("  wrote L3_item01_S1B_subgating_legible.png\n")
+cat("  wrote FigS1B_subgating.png\n")
 
-# ---- item 24 ----------------------------------------------------------------
+# ---- S5C --------------------------------------------------------------------
 if ("source_cluster" %in% names(cd8@meta.data)) {
   m <- cd8@meta.data
   sub_ <- ann %in% c("Tscm CD8","Naïve Intermediate CD8")
@@ -84,10 +93,10 @@ if ("source_cluster" %in% names(cd8@meta.data)) {
           axis.title=element_text(face="bold", size=17),
           axis.text=element_text(size=15, colour="black"),
           legend.position="bottom", legend.text=element_text(size=16))
-  ggsave(file.path(FIG,"L3_item24_S5C_sourcecluster_legend.png"), p24,
+  ggsave(file.path(FIG,"FigS5C_source_cluster.png"), p24,
          width=17, height=7, dpi=300, bg="white")
-  cat("  wrote L3_item24_S5C_sourcecluster_legend.png | facets:",
+  cat("  wrote FigS5C_source_cluster.png | facets:",
       length(unique(d24$facet)), "\n")
 }
 
-# Item 13 (Figure 3D and 3F, both donors) is built in 23.Figure3_FACTseq_both_donors.R.
+# Item 13 (Figure 3D and 3F, both donors) is built in 17.Figure3_Both_Donors.R.

@@ -1,22 +1,30 @@
 ################################################################################
-# Lesley item 25
-#   "The IFN memory signature was present both at the naive terminus (Naive CD8 3)
-#    and in downstream effectors ... established at the naive level and maintained
-#    through effector maturation, rather than acquired late. - where is this shown?"
+# Type I IFN memory module score by cluster in the longitudinal CD8 analysis,
+# for the Results statement on IFN memory at the naive terminus and in effectors
 #
-# It was not shown anywhere: the module-score panels in the current figures come
+# The module-score panels in the current figures come
 # from the CP003 stimulation data, whereas Naive CD8 3 is a cluster in the
 # LONGITUDINAL dedicated analysis. This builds the panel from the longitudinal
 # object, using the IFN_Memory gene set already defined by the project's own
 # module-scoring script so the panel and the pipeline agree.
 #
-# Out: Reviewer_Comments/Figures/L3_item25_IFN_memory_longitudinal.png
-#      Reviewer_Comments/Tables/L3_item25_IFN_memory_by_cluster.csv
+# Out: Reviewer_Comments/Figures/IFN_memory_by_cluster_longitudinal.png
+#      Reviewer_Comments/Tables/IFN_memory_by_cluster.csv
 ################################################################################
 suppressPackageStartupMessages({
   library(Seurat); library(qs2); library(dplyr); library(ggplot2); library(rstatix); library(patchwork)
 })
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures"); TAB <- file.path(R,"Reviewer_Comments","Tables")
 
 # the project's own definition, from Scripts/2. Analysis/3.Module_Scoring.R
@@ -54,7 +62,7 @@ tb$higher <- ifelse(is.na(tb$p_vs_other_naive), NA,
                     tb$median_score > median(ref))
 cat("\n=== IFN memory by cluster (reference = naive clusters other than Naive CD8 3) ===\n")
 print(as.data.frame(tb), row.names=FALSE)
-write.csv(tb, file.path(TAB,"L3_item25_IFN_memory_by_cluster.csv"), row.names=FALSE)
+write.csv(tb, file.path(TAB,"IFN_memory_by_cluster.csv"), row.names=FALSE)
 
 # Median and mean disagree for Naive CD8 3 (median below the other naive
 # clusters, mean above), which is the signature of a right-tailed distribution:
@@ -68,7 +76,7 @@ tb <- left_join(tb, frac, by="cluster")
 cat("\n=== fraction of cells above the 90th percentile of the naive reference ===\n")
 print(as.data.frame(tb[, c("cluster","stage","n_cells","median_score","mean_score","pct_IFN_high","p_adj")]),
       row.names=FALSE)
-write.csv(tb, file.path(TAB,"L3_item25_IFN_memory_by_cluster.csv"), row.names=FALSE)
+write.csv(tb, file.path(TAB,"IFN_memory_by_cluster.csv"), row.names=FALSE)
 
 lab <- tb %>% mutate(txt=ifelse(is.na(p_adj), "reference",
                      ifelse(p_adj < 0.001, "p < 0.001", paste0("p = ", signif(p_adj,2)))))
@@ -105,9 +113,9 @@ pC <- ggplot(tb, aes(cluster, pct_IFN_high, fill=stage)) +
         plot.subtitle=element_text(size=12, colour="grey25"),
         axis.text.x=element_text(angle=35, hjust=1, size=12, colour="black"),
         legend.position="none")
-ggsave(file.path(FIG,"L3_item25_IFN_memory_longitudinal.png"),
+ggsave(file.path(FIG,"IFN_memory_by_cluster_longitudinal.png"),
        (pA / pC) + plot_layout(heights=c(1,.85)), width=15, height=13, dpi=300, bg="white")
-write.csv(d, file.path(FIG,"L3_item25_IFN_memory_longitudinal_source_data.csv"), row.names=FALSE)
+write.csv(d, file.path(FIG,"IFN_memory_by_cluster_longitudinal_source_data.csv"), row.names=FALSE)
 n3 <- tb[tb$cluster=="Naïve CD8 3", ]
 cat("\nNaive CD8 3: median", n3$median_score, " p_adj", signif(n3$p_adj,3),
     " higher than other naive:", n3$higher, "\n")

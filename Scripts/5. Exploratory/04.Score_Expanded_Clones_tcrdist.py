@@ -60,7 +60,10 @@ import os
 import sys
 from pathlib import Path
 
-OUT = Path("/home/ammasakshay/Desktop/Projects/Analysis_Exploratory/TCRdist")
+# Projects folder holding Repositories/, Packages/ and Analysis_Exploratory/.
+PROJ = Path(os.environ.get("CD8_PROJECTS", Path(__file__).resolve().parents[4]))
+
+OUT = (PROJ / "Analysis_Exploratory/TCRdist")
 # The index must come from the persistent copy built by tcr-explorer-refresh
 # under OUT; the platformdirs default is not durable in this sandbox.
 os.environ.setdefault("TCR_EXPLORER_DATA", str(OUT / "tcr_explorer_data"))

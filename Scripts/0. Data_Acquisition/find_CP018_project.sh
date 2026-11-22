@@ -76,7 +76,7 @@ No CP018 match in any project.
 
 Most likely: the BaseSpace share was viewed but not ACCEPTED into your account.
 A share link is browsable without importing; the CLI only sees imported data.
-Re-open https://basespace.illumina.com/s/fXOEy9uevGcc and look for an explicit
+Re-open the BaseSpace share link and look for an explicit
 "Accept" / "Add to my projects" action, then re-run this script.
 MSG
 else

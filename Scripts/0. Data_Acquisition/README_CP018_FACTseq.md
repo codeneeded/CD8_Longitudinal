@@ -1,7 +1,7 @@
 # CP018 FACT-Seq — data acquisition & alignment
 
 Second FACT-Seq participant, extending the CP003 proof-of-concept (Figure 3).
-Data from L. de Armas, sequenced 2026-08-07.
+Sequenced 2026-08-07.
 
 ## Run design
 
@@ -129,6 +129,6 @@ without stating it as a limitation.
 ## Provenance
 
 - BaseSpace project `DeArmas-30-06-34125` (id `512350847`), 72.79 GB, NovaSeq
-- Share link: <https://basespace.illumina.com/s/fXOEy9uevGcc>
+- Share link: provided privately by the sequencing core
 - Raw data goes to GEO on publication, alongside GSE254645 / GSE306003 /
   GSE328561 / GSE328716.

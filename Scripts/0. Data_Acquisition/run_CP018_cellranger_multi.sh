@@ -30,7 +30,13 @@ set -euo pipefail
 REPO_DIR="$HOME/Desktop/Projects/Repositories/CD8_Longitudinal"
 REF_DIR="$HOME/Desktop/Projects/refdata/human"
 OUT_PARENT="$HOME/Desktop/Projects/cellranger_out"
-CONFIG="$REPO_DIR/Scripts/0. Data_Acquisition/CP018_multi_config.csv"
+CONFIG_TEMPLATE="$REPO_DIR/Scripts/0. Data_Acquisition/CP018_multi_config.csv"
+# The config in the repository writes <PROJECTS> for the local projects folder;
+# a resolved copy is rendered for this machine. Override with PROJECTS_DIR.
+PROJECTS_DIR="${PROJECTS_DIR:-$HOME/Desktop/Projects}"
+[[ -f "$CONFIG_TEMPLATE" ]] || { echo "[FAIL] config missing: $CONFIG_TEMPLATE"; exit 1; }
+CONFIG="$(mktemp --suffix=.csv)"
+sed "s#<PROJECTS>#$PROJECTS_DIR#g" "$CONFIG_TEMPLATE" > "$CONFIG"
 FASTQ_DIR="$REPO_DIR/fastq_raw/CP018_FACTseq"
 
 GEX_REF="$REF_DIR/gex/refdata-gex-GRCh38-2024-A"

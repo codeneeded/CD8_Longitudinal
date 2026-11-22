@@ -30,8 +30,8 @@ min_pct         <- 0.10
 logfc_threshold <- 0.25
 
 ## Paths
-rdata_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data"                             # inputs + qs2 outputs
-fig_dir   <- "/home/akshay-iyer/Documents/CD8_Longitudinal/Analysis/VDJ/TCR/DGE_CMV_vs_Expanding"    # CSV + PNG
+rdata_dir <- path.expand("~/Documents/CD8_Longitudinal/saved_R_data")                             # inputs + qs2 outputs
+fig_dir   <- path.expand("~/Documents/CD8_Longitudinal/Analysis/VDJ/TCR/DGE_CMV_vs_Expanding")    # CSV + PNG
 dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 ## RUNTIME ASSUMPTIONS:

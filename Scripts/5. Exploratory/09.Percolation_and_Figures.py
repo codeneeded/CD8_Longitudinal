@@ -28,9 +28,12 @@ import os
 import sys
 from pathlib import Path
 
-OUT = Path("/home/ammasakshay/Desktop/Projects/Analysis_Exploratory/TCRdist")
+# Projects folder holding Repositories/, Packages/ and Analysis_Exploratory/.
+PROJ = Path(os.environ.get("CD8_PROJECTS", Path(__file__).resolve().parents[4]))
+
+OUT = (PROJ / "Analysis_Exploratory/TCRdist")
 os.environ.setdefault("TCR_EXPLORER_DATA", str(OUT / "tcr_explorer_data"))
-sys.path.insert(0, "/home/ammasakshay/Desktop/Projects/Packages/conga-master")
+sys.path.insert(0, str(PROJ / "Packages/conga-master"))
 
 import igraph as ig  # noqa: E402
 import leidenalg  # noqa: E402

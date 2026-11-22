@@ -1,7 +1,7 @@
 ################################################################################
 # Revision — rebuild Supplementary S1A with the colour scale named
 #
-# ANSWERS: Reviewer 2 minor 6, and Lesley's comment 11 ("where is the updated
+# ANSWERS: Reviewer 2 minor 6, and co-author comment 11 ("where is the updated
 #          figure S1A and legend?").
 #
 # THE CONFUSION. The reviewer read the -1 to 2 colour range as DSB units and

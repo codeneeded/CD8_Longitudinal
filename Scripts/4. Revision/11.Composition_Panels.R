@@ -20,7 +20,7 @@
 # gives 126,435 across 26 samples and silently mixes in follow-up visits.
 ################################################################################
 
-source("/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal/Scripts/4. Revision/config_revision.R")
+source("config_revision.R")
 suppressPackageStartupMessages({
   library(Seurat); library(qs2); library(dplyr); library(tidyr)
   library(ggplot2); library(ggalluvial)

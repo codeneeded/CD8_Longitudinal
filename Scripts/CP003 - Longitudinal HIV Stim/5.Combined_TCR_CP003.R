@@ -16,7 +16,7 @@ suppressPackageStartupMessages({
 # ----------------------------- #
 # 0) Output directory
 # ----------------------------- #
-out.dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/VDJ/TCR/Shared_Clones/Combined"
+out.dir <- path.expand("~/Documents/CD8_Longitudinal/CP003/VDJ/TCR/Shared_Clones/Combined")
 dir.create(out.dir, recursive = TRUE, showWarnings = FALSE)
 
 # ----------------------------- #
@@ -50,7 +50,7 @@ tara_tcr_list <- tara_tcr_list[!vapply(tara_tcr_list, is.null, logical(1))]
 # ----------------------------- #
 # 2) Read and merge CP003 technical replicates
 # ----------------------------- #
-cp003.path <- "/home/akshay-iyer/CP003_multi_out/outs/per_sample_outs"
+cp003.path <- path.expand("~/CP003_multi_out/outs/per_sample_outs")
 
 t_2m_001A  <- read.csv(file.path(cp003.path, "CP003_2m_001A",  "vdj_t", "filtered_contig_annotations.csv"), stringsAsFactors = FALSE)
 t_2m_001B  <- read.csv(file.path(cp003.path, "CP003_2m_001B",  "vdj_t", "filtered_contig_annotations.csv"), stringsAsFactors = FALSE)

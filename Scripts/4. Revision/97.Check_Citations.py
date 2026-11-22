@@ -178,8 +178,7 @@ try:
     from lxml import etree as _et
     _NS = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main"}
     _dx = REPO / "Reviewer_Comments" / ".." / ".."
-    _cands = [pathlib.Path("/home/ammasakshay/Desktop/Projects/Manuscripts/"
-                           "CD8_Longitudinal/TARA_Manuscript_REVISED_trackchanges.docx")]
+    _cands = [REPO.parents[1] / "Manuscripts" / "CD8_Longitudinal" / "TARA_Manuscript_REVISED_trackchanges.docx"]
     _docx = next((c for c in _cands if c.exists()), None)
     _s1 = REPO / "Reviewer_Comments" / "Tables" / "TableS1_sample_level_counts.csv"
     if _docx and _s1.exists():

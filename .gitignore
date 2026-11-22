@@ -101,8 +101,3 @@ Reviewer_Comments/_superseded/
 **/*.doc
 **/*.pptx
 
-# The reproducibility audit of the manuscript's numbers is an internal check for
-# the authors, not an analysis output for readers.
-Reviewer_Comments/Tables/L3_manuscript_number_audit.csv
-# internal check of the manuscript's numbers - for the authors, not the repository
-Scripts/5. Exploratory/19.Verify_Manuscript_Numbers.R

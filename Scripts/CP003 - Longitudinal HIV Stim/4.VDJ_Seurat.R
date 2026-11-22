@@ -14,10 +14,10 @@ library(patchwork)
 # -----------------------------
 # Paths
 # -----------------------------
-save_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/saved_R_data"
+save_dir <- path.expand("~/Documents/CD8_Longitudinal/saved_R_data")
 out_qs2  <- file.path(save_dir, "CP003_RNA_integrated_CCA_MNN.qs2")
 
-vdj_base <- "/home/akshay-iyer/CP003_multi_out/outs/per_sample_outs"
+vdj_base <- path.expand("~/CP003_multi_out/outs/per_sample_outs")
 
 # -----------------------------
 # 1) Load Seurat (qs2)
@@ -86,7 +86,7 @@ seu <- combineExpression(
 # -----------------------------
 # Output dirs
 # -----------------------------
-base_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/VDJ/TCR/Seurat_Plots"
+base_dir <- path.expand("~/Documents/CD8_Longitudinal/CP003/VDJ/TCR/Seurat_Plots")
 dir_hyper <- file.path(base_dir, "Hyperexpansion")
 dir_occ   <- file.path(base_dir, "Clones_per_Cluster")
 dir.create(dir_hyper, recursive = TRUE, showWarnings = FALSE)
@@ -256,7 +256,7 @@ write.csv(tbl,
 # -----------------------------
 # Paths
 # -----------------------------
-out_dir <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/VDJ/TCR/Shared_Clones"
+out_dir <- path.expand("~/Documents/CD8_Longitudinal/CP003/VDJ/TCR/Shared_Clones")
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 # Choose your UMAP reduction name here

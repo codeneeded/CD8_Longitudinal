@@ -39,13 +39,17 @@ Out: Projects/Analysis_Exploratory/TCRdist/
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-OUT = Path("/home/ammasakshay/Desktop/Projects/Analysis_Exploratory/TCRdist")
-CONGA_DIR = Path("/home/ammasakshay/Desktop/Projects/Analysis_Exploratory/CoNGA")
+# Projects folder holding Repositories/, Packages/ and Analysis_Exploratory/.
+PROJ = Path(os.environ.get("CD8_PROJECTS", Path(__file__).resolve().parents[4]))
+
+OUT = (PROJ / "Analysis_Exploratory/TCRdist")
+CONGA_DIR = (PROJ / "Analysis_Exploratory/CoNGA")
 (OUT / "tables").mkdir(parents=True, exist_ok=True)
-sys.path.insert(0, "/home/ammasakshay/Desktop/Projects/Packages/conga-master")
+sys.path.insert(0, str(PROJ / "Packages/conga-master"))
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402

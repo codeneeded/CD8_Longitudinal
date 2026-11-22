@@ -3,8 +3,8 @@
 # Download CP018 FACT-Seq FASTQs from Illumina BaseSpace
 #
 # Run:  ~2m timepoint in duplicate (OB1, OB2), 90m timepoint in duplicate (OB3, OB4)
-# Source: BaseSpace share https://basespace.illumina.com/s/fXOEy9uevGcc
-#         (from L. de Armas, for CP018 FACT-Seq)
+# Source: BaseSpace share <BaseSpace share link>
+#         (CP018 FACT-Seq)
 #
 #   Sample Name    Tube Label    5'OCM Barcode    Chip lane
 #   CP018 2m_A     1             OB1              1
@@ -34,9 +34,9 @@ mkdir -p "$DEST" "$(dirname "$BS_BIN")"
 #-------------------------------------------------------------------------------
 # STEP 0 — Accept the share in your browser FIRST (one time only)
 #-------------------------------------------------------------------------------
-# The link Lesley sent is a *share* link. Until you accept it, the run will not
+# The BaseSpace link is a *share* link. Until you accept it, the run will not
 # appear in your account and the CLI cannot see it.
-#   1. Open https://basespace.illumina.com/s/fXOEy9uevGcc  (you are already logged in)
+#   1. Open <BaseSpace share link>  (you are already logged in)
 #   2. Accept / import the share so the run + project land in your account.
 
 #-------------------------------------------------------------------------------

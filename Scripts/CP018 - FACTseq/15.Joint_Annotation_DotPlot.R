@@ -1,22 +1,32 @@
 ################################################################################
 # Annotation defence for the integrated CP003 + CP018 clusters
 #
-# Same dot-plot form as the other annotation panels (10.Lesley_C12_C13...R):
+# Same dot-plot form as the other annotation panels (Scripts/4. Revision/17.Lineage_Markers_PBMC_Scale.R):
 # Seurat DotPlot, lightgrey -> #08519C, z-score across the groups shown, percent
 # expressed as size. Markers are grouped by the label they defend, in the same
 # order as the clusters, so each label's evidence sits on its own diagonal block.
 #
 # The per-cell annotation is READ from the source data written by
-# 21.Joint_UMAPs_annotated.R, so this panel and the UMAP cannot disagree, and the
-# cells removed there (00.Joint_abCD8_filter.R) are absent here too.
+# 14.Joint_UMAPs_Annotated.R, so this panel and the UMAP cannot disagree, and the
+# cells removed there (12.abCD8_Filter.R) are absent here too.
 #
-# Out: Reviewer_Comments/Figures/L3_jointAnnotation_bubble_RNA.png
+# Out: Reviewer_Comments/Figures/Fig3B_annotation_dot_plot.png
 ################################################################################
 suppressPackageStartupMessages({library(Seurat); library(qs2); library(dplyr); library(ggplot2)})
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures")
 o <- qs_read(file.path(R,"saved_R_data","CP003_CP018_abCD8.qs2"))
-src <- read.csv(file.path(FIG,"L3_jointUMAP_source_data.csv"), check.names=FALSE)
+src <- read.csv(file.path(FIG,"Fig3B_UMAP_source_data.csv"), check.names=FALSE)
 o <- subset(o, cells = intersect(colnames(o), src$cell))
 stopifnot(ncol(o) == nrow(src))
 lab <- setNames(as.character(src$joint_anno), src$cell)
@@ -56,12 +66,12 @@ mk <- function(assay, f, title, fn, w = 19, h = 7.5) {
   invisible(p$data)
 }
 pd <- mk("RNA", feats, "Integrated CP003 and CP018 αβ CD8+ T cells: defining genes",
-         "L3_jointAnnotation_bubble_RNA.png")
+         "Fig3B_annotation_dot_plot.png")
 
 # block boundaries as a source table, so the evidence per label is auditable
 blk <- do.call(rbind, lapply(names(RNA_BLOCKS), function(b)
   data.frame(block=b, gene=intersect(RNA_BLOCKS[[b]], feats))))
-write.csv(blk, file.path(FIG, "L3_jointAnnotation_bubble_RNA_marker_blocks.csv"), row.names=FALSE)
+write.csv(blk, file.path(FIG, "Fig3B_annotation_dot_plot_marker_blocks.csv"), row.names=FALSE)
 
 # No protein panel: the FACT-seq libraries carry RNA only.
 

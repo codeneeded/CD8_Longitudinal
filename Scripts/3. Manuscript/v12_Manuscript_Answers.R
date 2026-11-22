@@ -1,6 +1,6 @@
 ################################################################################
-# v12 MANUSCRIPT ANSWERS — compute the data points needed to resolve Lesley's
-# open comments and Akshay's outstanding text placeholders.
+# v12 MANUSCRIPT ANSWERS — compute the data points needed to resolve the open
+# manuscript comments and outstanding text placeholders.
 #
 # Run this and paste the printed values + the contents of v12_manuscript_answers.csv
 # back to me so I can apply them to v12.
@@ -8,10 +8,10 @@
 # This script answers five questions for v12:
 #
 #   Q1. Pre-/post-ART contraction % for Tscm CD8 and Naïve Intermediate CD8
-#       (Lesley Comment 466 — "both of which resolved after ART initiation")
+#       (manuscript comment 466 — "both of which resolved after ART initiation")
 #
 #   Q2. Exact Spearman ρ and p-value for the Stemness ~ viral load correlation
-#       (Lesley Comment 570 — "not statistically significant")
+#       (manuscript comment 570 — "not statistically significant")
 #       Reports per-cluster results for Tscm, Naïve Intermediate, and the full
 #       naïve compartment; the manuscript text refers to "stemness erosion with
 #       increasing viral load", so we report whichever cluster the original

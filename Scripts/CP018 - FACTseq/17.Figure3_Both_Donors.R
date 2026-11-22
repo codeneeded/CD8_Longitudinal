@@ -2,14 +2,14 @@
 # Figure 3 and Supplementary Figure 3, FACT-Seq panels, rebuilt on the
 # integrated CP003 + CP018 alpha-beta CD8+ T cells
 #
-# Panels B1/B2 are 21.Joint_UMAPs_annotated.R; this script rebuilds the rest
+# Panels B1/B2 are 14.Joint_UMAPs_Annotated.R; this script rebuilds the rest
 # with the construction and styling of Scripts/3. Manuscript/Figure_3.R.
 #
-# CELLS   alpha-beta CD8 T cells (00.Joint_abCD8_filter.R); cluster labels are
-#         read from the source data of 21, so every panel uses the same cells
+# CELLS   alpha-beta CD8 T cells (12.abCD8_Filter.R); cluster labels are
+#         read from the source data of 14, so every panel uses the same cells
 #         and the same labels as the UMAPs.
-# HIV-RESPONSIVE  the published rule applied to both donors in 21 (clonotype in
-#         >1 cell of its library, outside Naive/Bystander); read from 21. In the
+# HIV-RESPONSIVE  the published rule applied to both donors in 14 (clonotype in
+#         >1 cell of its library, outside Naive/Bystander); read from 14. In the
 #         unstimulated data a cell is matched when its clonotype is one of its
 #         donor's HIV-responsive clonotypes.
 # CLONOTYPE MATCHING  on CTstrict normalised for the Cell Ranger convention
@@ -19,17 +19,27 @@
 # UNSTIMULATED DATA  CP003: tara_cp003_fig3.qs2 (1, 12, 24 months).
 #                    CP018: tara_cp018_crossref.qs2 (1 month pre-ART, 25, 42 months).
 #
-# Out: Reviewer_Comments/Figures/L3_Fig3{C,D,E,F}_*_both_donors.png
-#      Reviewer_Comments/Figures/L3_Fig3supp_{A..F}_*.png  (+ _source_data.csv)
-#      Reviewer_Comments/Tables/L3_Fig3supp_module_score_statistics_both_donors.csv
+# Out: Reviewer_Comments/Figures/Fig3{C,D,E,F}_*_both_donors.png
+#      Reviewer_Comments/Figures/Fig3supp_{A..F}_*.png  (+ _source_data.csv)
+#      Reviewer_Comments/Tables/Fig3supp_module_score_statistics_both_donors.csv
 # 'Fig3supp' is the supplementary figure of Figure 3 (repository folder
-# Manuscript/Supplementary 3; Supplementary Figure 4 in Lesley's comments).
+# Manuscript/Supplementary 3; Supplementary Figure 4 in the revised manuscript).
 ################################################################################
 suppressPackageStartupMessages({
   library(Seurat); library(qs2); library(dplyr); library(tidyr); library(ggplot2)
   library(ggalluvial); library(patchwork); library(RColorBrewer)
 })
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 sd  <- file.path(R, "saved_R_data")
 FIG <- file.path(R, "Reviewer_Comments", "Figures")
 suppressMessages(source(file.path(R, "Scripts", "CP018 - FACTseq", "config.R")))   # normalise_ct()
@@ -41,11 +51,11 @@ save_panel <- function(p, fn, w, h, data, dpi = 300) {
 }
 
 # ---- cells, labels, palette (Figure_3.R order and colours; Tc17 added) -------
-src <- read.csv(file.path(FIG, "L3_jointUMAP_source_data.csv"), check.names = FALSE)
+src <- read.csv(file.path(FIG, "Fig3B_UMAP_source_data.csv"), check.names = FALSE)
 o <- qs_read(file.path(sd, "CP003_CP018_abCD8.qs2"))
 stopifnot("21 and the object disagree on cells: re-run 21" = setequal(colnames(o), src$cell))
 o <- o[, src$cell]
-o$HIV_Specific_TCR <- ifelse(src$resp, "HIV-Specific TCR", "Other")   # one rule, set in 21
+o$HIV_Specific_TCR <- ifelse(src$resp, "HIV-Specific TCR", "Other")   # one rule, set in 14
 ANNO_ORDER <- c("Naive/Bystander", "Transitional Tem", "Tpex", "TEMRA/Effector",
                 "Cycling Effector", "Tc17")
 ANNO_COLS  <- c("Naive/Bystander" = "#2166AC", "Transitional Tem" = "#1A9850", "Tpex" = "#F4A261",
@@ -141,7 +151,7 @@ alluvial_one <- function(p) {
 pC <- (alluvial_one("CP003") | alluvial_one("CP018")) +
   plot_annotation(title = "HIV-responsive clonotype persistence",
                   theme = theme(plot.title = element_text(size = 40, face = "bold")))
-save_panel(pC, "L3_Fig3C_alluvial_both_donors.png", 30, 12, multi)
+save_panel(pC, "Fig3C_alluvial_both_donors.png", 30, 12, multi)
 
 # ---- 3D functional profile, matched cells in unstimulated data --------------
 func_genes <- c("GZMB","GZMA","PRF1","GNLY","NKG7","IFNG","CCL3","CCL4","CCL5",
@@ -175,7 +185,7 @@ pD <- ggplot(prof, aes(gene, pct_expressing, fill = category)) +
   labs(x = NULL, y = "% cells expressing",
        title = "Functional profile of HIV-responsive clonotypes in unstimulated samples") +
   guides(fill = guide_legend(nrow = 1))
-save_panel(pD, "L3_Fig3D_functional_profile_both_donors.png", 22, 13, prof)
+save_panel(pD, "Fig3D_functional_profile_both_donors.png", 22, 13, prof)
 
 # ---- 3E persistence ---------------------------------------------------------
 pers <- allu %>% group_by(participant, CTstrict) %>% summarise(n_timepoints = n_distinct(tp), .groups = "drop") %>%
@@ -193,7 +203,7 @@ pE <- ggplot(pers, aes(factor(n_timepoints), n)) +
   theme(axis.text = element_text(size = 24, face = "bold"), strip.background = element_blank(),
         strip.text = element_text(size = 24, face = "bold"), plot.title = element_text(size = 34, face = "bold")) +
   labs(x = "Timepoints detected", y = "N clonotypes", title = "Clonotype persistence")
-save_panel(pE, "L3_Fig3E_persistence_both_donors.png", 18, 10, pers)
+save_panel(pE, "Fig3E_persistence_both_donors.png", 18, 10, pers)
 
 # ---- 3F cluster distribution in unstimulated data ----------------------------
 CL6 <- c("Naive 1 CD8","Naive 2 CD8","Naive Intermediate CD8","Tscm CD8","TEMRA/CTL CD8","Tex CD8")
@@ -218,7 +228,7 @@ pF <- ggplot(f3d, aes(Annotation, n, fill = Annotation)) +
   theme(axis.text.y = element_text(size = 22, face = "bold"), strip.background = element_blank(),
         strip.text = element_text(size = 22, face = "bold"), plot.title = element_text(size = 32, face = "bold")) +
   labs(x = NULL, y = "N cells", title = "Cluster distribution in unstimulated samples")
-save_panel(pF, "L3_Fig3F_TARA_clusters_both_donors.png", 20, 8, bind_rows(f3d, f3_excl))
+save_panel(pF, "Fig3F_TARA_clusters_both_donors.png", 20, 8, bind_rows(f3d, f3_excl))
 
 # ---- S3A cell cycle ---------------------------------------------------------
 cc <- m %>% filter(!is.na(Phase)) %>% count(Donor, Annotation, Phase) %>%
@@ -232,7 +242,7 @@ pS3A <- ggplot(cc, aes(Annotation, proportion, fill = Phase)) +
         strip.background = element_blank(), strip.text = element_text(size = 20, face = "bold"),
         legend.position = "top", plot.title = element_text(size = 28, face = "bold")) +
   labs(x = NULL, y = "Proportion", fill = "Cell cycle", title = "Cell cycle by cluster annotation")
-save_panel(pS3A, "L3_Fig3supp_A_cell_cycle_both_donors.png", 16, 8, cc)
+save_panel(pS3A, "Fig3supp_A_cell_cycle_both_donors.png", 16, 8, cc)
 
 # ---- module scores (S3B, S3F) -----------------------------------------------
 DefaultAssay(o) <- "RNA"; if (length(Layers(o[["RNA"]])) > 1) o <- JoinLayers(o, assay = "RNA")
@@ -273,19 +283,19 @@ add_p <- function(g, st) g + geom_text(data = st, aes(Module, y, label = label),
   scale_y_continuous(expand = expansion(mult = c(0.02, 0.1)))
 st_b <- mod_stats(long, "HIV_Specific_TCR", "HIV-responsive vs bystander")
 save_panel(add_p(vio(long, "HIV_Specific_TCR", hiv_cols, "HIV-responsive vs bystander (stimulation data)", hiv_labs), st_b),
-           "L3_Fig3supp_B_module_scores_HIVvsOther_both_donors.png", 18, 9,
+           "Fig3supp_B_module_scores_HIVvsOther_both_donors.png", 18, 9,
            long %>% group_by(Donor, Module, HIV_Specific_TCR) %>%
              summarise(n = n(), median = round(median(Score), 3), .groups = "drop"))
 lr <- long %>% filter(HIV_Specific_TCR == "HIV-Specific TCR")
 nv <- o@meta.data %>% filter(HIV_Specific_TCR == "HIV-Specific TCR") %>% count(Donor, Visit)
 st_f <- mod_stats(lr, "Visit", "HIV-responsive cells, 2 months vs late")
 write.csv(bind_rows(st_b, st_f) %>% select(comparison, Donor, Module, n1, n2, test, p),
-          file.path(R, "Reviewer_Comments", "Tables", "L3_Fig3supp_module_score_statistics_both_donors.csv"), row.names = FALSE)
+          file.path(R, "Reviewer_Comments", "Tables", "Fig3supp_module_score_statistics_both_donors.csv"), row.names = FALSE)
 print(as.data.frame(bind_rows(st_b, st_f) %>% transmute(comparison, Donor = sub(" .*", "", Donor), Module, n1, n2, p = signif(p, 2))), row.names = FALSE)
 save_panel(add_p(vio(lr, "Visit", tp_cols, "HIV-responsive cells: 2 months vs late (CP003 101 months, CP018 90 months)"), st_f) +
              labs(subtitle = paste(sprintf("%s %s: n = %d", sub(" .*", "", nv$Donor), nv$Visit, nv$n), collapse = "   ")) +
              theme(plot.subtitle = element_text(size = 18, colour = "#E63946", face = "bold")),
-           "L3_Fig3supp_F_module_scores_2m_vs_late_both_donors.png", 18, 9,
+           "Fig3supp_F_module_scores_2m_vs_late_both_donors.png", 18, 9,
            lr %>% group_by(Donor, Module, Visit) %>% summarise(n = n(), median = round(median(Score), 3), .groups = "drop"))
 
 # ---- S3C dot plot: published gene set first, Tc17 genes appended -------------
@@ -302,7 +312,7 @@ pS3C <- DotPlot(o, features = dot_genes, group.by = "Annotation", cols = c("grey
   labs(x = NULL, y = NULL, title = "Key marker expression by annotation",
        subtitle = "Submitted gene set; KLRB1, CCR6, RORC and IL23R added") +
   theme(plot.subtitle = element_text(size = 17))
-save_panel(pS3C, "L3_Fig3supp_C_dot_plot_both_donors.png", 14, 14, pS3C$data)
+save_panel(pS3C, "Fig3supp_C_dot_plot_both_donors.png", 14, 14, pS3C$data)
 
 # ---- S3D HIV-responsive % per cluster, S3E timepoint composition -------------
 hp <- m %>% group_by(Donor, Annotation) %>%
@@ -318,7 +328,7 @@ pS3D <- ggplot(hp, aes(Annotation, pct_hiv, fill = Annotation)) +
         strip.background = element_blank(), strip.text = element_text(size = 20, face = "bold"),
         plot.title = element_text(size = 28, face = "bold")) +
   labs(x = NULL, y = "% of cells in the cluster\nclassified HIV-responsive", title = "HIV-responsive cell enrichment by cluster")
-save_panel(pS3D, "L3_Fig3supp_D_HIV_responsive_by_cluster_both_donors.png", 16, 8, hp)
+save_panel(pS3D, "Fig3supp_D_HIV_responsive_by_cluster_both_donors.png", 16, 8, hp)
 
 tpc <- m %>% count(Donor, Annotation, Visit) %>% group_by(Donor, Annotation) %>%
   mutate(pct = n / sum(n)) %>% ungroup()
@@ -331,7 +341,7 @@ pS3E <- ggplot(tpc, aes(Annotation, pct, fill = Visit)) +
         strip.background = element_blank(), strip.text = element_text(size = 20, face = "bold"),
         legend.position = "top", plot.title = element_text(size = 28, face = "bold")) +
   labs(x = NULL, y = "Proportion", fill = NULL, title = "Timepoint composition by cluster")
-save_panel(pS3E, "L3_Fig3supp_E_timepoint_composition_both_donors.png", 16, 8, tpc)
+save_panel(pS3E, "Fig3supp_E_timepoint_composition_both_donors.png", 16, 8, tpc)
 
 # ---- numbers the text needs --------------------------------------------------
 cat("\n=== per donor ===\n")

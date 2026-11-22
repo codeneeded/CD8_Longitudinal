@@ -1,14 +1,14 @@
 ############################################################
 # CP003 scRepertoire (TCR) analysis from Cell Ranger VDJ outputs
 # - Input folders:
-#   /home/akshay-iyer/CP003_multi_out/outs/per_sample_outs/
+#   ~/CP003_multi_out/outs/per_sample_outs/
 #     CP003_2m_001A/
 #     CP003_2m_001B/
 #     CP003_101m_003/
 #     CP003_101m_004/
 # - Each has: vdj_t/filtered_contig_annotations.csv
 # - Output saved under:
-#   /home/akshay-iyer/Documents/CD8_Longitudinal/CP003/VDJ/TCR/...
+#   ~/Documents/CD8_Longitudinal/CP003/VDJ/TCR/...
 ############################################################
 
 
@@ -23,9 +23,9 @@ library(readr)
 # -----------------------------
 # 0) Paths
 # -----------------------------
-in.path <- "/home/akshay-iyer/CP003_multi_out/outs/per_sample_outs/"
+in.path <- path.expand("~/CP003_multi_out/outs/per_sample_outs/")
 
-out.root <- "/home/akshay-iyer/Documents/CD8_Longitudinal/CP003/VDJ/TCR"
+out.root <- path.expand("~/Documents/CD8_Longitudinal/CP003/VDJ/TCR")
 dir.create(out.root, recursive = TRUE, showWarnings = FALSE)
 
 dir_clonal_viz <- file.path(out.root, "Clonal_Visualizations")
@@ -53,7 +53,7 @@ samples <- c("CP003_2m_001A", "CP003_2m_001B", "CP003_101m_003", "CP003_101m_004
 # so combined.TCR has UNIQUE sample names (required for clonalOverlap)
 ############################################################
 
-in.path <- "/home/akshay-iyer/CP003_multi_out/outs/per_sample_outs"
+in.path <- path.expand("~/CP003_multi_out/outs/per_sample_outs")
 
 # Read each library contig
 t_2m_001A  <- read.csv(file.path(in.path, "CP003_2m_001A",  "vdj_t", "filtered_contig_annotations.csv"), stringsAsFactors = FALSE)

@@ -1,12 +1,6 @@
 ################################################################################
-# Lesley items 5, 6 and 7
-#
-#   6: "Figure 1F and S2D - Reproduce all plots using total CD8+ T cells (from
-#       Figure 1C) as the denominator for calculating cluster frequency.
-#       Determine if interpretation should be adjusted once seeing these."
-#   7: "Figure 1G and S2E - Reproduce all plots using cluster frequency out of
-#       total CD8+ T cells to correlate against VL at pre-ART in HEI."
-#   5: "Figure S2D, can you put the p values on each of these box/whisker plots."
+# Figures 1F / S2D and 1G / S2E with total CD8+ T cells as the denominator,
+# with p values on the S2D box plots
 #
 # Published panels divide by total_pbmc (every cell in the sample). These divide
 # by total CD8, defined as the sum of the six Figure 1C clusters in that sample -
@@ -15,15 +9,25 @@
 # question "should the interpretation change" is answered from the numbers.
 #
 # Cluster names come out of Figure_1.R so they cannot drift.
-# Out: Reviewer_Comments/Figures/L3_item06_cluster_freq_CD8denominator.png
-#      Reviewer_Comments/Figures/L3_item07_VL_correlation_CD8denominator.png
-#      Reviewer_Comments/Tables/L3_denominator_comparison.csv
+# Out: Reviewer_Comments/Figures/Fig1F_S2D_cluster_frequency_CD8_denominator.png
+#      Reviewer_Comments/Figures/Fig1G_S2E_VL_correlation_CD8_denominator.png
+#      Reviewer_Comments/Tables/Fig1F_1G_denominator_comparison.csv
 ################################################################################
 suppressPackageStartupMessages({
   library(Seurat); library(qs2); library(dplyr); library(tidyr)
   library(ggplot2); library(rstatix); library(ggpubr)
 })
-R   <- "/home/ammasakshay/Desktop/Projects/Repositories/CD8_Longitudinal"
+# Repository root: CD8_BASE if set, otherwise the first folder above this script
+# that holds saved_R_data/ (works under Rscript, source() and an IDE).
+R <- local({
+  b <- Sys.getenv("CD8_BASE"); if (nzchar(b)) return(normalizePath(b))
+  f <- sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value = TRUE))
+  f <- if (length(f)) gsub("~\\+~", " ", f[1]) else tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  d <- if (length(f) && nzchar(f)) dirname(normalizePath(f)) else getwd()
+  while (!dir.exists(file.path(d, "saved_R_data")) && dirname(d) != d) d <- dirname(d)
+  if (!dir.exists(file.path(d, "saved_R_data"))) stop("set CD8_BASE to the repository root", call. = FALSE)
+  d
+})
 FIG <- file.path(R,"Reviewer_Comments","Figures"); TAB <- file.path(R,"Reviewer_Comments","Tables")
 
 f1 <- readLines(file.path(R,"Scripts","3. Manuscript","Figure_1.R"), warn=FALSE)
@@ -62,7 +66,7 @@ cf <- m %>% filter(Annotation %in% cd8_cluster_names) %>%
          pct_cd8  = 100*cluster_cells/total_cd8,
          Facet_Label = factor(cd8_short_labels[as.character(Annotation)], levels=cd8_short_labels))
 
-# ---- item 6 + 5: composition by condition, CD8 denominator, with p values -----
+# ---- Figure 1F / S2D: composition by condition, CD8 denominator, with p values -----
 st <- cf %>% group_by(Facet_Label) %>% wilcox_test(pct_cd8 ~ Condition) %>%
       adjust_pvalue(method="none") %>% add_significance("p") %>% ungroup()
 # scales::pvalue() renders p > 0.999 as ">0.999", which with the "p = " prefix
@@ -84,11 +88,11 @@ p6 <- ggplot(cf, aes(Condition, pct_cd8, fill=Condition)) +
   theme(plot.title=element_text(face="bold", size=17),
         strip.text=element_text(face="bold", size=14), legend.position="none",
         axis.text.x=element_text(size=13, colour="black"))
-ggsave(file.path(FIG,"L3_item06_cluster_freq_CD8denominator.png"), p6,
+ggsave(file.path(FIG,"Fig1F_S2D_cluster_frequency_CD8_denominator.png"), p6,
        width=20, height=6.4, dpi=300, bg="white")
-write.csv(cf, file.path(FIG,"L3_item06_cluster_freq_CD8denominator_source_data.csv"), row.names=FALSE)
+write.csv(cf, file.path(FIG,"Fig1F_S2D_cluster_frequency_CD8_denominator_source_data.csv"), row.names=FALSE)
 
-# ---- item 7: VL correlation at pre-ART HEI, both denominators ----------------
+# ---- Figure 1G / S2E: VL correlation at pre-ART HEI, both denominators ----------------
 hei <- m %>% filter(Condition=="HEI")
 vl <- hei %>% group_by(orig.ident) %>% summarise(VL=first(Viral_Load_num), .groups="drop") %>%
       mutate(log10_VL = log10(VL))
@@ -108,9 +112,9 @@ p7 <- ggplot(cv, aes(log10_VL, pct_cd8)) +
   theme_classic(base_size=16) +
   theme(plot.title=element_text(face="bold", size=17),
         strip.text=element_text(face="bold", size=14))
-ggsave(file.path(FIG,"L3_item07_VL_correlation_CD8denominator.png"), p7,
+ggsave(file.path(FIG,"Fig1G_S2E_VL_correlation_CD8_denominator.png"), p7,
        width=22, height=6.2, dpi=300, bg="white")
-write.csv(cv, file.path(FIG,"L3_item07_VL_correlation_CD8denominator_source_data.csv"), row.names=FALSE)
+write.csv(cv, file.path(FIG,"Fig1G_S2E_VL_correlation_CD8_denominator_source_data.csv"), row.names=FALSE)
 
 # ---- the comparison that answers "should the interpretation change" ----------
 cmp <- cor_pbmc %>% select(Facet_Label, rho_PBMC=cor, p_PBMC=p) %>%
@@ -134,7 +138,7 @@ write.csv(bind_rows(
   out %>% mutate(comparison=paste0("condition ", group1, " vs ", group2),
                  stat_PBMC=NA_real_, stat_CD8=NA_real_) %>%
     select(comparison, cluster=Facet_Label, stat_PBMC, p_PBMC, stat_CD8, p_CD8, changes)),
-  file.path(TAB,"L3_denominator_comparison.csv"), row.names=FALSE)
+  file.path(TAB,"Fig1F_1G_denominator_comparison.csv"), row.names=FALSE)
 cat("\n=== condition comparisons where significance flips ===\n")
 print(as.data.frame(out %>% filter(changes!="no") %>% select(Facet_Label,group1,group2,p_PBMC,p_CD8)), row.names=FALSE)
-cat("\nwrote both panels, their source data, and L3_denominator_comparison.csv\n")
+cat("\nwrote both panels, their source data, and Fig1F_1G_denominator_comparison.csv\n")

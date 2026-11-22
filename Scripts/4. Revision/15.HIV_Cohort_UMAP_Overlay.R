@@ -1,7 +1,7 @@
 ################################################################################
 # Revision — the 32 vRNA-positive cells on the published whole-PBMC UMAP
 #
-# ANSWERS: Lesley's comment 6 on the response document — "could you show the
+# ANSWERS: co-author comment 6 on the response document — "could you show the
 #          distribution in a UMAP overlay? This would emphasize the point that
 #          there are very few cells to analyze."
 #
