@@ -1,0 +1,26 @@
+"cluster","label","published_Fig3","Freq","pct"
+"0","Naive/Bystander","Naive/Bystander",292,95.7
+"0","Naive/Bystander","Transitional Tem",12,3.9
+"0","Naive/Bystander","TEMRA/Effector",1,0.3
+"1","Naive/Bystander","Naive/Bystander",1113,99.2
+"1","Naive/Bystander","Transitional Tem",5,0.4
+"1","Naive/Bystander","Tpex",3,0.3
+"1","Naive/Bystander","TEMRA/Effector",1,0.1
+"2","Transitional Tem","Transitional Tem",325,36.5
+"2","Transitional Tem","TEMRA/Effector",310,34.8
+"2","Transitional Tem","Tpex",243,27.3
+"2","Transitional Tem","Cycling Effector",9,1
+"2","Transitional Tem","Tex",2,0.2
+"2","Transitional Tem","Naive/Bystander",1,0.1
+"3","Cycling Effector","Cycling Effector",616,92.8
+"3","Cycling Effector","Tpex",42,6.3
+"3","Cycling Effector","TEMRA/Effector",6,0.9
+"4","TEMRA/Effector","TEMRA/Effector",381,94.5
+"4","TEMRA/Effector","Cycling Effector",18,4.5
+"4","TEMRA/Effector","Transitional Tem",4,1
+"5","Tpex","Tpex",136,85.5
+"5","Tpex","Naive/Bystander",20,12.6
+"5","Tpex","Transitional Tem",3,1.9
+"6","Naive/Bystander","Naive/Bystander",30,96.8
+"6","Naive/Bystander","Transitional Tem",1,3.2
+"7","Tc17","Naive/Bystander",7,100

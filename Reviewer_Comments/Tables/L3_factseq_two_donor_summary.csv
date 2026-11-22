@@ -1,0 +1,11 @@
+"participant","ART_group","Timepoint","cellranger","n_cells","n_resp","n_clono","pct_resp","visit","label"
+"CP003","Unsuppressed","101m","9.0.1",360,73,26,20.3,"Late
+(CP003 101m, CP018 90m)","CP003
+Unsuppressed"
+"CP003","Unsuppressed","2m","9.0.1",3221,1340,134,41.6,"2 months","CP003
+Unsuppressed"
+"CP018","Suppressed","2m","10.1.0",2766,110,27,4,"2 months","CP018
+Suppressed"
+"CP018","Suppressed","90m","10.1.0",2012,301,113,15,"Late
+(CP003 101m, CP018 90m)","CP018
+Suppressed"

@@ -240,7 +240,7 @@ if (nrow(multi_tp) > 0) {
       plot.subtitle = element_text(size = 32, color = "#E63946", face = "bold")
     ) +
     labs(x = NULL, y = "Number of cells",
-         title = "HIV-Specific Clonotype Persistence",
+         title = "HIV-responsive Clonotype Persistence",
          subtitle = paste0(n_clones, " clonotypes detected at \u22652 timepoints"))
   
   ggsave(file.path(fig3_dir, "Fig3C_Alluvial.png"),
@@ -303,7 +303,7 @@ panelD <- ggplot(gene_stats, aes(x = gene, y = pct_expressing, fill = category))
     plot.subtitle = element_text(size = 30, color = "#2166AC", face = "bold")
   ) +
   labs(x = NULL, y = "% cells expressing",
-       title = "Functional profile of HIV-specific clonotypes",
+       title = "Functional profile of HIV-responsive clonotypes",
        subtitle = paste0(n_val_cells, " validated cells in TARA unstimulated data")) +
   guides(fill = guide_legend(nrow = 2))
 
@@ -478,7 +478,7 @@ p_s3b <- ggplot(violin_stim, aes(x = Module, y = Score, fill = HIV_Specific_TCR)
         legend.position = "top", legend.text = element_text(size = 22),
         plot.title = element_text(size = 32, face = "bold")) +
   labs(x = NULL, y = "Module Score",
-       title = "HIV-Specific vs Bystander (Stimulation Data)")
+       title = "HIV-responsive vs Bystander (Stimulation Data)")
 
 ggsave(file.path(supp3_dir, "S3B_ModuleScores_HIVvsOther.png"),
        p_s3b, width = 12, height = 9, dpi = 300, bg = "white")
@@ -526,8 +526,8 @@ p_s3d <- ggplot(hiv_pct, aes(x = Fig3_Annotation, y = pct_hiv, fill = Fig3_Annot
         axis.text.y = element_text(size = 22),
         axis.title = element_text(size = 26, face = "bold"),
         plot.title = element_text(size = 32, face = "bold")) +
-  labs(x = NULL, y = "% HIV-Specific TCR",
-       title = "HIV-Specific Cell Enrichment by Cluster")
+  labs(x = NULL, y = "% HIV-responsive TCR",
+       title = "HIV-responsive Cell Enrichment by Cluster")
 
 ggsave(file.path(supp3_dir, "S3D_HIV_Pct.png"),
        p_s3d, width = 10, height = 8, dpi = 300, bg = "white")
@@ -594,7 +594,7 @@ p_s3f <- ggplot(hiv_tp_violin, aes(x = Module, y = Score, fill = Timepoint)) +
         plot.title = element_text(size = 32, face = "bold"),
         plot.subtitle = element_text(size = 24, color = "#E63946", face = "bold")) +
   labs(x = NULL, y = "Module Score",
-       title = "HIV-Specific Cells: 2 Months vs 101 Months",
+       title = "HIV-responsive Cells: 2 Months vs 101 Months",
        subtitle = paste0("n = ", sum(cp003_clean$HIV_Specific_TCR == "HIV-Specific TCR" & cp003_clean$Months == 2),
                          " (2m), n = ", sum(cp003_clean$HIV_Specific_TCR == "HIV-Specific TCR" & cp003_clean$Months == 101),
                          " (101m)"))

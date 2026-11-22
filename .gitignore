@@ -76,3 +76,33 @@ Rplots.pdf
 __pycache__/
 **/__pycache__/
 *.pyc
+
+# ── Correspondence and interpretation ────────────────────────────────────────
+# The repository is the analysis. Reviewer replies, response trackers, verdict
+# and audit tables, edit manifests and page maps are correspondence about the
+# analysis, and reading them colours how the analysis is read. They live in
+# Deliverables/, not here. Figures and result tables under Reviewer_Comments/
+# stay, because those are analysis outputs.
+Reviewer_Comments/Response_Text.csv
+Reviewer_Comments/Reviewer_Response_Tracker.csv
+Reviewer_Comments/Tables/Item_verdicts.csv
+Reviewer_Comments/Tables/Audit_of_unanswered_items.csv
+Reviewer_Comments/Tables/Manuscript_edit_manifest.csv
+Reviewer_Comments/Tables/Revised_figure_pages.csv
+Reviewer_Comments/Tables/Figure_rename_map.csv
+Reviewer_Comments/_superseded/
+**/collaborator_email*
+**/*_email_draft*
+**/Replies_to_*
+**/Response_to_Reviewers*
+# Narrative write-ups and slide decks: interpretation, not analysis output.
+**/*_FINDINGS.md
+**/*.docx
+**/*.doc
+**/*.pptx
+
+# The reproducibility audit of the manuscript's numbers is an internal check for
+# the authors, not an analysis output for readers.
+Reviewer_Comments/Tables/L3_manuscript_number_audit.csv
+# internal check of the manuscript's numbers - for the authors, not the repository
+Scripts/5. Exploratory/19.Verify_Manuscript_Numbers.R

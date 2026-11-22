@@ -1,0 +1,12 @@
+"participant","Annotation","n","pct","n_cells","n_clono","Donor","n_excluded_nonCD8"
+"CP003","TEMRA/CTL CD8",117,96.7,121,6,"CP003 (unsuppressed)
+121 CD8+ cells from 6 clonotypes",NA
+"CP003","Tex CD8",4,3.3,121,6,"CP003 (unsuppressed)
+121 CD8+ cells from 6 clonotypes",NA
+"CP018","TEMRA/CTL CD8",11,55,20,11,"CP018 (suppressed)
+20 CD8+ cells from 11 clonotypes",NA
+"CP018","Tex CD8",9,45,20,11,"CP018 (suppressed)
+20 CD8+ cells from 11 clonotypes",NA
+"CP003","CD56dim CD122lo NK",NA,NA,NA,NA,NA,1
+"CP003","CD8+ MAIT cell",NA,NA,NA,NA,NA,2
+"CP018","CD8+ MAIT cell",NA,NA,NA,NA,NA,2

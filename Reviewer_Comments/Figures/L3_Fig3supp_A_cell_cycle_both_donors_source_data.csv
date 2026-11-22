@@ -1,0 +1,35 @@
+"Donor","Annotation","Phase","n","proportion"
+"CP003 (unsuppressed)","Naive/Bystander","G1",1249,0.856652949245542
+"CP003 (unsuppressed)","Naive/Bystander","G2M",6,0.00411522633744856
+"CP003 (unsuppressed)","Naive/Bystander","S",203,0.13923182441701
+"CP003 (unsuppressed)","Transitional Tem","G1",839,0.942696629213483
+"CP003 (unsuppressed)","Transitional Tem","G2M",3,0.00337078651685393
+"CP003 (unsuppressed)","Transitional Tem","S",48,0.0539325842696629
+"CP003 (unsuppressed)","Tpex","G1",146,0.918238993710692
+"CP003 (unsuppressed)","Tpex","S",13,0.0817610062893082
+"CP003 (unsuppressed)","TEMRA/Effector","G1",334,0.8287841191067
+"CP003 (unsuppressed)","TEMRA/Effector","G2M",13,0.032258064516129
+"CP003 (unsuppressed)","TEMRA/Effector","S",56,0.138957816377171
+"CP003 (unsuppressed)","Cycling Effector","G1",39,0.0587349397590361
+"CP003 (unsuppressed)","Cycling Effector","G2M",326,0.490963855421687
+"CP003 (unsuppressed)","Cycling Effector","S",299,0.450301204819277
+"CP003 (unsuppressed)","Tc17","G1",6,0.857142857142857
+"CP003 (unsuppressed)","Tc17","S",1,0.142857142857143
+"CP018 (suppressed)","Naive/Bystander","G1",2183,0.71644240236298
+"CP018 (suppressed)","Naive/Bystander","G2M",319,0.104693140794224
+"CP018 (suppressed)","Naive/Bystander","S",545,0.178864456842796
+"CP018 (suppressed)","Transitional Tem","G1",344,0.807511737089202
+"CP018 (suppressed)","Transitional Tem","G2M",48,0.112676056338028
+"CP018 (suppressed)","Transitional Tem","S",34,0.07981220657277
+"CP018 (suppressed)","Tpex","G1",313,0.694013303769401
+"CP018 (suppressed)","Tpex","G2M",72,0.159645232815965
+"CP018 (suppressed)","Tpex","S",66,0.146341463414634
+"CP018 (suppressed)","TEMRA/Effector","G1",261,0.589164785553047
+"CP018 (suppressed)","TEMRA/Effector","G2M",100,0.225733634311512
+"CP018 (suppressed)","TEMRA/Effector","S",82,0.18510158013544
+"CP018 (suppressed)","Cycling Effector","G1",9,0.0257142857142857
+"CP018 (suppressed)","Cycling Effector","G2M",132,0.377142857142857
+"CP018 (suppressed)","Cycling Effector","S",209,0.597142857142857
+"CP018 (suppressed)","Tc17","G1",40,0.655737704918033
+"CP018 (suppressed)","Tc17","G2M",4,0.0655737704918033
+"CP018 (suppressed)","Tc17","S",17,0.278688524590164

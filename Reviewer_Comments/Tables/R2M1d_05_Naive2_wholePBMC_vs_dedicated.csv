@@ -1,4 +1,6 @@
-"metric","n"
-"whole_PBMC_Naive2CD8",5824
-"dedicated_NaiveCD8_2",1884
-"shared",777
+"cluster","n_cells"
+"Naive 2 CD8 (Figure 1 subset)",3996
+"Naive 2 CD8 (whole object)",5824
+"Naive CD8 2 (dedicated)",1884
+"shared: Figure 1 vs dedicated",628
+"shared: whole object vs dedicated",777

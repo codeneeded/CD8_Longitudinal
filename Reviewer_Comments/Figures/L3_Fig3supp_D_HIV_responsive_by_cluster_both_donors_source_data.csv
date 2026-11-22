@@ -1,0 +1,13 @@
+"Donor","Annotation","n_cells","n_resp","pct_hiv"
+"CP003 (unsuppressed)","Naive/Bystander",1458,0,0
+"CP003 (unsuppressed)","Transitional Tem",890,642,72.1
+"CP003 (unsuppressed)","Tpex",159,34,21.4
+"CP003 (unsuppressed)","TEMRA/Effector",403,233,57.8
+"CP003 (unsuppressed)","Cycling Effector",664,504,75.9
+"CP003 (unsuppressed)","Tc17",7,0,0
+"CP018 (suppressed)","Naive/Bystander",3047,0,0
+"CP018 (suppressed)","Transitional Tem",426,153,35.9
+"CP018 (suppressed)","Tpex",451,24,5.3
+"CP018 (suppressed)","TEMRA/Effector",443,104,23.5
+"CP018 (suppressed)","Cycling Effector",350,130,37.1
+"CP018 (suppressed)","Tc17",61,0,0

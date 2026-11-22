@@ -1,0 +1,12 @@
+"cluster","n_cells_in_cluster","n_gated","pct_of_cluster","pct_of_all_gated"
+"ALL CD8",18843,450,2.39,100
+"Naïve CD8",4781,144,3.01,32
+"Naïve Intermediate CD8",2211,114,5.16,25.33
+"TEM CD8",1899,85,4.48,18.89
+"Naïve CD8 4",608,44,7.24,9.78
+"Naïve CD8 2",1884,42,2.23,9.33
+"Tscm CD8",438,11,2.51,2.44
+"Naïve CD8 3",1323,5,0.38,1.11
+"CD16+ Effector CD8",860,3,0.35,0.67
+"KIR+ innate-like CD8",492,2,0.41,0.44
+"TEMRA CD8",4347,0,0,0

@@ -1,0 +1,24 @@
+"Donor","Annotation","Visit","n","pct"
+"CP003 (unsuppressed)","Naive/Bystander","2 months",1294,0.887517146776406
+"CP003 (unsuppressed)","Naive/Bystander","Late",164,0.112482853223594
+"CP003 (unsuppressed)","Transitional Tem","2 months",870,0.97752808988764
+"CP003 (unsuppressed)","Transitional Tem","Late",20,0.0224719101123595
+"CP003 (unsuppressed)","Tpex","2 months",141,0.886792452830189
+"CP003 (unsuppressed)","Tpex","Late",18,0.113207547169811
+"CP003 (unsuppressed)","TEMRA/Effector","2 months",289,0.71712158808933
+"CP003 (unsuppressed)","TEMRA/Effector","Late",114,0.28287841191067
+"CP003 (unsuppressed)","Cycling Effector","2 months",620,0.933734939759036
+"CP003 (unsuppressed)","Cycling Effector","Late",44,0.0662650602409639
+"CP003 (unsuppressed)","Tc17","2 months",7,1
+"CP018 (suppressed)","Naive/Bystander","2 months",2243,0.736133902198884
+"CP018 (suppressed)","Naive/Bystander","Late",804,0.263866097801116
+"CP018 (suppressed)","Transitional Tem","2 months",46,0.107981220657277
+"CP018 (suppressed)","Transitional Tem","Late",380,0.892018779342723
+"CP018 (suppressed)","Tpex","2 months",184,0.407982261640798
+"CP018 (suppressed)","Tpex","Late",267,0.592017738359202
+"CP018 (suppressed)","TEMRA/Effector","2 months",102,0.230248306997743
+"CP018 (suppressed)","TEMRA/Effector","Late",341,0.769751693002257
+"CP018 (suppressed)","Cycling Effector","2 months",135,0.385714285714286
+"CP018 (suppressed)","Cycling Effector","Late",215,0.614285714285714
+"CP018 (suppressed)","Tc17","2 months",56,0.918032786885246
+"CP018 (suppressed)","Tc17","Late",5,0.0819672131147541

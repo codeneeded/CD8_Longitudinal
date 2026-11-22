@@ -1,0 +1,11 @@
+"cluster","stage","n_cells","median_score","mean_score","p_vs_other_naive","p_adj","higher","pct_IFN_high"
+"Naïve CD8","Naïve compartment",4781,-0.1297,-0.0825,NA,NA,NA,8.4
+"Naïve CD8 2","Naïve compartment",1884,-0.0881,-0.043,NA,NA,NA,14.7
+"Naïve CD8 3","Naïve compartment",1323,-0.1429,-0.0351,0.00119115964697398,0.00119115964697398,FALSE,16.9
+"Naïve CD8 4","Naïve compartment",608,-0.1099,-0.0377,NA,NA,NA,12.3
+"Naïve Intermediate CD8","Naïve compartment",2211,-0.1165,-0.0833,NA,NA,NA,8.9
+"Tscm CD8","Effector / memory",438,-0.1432,-0.116,8.41486174277479e-06,1.00978340913297e-05,FALSE,5
+"TEM CD8","Effector / memory",1899,-0.0561,0.03,1.06941256369941e-33,2.13882512739882e-33,TRUE,21.9
+"TEMRA CD8","Effector / memory",4347,-0.0288,0.0916,8.33244012197142e-137,4.99946407318285e-136,TRUE,29.1
+"CD16+ Effector CD8","Effector / memory",860,0.0103,0.1602,2.53729808240202e-58,7.61189424720606e-58,TRUE,35.8
+"KIR+ innate-like CD8","Effector / memory",492,-0.0169,0.0888,3.54262528282862e-23,5.31393792424294e-23,TRUE,29.5

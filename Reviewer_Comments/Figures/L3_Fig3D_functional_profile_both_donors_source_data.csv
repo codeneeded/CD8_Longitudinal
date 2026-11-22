@@ -1,0 +1,77 @@
+"participant","gene","category","n_cells","pct_expressing","Donor"
+"CP003","GZMB","Cytotoxicity",124,96,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","GZMA","Cytotoxicity",124,70.2,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","PRF1","Cytotoxicity",124,94.4,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","GNLY","Cytotoxicity",124,87.1,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","NKG7","Cytotoxicity",124,100,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","IFNG","Cytokines/Chemokines",124,15.3,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","CCL3","Cytokines/Chemokines",124,13.7,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","CCL4","Cytokines/Chemokines",124,70.2,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","CCL5","Cytokines/Chemokines",124,100,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","TBX21","Effector TFs",124,58.1,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","EOMES","Effector TFs",124,39.5,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","PRDM1","Effector TFs",124,29,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","CX3CR1","Effector Markers",124,42.7,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","KLRG1","Effector Markers",124,46,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","FAS","Effector Markers",124,15.3,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","PDCD1","Exhaustion",124,29,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","LAG3","Exhaustion",124,53.2,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","HAVCR2","Exhaustion",124,15.3,"CP003 (unsuppressed)
+n = 124 cells"
+"CP003","TOX","Exhaustion",124,26.6,"CP003 (unsuppressed)
+n = 124 cells"
+"CP018","GZMB","Cytotoxicity",22,72.7,"CP018 (suppressed)
+n = 22 cells"
+"CP018","GZMA","Cytotoxicity",22,72.7,"CP018 (suppressed)
+n = 22 cells"
+"CP018","PRF1","Cytotoxicity",22,77.3,"CP018 (suppressed)
+n = 22 cells"
+"CP018","GNLY","Cytotoxicity",22,68.2,"CP018 (suppressed)
+n = 22 cells"
+"CP018","NKG7","Cytotoxicity",22,95.5,"CP018 (suppressed)
+n = 22 cells"
+"CP018","IFNG","Cytokines/Chemokines",22,13.6,"CP018 (suppressed)
+n = 22 cells"
+"CP018","CCL3","Cytokines/Chemokines",22,0,"CP018 (suppressed)
+n = 22 cells"
+"CP018","CCL4","Cytokines/Chemokines",22,31.8,"CP018 (suppressed)
+n = 22 cells"
+"CP018","CCL5","Cytokines/Chemokines",22,100,"CP018 (suppressed)
+n = 22 cells"
+"CP018","TBX21","Effector TFs",22,31.8,"CP018 (suppressed)
+n = 22 cells"
+"CP018","EOMES","Effector TFs",22,45.5,"CP018 (suppressed)
+n = 22 cells"
+"CP018","PRDM1","Effector TFs",22,13.6,"CP018 (suppressed)
+n = 22 cells"
+"CP018","CX3CR1","Effector Markers",22,18.2,"CP018 (suppressed)
+n = 22 cells"
+"CP018","KLRG1","Effector Markers",22,40.9,"CP018 (suppressed)
+n = 22 cells"
+"CP018","FAS","Effector Markers",22,4.5,"CP018 (suppressed)
+n = 22 cells"
+"CP018","PDCD1","Exhaustion",22,13.6,"CP018 (suppressed)
+n = 22 cells"
+"CP018","LAG3","Exhaustion",22,40.9,"CP018 (suppressed)
+n = 22 cells"
+"CP018","HAVCR2","Exhaustion",22,9.1,"CP018 (suppressed)
+n = 22 cells"
+"CP018","TOX","Exhaustion",22,36.4,"CP018 (suppressed)
+n = 22 cells"

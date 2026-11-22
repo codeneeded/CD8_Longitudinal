@@ -1,0 +1,17 @@
+"Donor","Module","HIV_Specific_TCR","n","median"
+"CP003 (unsuppressed)","Cytotoxicity","Other",2168,-0.353
+"CP003 (unsuppressed)","Cytotoxicity","HIV-Specific TCR",1413,1.067
+"CP003 (unsuppressed)","Exhaustion","Other",2168,-0.152
+"CP003 (unsuppressed)","Exhaustion","HIV-Specific TCR",1413,0.279
+"CP003 (unsuppressed)","Stemness","Other",2168,0.239
+"CP003 (unsuppressed)","Stemness","HIV-Specific TCR",1413,-0.697
+"CP003 (unsuppressed)","IFN Memory","Other",2168,-0.228
+"CP003 (unsuppressed)","IFN Memory","HIV-Specific TCR",1413,-0.223
+"CP018 (suppressed)","Cytotoxicity","Other",4367,-0.403
+"CP018 (suppressed)","Cytotoxicity","HIV-Specific TCR",411,0.254
+"CP018 (suppressed)","Exhaustion","Other",4367,-0.161
+"CP018 (suppressed)","Exhaustion","HIV-Specific TCR",411,0.129
+"CP018 (suppressed)","Stemness","Other",4367,0.254
+"CP018 (suppressed)","Stemness","HIV-Specific TCR",411,-0.238
+"CP018 (suppressed)","IFN Memory","Other",4367,-0.031
+"CP018 (suppressed)","IFN Memory","HIV-Specific TCR",411,-0.269

@@ -1,0 +1,17 @@
+"Donor","Module","Visit","n","median"
+"CP003 (unsuppressed)","Cytotoxicity","2 months",1340,1.066
+"CP003 (unsuppressed)","Cytotoxicity","Late",73,1.093
+"CP003 (unsuppressed)","Exhaustion","2 months",1340,0.281
+"CP003 (unsuppressed)","Exhaustion","Late",73,0.259
+"CP003 (unsuppressed)","Stemness","2 months",1340,-0.683
+"CP003 (unsuppressed)","Stemness","Late",73,-0.783
+"CP003 (unsuppressed)","IFN Memory","2 months",1340,-0.223
+"CP003 (unsuppressed)","IFN Memory","Late",73,-0.215
+"CP018 (suppressed)","Cytotoxicity","2 months",110,0.922
+"CP018 (suppressed)","Cytotoxicity","Late",301,0.042
+"CP018 (suppressed)","Exhaustion","2 months",110,0.173
+"CP018 (suppressed)","Exhaustion","Late",301,0.103
+"CP018 (suppressed)","Stemness","2 months",110,-0.763
+"CP018 (suppressed)","Stemness","Late",301,-0.098
+"CP018 (suppressed)","IFN Memory","2 months",110,-0.212
+"CP018 (suppressed)","IFN Memory","Late",301,-0.29

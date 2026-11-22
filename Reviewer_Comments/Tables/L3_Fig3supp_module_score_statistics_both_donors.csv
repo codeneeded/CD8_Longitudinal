@@ -1,0 +1,17 @@
+"comparison","Donor","Module","n1","n2","test","p"
+"HIV-responsive vs bystander","CP003 (unsuppressed)","Cytotoxicity",2168,1413,"Wilcoxon rank-sum, two-sided",2.79740625765021e-266
+"HIV-responsive vs bystander","CP003 (unsuppressed)","Exhaustion",2168,1413,"Wilcoxon rank-sum, two-sided",3.90268861797808e-294
+"HIV-responsive vs bystander","CP003 (unsuppressed)","Stemness",2168,1413,"Wilcoxon rank-sum, two-sided",1.41863969878887e-250
+"HIV-responsive vs bystander","CP003 (unsuppressed)","IFN Memory",2168,1413,"Wilcoxon rank-sum, two-sided",0.107216787992052
+"HIV-responsive vs bystander","CP018 (suppressed)","Cytotoxicity",4367,411,"Wilcoxon rank-sum, two-sided",9.27671234860894e-85
+"HIV-responsive vs bystander","CP018 (suppressed)","Exhaustion",4367,411,"Wilcoxon rank-sum, two-sided",1.52738073056532e-126
+"HIV-responsive vs bystander","CP018 (suppressed)","Stemness",4367,411,"Wilcoxon rank-sum, two-sided",2.63465912337668e-65
+"HIV-responsive vs bystander","CP018 (suppressed)","IFN Memory",4367,411,"Wilcoxon rank-sum, two-sided",8.96539239256191e-70
+"HIV-responsive cells, 2 months vs late","CP003 (unsuppressed)","Cytotoxicity",1340,73,"Wilcoxon rank-sum, two-sided",0.238900530270791
+"HIV-responsive cells, 2 months vs late","CP003 (unsuppressed)","Exhaustion",1340,73,"Wilcoxon rank-sum, two-sided",0.457844162646719
+"HIV-responsive cells, 2 months vs late","CP003 (unsuppressed)","Stemness",1340,73,"Wilcoxon rank-sum, two-sided",0.204108840070753
+"HIV-responsive cells, 2 months vs late","CP003 (unsuppressed)","IFN Memory",1340,73,"Wilcoxon rank-sum, two-sided",0.719226663606501
+"HIV-responsive cells, 2 months vs late","CP018 (suppressed)","Cytotoxicity",110,301,"Wilcoxon rank-sum, two-sided",3.36887889152482e-05
+"HIV-responsive cells, 2 months vs late","CP018 (suppressed)","Exhaustion",110,301,"Wilcoxon rank-sum, two-sided",0.000859542170991185
+"HIV-responsive cells, 2 months vs late","CP018 (suppressed)","Stemness",110,301,"Wilcoxon rank-sum, two-sided",3.77597049206316e-14
+"HIV-responsive cells, 2 months vs late","CP018 (suppressed)","IFN Memory",110,301,"Wilcoxon rank-sum, two-sided",2.12733232973944e-05
